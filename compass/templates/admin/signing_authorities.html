@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Signing Authorities{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <!-- Header -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <span class="text-xl mr-2">📝</span>
+                            <h2 class="text-lg font-semibold text-deep-arctic">Manage Signing Authorities</h2>
+                        </div>
+                        <a href="{{ url_for('main.dashboard') }}" 
+                           class="bg-arctic-blue text-white px-4 py-2 rounded hover:bg-deep-arctic transition duration-200">
+                            Back to Dashboard
+                        </a>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Manage signing authorities for document generation. Total authorities: {{ signing_authorities|length }}
+                    </p>
+                </div>
+
+                <!-- Add New Signing Authority -->
+                <div class="mb-6 bg-gray-50 rounded-lg p-4">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Add New Signing Authority</h3>
+                    <form method="POST" action="{{ url_for('main.admin_create_signing_authority') }}" class="space-y-4">
+                        <!-- Hindi Fields -->
+                        <div class="bg-amber-50 border-l-4 border-amber-500 rounded-lg p-4">
+                            <h4 class="text-md font-medium text-gray-800 mb-3">🇮🇳 Hindi Details (हिंदी विवरण)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="name_hindi" class="input-label">Name in Hindi (नाम)</label>
+                                    <input type="text" name="name_hindi" id="name_hindi" 
+                                           class="input-field" placeholder="हस्ताक्षरकर्ता का नाम हिंदी में" 
+                                           style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                                </div>
+                                <div>
+                                    <label for="designation_hindi" class="input-label">Designation in Hindi (पदनाम)</label>
+                                    <input type="text" name="designation_hindi" id="designation_hindi" 
+                                           class="input-field" placeholder="पदनाम हिंदी में"
+                                           style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label for="department_hindi" class="input-label">Department in Hindi (विभाग)</label>
+                                    <input type="text" name="department_hindi" id="department_hindi" 
+                                           class="input-field" placeholder="विभाग का नाम हिंदी में"
+                                           style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- English Fields -->
+                        <div class="bg-white border-l-4 border-blue-500 rounded-lg p-4">
+                            <h4 class="text-md font-medium text-gray-800 mb-3">📝 English Details</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="name" class="input-label">Name *</label>
+                                    <input type="text" name="name" id="name" required 
+                                           class="input-field" placeholder="Full name of signing authority">
+                                </div>
+                                <div>
+                                    <label for="designation" class="input-label">Designation *</label>
+                                    <input type="text" name="designation" id="designation" required 
+                                           class="input-field" placeholder="Job designation/title">
+                                </div>
+                                <div>
+                                    <label for="department" class="input-label">Department *</label>
+                                    <input type="text" name="department" id="department" required 
+                                           class="input-field" placeholder="Department name">
+                                </div>
+                                <div>
+                                    <label for="organisation" class="input-label">Organisation *</label>
+                                    <input type="text" name="organisation" id="organisation" required 
+                                           class="input-field" placeholder="Organisation name">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <div class="bg-gray-100 border-l-4 border-gray-500 rounded-lg p-4">
+                            <h4 class="text-md font-medium text-gray-800 mb-3">📞 Contact Information</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="contact_number" class="input-label">Contact Number</label>
+                                    <input type="tel" name="contact_number" id="contact_number" 
+                                           class="input-field" placeholder="Phone number">
+                                </div>
+                                <div>
+                                    <label for="contact_fax" class="input-label">Contact Fax</label>
+                                    <input type="tel" name="contact_fax" id="contact_fax" 
+                                           class="input-field" placeholder="Fax number">
+                                </div>
+                                <div>
+                                    <label for="email" class="input-label">Email</label>
+                                    <input type="email" name="email" id="email" 
+                                           class="input-field" placeholder="email@example.com">
+                                </div>
+                            </div>
+                            <div class="mt-4 flex items-center">
+                                <input type="checkbox" name="is_default" id="is_default" 
+                                       class="h-4 w-4 text-arctic-blue focus:ring-arctic-blue border-gray-300 rounded">
+                                <label for="is_default" class="ml-2 block text-sm text-gray-900">
+                                    Set as default signing authority
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button type="submit" 
+                                    class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition duration-200 font-medium">
+                                Add Signing Authority
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Signing Authorities List -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Authority Details
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Contact Information
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for authority in signing_authorities %}
+                            <tr class="{{ 'bg-green-50' if authority.is_default else '' }}">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900 flex items-center">
+                                                {% if authority.name_hindi %}
+                                                <span style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                                                    {{ authority.name_hindi }}
+                                                </span>
+                                                <span class="text-xs text-gray-500 ml-2">
+                                                    ({{ authority.name }})
+                                                </span>
+                                                {% else %}
+                                                {{ authority.name }}
+                                                {% endif %}
+                                                {% if authority.is_default %}
+                                                <span class="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                                    Default
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                {% if authority.designation_hindi %}
+                                                <span style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                                                    {{ authority.designation_hindi }}
+                                                </span>
+                                                <span class="text-xs text-gray-400 ml-1">
+                                                    ({{ authority.designation }})
+                                                </span>
+                                                {% else %}
+                                                {{ authority.designation }}
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-xs text-gray-400">
+                                                {% if authority.department_hindi %}
+                                                <span style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                                                    {{ authority.department_hindi }}
+                                                </span>
+                                                <span class="ml-1">
+                                                    ({{ authority.department }})
+                                                </span>
+                                                {% else %}
+                                                {{ authority.department }}
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-xs text-gray-400">{{ authority.organisation }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">
+                                        {% if authority.contact_number %}
+                                        <div class="flex items-center">
+                                            <span class="text-xs mr-1">📞</span>
+                                            {{ authority.contact_number }}
+                                        </div>
+                                        {% endif %}
+                                        {% if authority.contact_fax %}
+                                        <div class="flex items-center">
+                                            <span class="text-xs mr-1">📠</span>
+                                            {{ authority.contact_fax }}
+                                        </div>
+                                        {% endif %}
+                                        {% if authority.email %}
+                                        <div class="flex items-center">
+                                            <span class="text-xs mr-1">📧</span>
+                                            {{ authority.email }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                               {{ 'bg-green-100 text-green-800' if authority.is_active else 'bg-red-100 text-red-800' }}">
+                                        {{ 'Active' if authority.is_active else 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                    <a href="{{ url_for('main.admin_edit_signing_authority', authority_id=authority.id) }}" 
+                                       class="text-arctic-blue hover:text-deep-arctic">Edit</a>
+                                    
+                                    <a href="{{ url_for('main.admin_toggle_signing_authority', authority_id=authority.id) }}" 
+                                       class="{{ 'text-red-600 hover:text-red-900' if authority.is_active else 'text-green-600 hover:text-green-900' }}"
+                                       onclick="return confirm('Are you sure you want to {{ 'deactivate' if authority.is_active else 'activate' }} this signing authority?')">
+                                        {{ 'Deactivate' if authority.is_active else 'Activate' }}
+                                    </a>
+                                    
+                                    {% if not authority.shipments %}
+                                    <a href="{{ url_for('main.admin_delete_signing_authority', authority_id=authority.id) }}" 
+                                       class="text-red-600 hover:text-red-900"
+                                       onclick="return confirm('Are you sure you want to permanently delete this signing authority? This action cannot be undone.')">
+                                        Delete
+                                    </a>
+                                    {% else %}
+                                    <span class="text-gray-400" title="Cannot delete - used in shipments">
+                                        Delete
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                    No signing authorities found. Add your first signing authority above.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Default Authority Information -->
+                {% if signing_authorities %}
+                <div class="mt-6 bg-blue-50 rounded-lg p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <span class="text-blue-400">ℹ️</span>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-blue-800">
+                                About Default Signing Authority
+                            </h3>
+                            <div class="mt-2 text-sm text-blue-700">
+                                <p>The default signing authority will be automatically used for document generation when no specific authority is assigned to a shipment. Only one authority can be set as default at a time.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

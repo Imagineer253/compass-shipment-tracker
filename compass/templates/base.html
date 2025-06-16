@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}COMPASS{% endblock %} - Arctic Shipment System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --arctic-blue: #88ABC2;
+            --deep-arctic: #1E3F66;
+            --ice-white: #F0F8FF;
+            --polar-grey: #2C3E50;
+            --glacier-blue: #B8DBD9;
+            --snow-white: #FFFFFF;
+            --northern-lights: #7AA874;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--ice-white) 0%, #E3F2FD 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .arctic-nav {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(176, 190, 197, 0.3);
+        }
+
+        .arctic-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(4px);
+        }
+
+        .arctic-button {
+            background: linear-gradient(135deg, var(--deep-arctic), #2C5282);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(30, 63, 102, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .arctic-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(30, 63, 102, 0.3);
+            background: linear-gradient(135deg, #2C5282, var(--deep-arctic));
+        }
+
+        .nav-link {
+            color: var(--deep-arctic);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background-color: var(--glacier-blue);
+            color: var(--deep-arctic);
+        }
+
+        .page-title {
+            background: linear-gradient(135deg, var(--deep-arctic), #2C5282);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <nav class="arctic-nav fixed w-full z-10">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center space-x-3">
+                        <!-- NCPOR Logo -->
+                        <img src="{{ url_for('static', filename='images/ncpor_logo.png') }}" alt="NCPOR Logo" class="w-10 h-10 object-contain">
+                        <div class="flex flex-col">
+                            <span class="text-lg font-bold text-deep-arctic">COMPASS</span>
+                            <span class="text-xs text-gray-600">Arctic Research System</span>
+                        </div>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('main.shipment_type_selection') }}" class="nav-link">New Shipment</a>
+                        <a href="{{ url_for('main.dashboard') }}" class="nav-link">Dashboard</a>
+                        {% if current_user.is_admin() %}
+                            <a href="{{ url_for('main.admin_users') }}" class="nav-link">👥 Users</a>
+                        {% endif %}
+                        <a href="{{ url_for('auth.logout') }}" class="nav-link">Logout</a>
+                    {% else %}
+                        <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
+                        <a href="{{ url_for('auth.register') }}" class="nav-link">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-20 px-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="arctic-card p-4 mb-4 {% if category == 'error' %}bg-red-100{% else %}bg-green-100{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="arctic-nav mt-auto py-4">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-600">COMPASS - Cargo Operations & Movement Processing for Arctic Shipment System</p>
+                <div class="text-right text-sm text-gray-500 mt-2 md:mt-0">
+                    <div>Designed & Developed by: Mr. Sarabjeet Singh Chhabra</div>
+                    <div>Project Scientist (Arctic Operations)</div>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

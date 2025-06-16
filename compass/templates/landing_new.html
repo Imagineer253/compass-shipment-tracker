@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+
+{% block title %}NCPOR Arctic Research Dashboard{% endblock %}
+
+{% block content %}
+<!-- Hero Section - Compact -->
+<div class="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white py-6 -mx-4 -mt-20 mb-6">
+    <div class="max-w-7xl mx-auto px-4 pt-20">
+        <div class="text-center">
+            <h1 class="text-3xl md:text-5xl font-bold mb-3">Arctic Research Dashboard</h1>
+            <p class="text-lg md:text-xl mb-4">15th Indian Arctic Expedition - Live Monitoring</p>
+            <div class="bg-yellow-500 text-black px-3 py-1 rounded-lg inline-block font-semibold text-sm">
+                ⚠️ Demo Data - Work in Progress - Not Accurate
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Layout - Side by Side -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6" style="min-height: 920px;">
+    
+    <!-- Left Panel - Statistics and Controls -->
+    <div class="lg:col-span-1 space-y-6 flex flex-col justify-between">
+        
+        <!-- Statistics Cards - Compact -->
+        <div class="arctic-card p-4">
+            <h2 class="text-xl font-bold text-deep-arctic mb-4 text-center">📊 Expedition Overview</h2>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="text-center p-3 bg-blue-50 rounded-lg hover:transform hover:scale-105 transition-all duration-300">
+                    <div class="text-2xl mb-1">🔬</div>
+                    <div class="text-xl font-bold text-deep-arctic">12</div>
+                    <div class="text-xs text-gray-600">Projects</div>
+                </div>
+                <div class="text-center p-3 bg-green-50 rounded-lg hover:transform hover:scale-105 transition-all duration-300">
+                    <div class="text-2xl mb-1">🏛️</div>
+                    <div class="text-xl font-bold text-deep-arctic">8</div>
+                    <div class="text-xs text-gray-600">States</div>
+                </div>
+                <div class="text-center p-3 bg-purple-50 rounded-lg hover:transform hover:scale-105 transition-all duration-300">
+                    <div class="text-2xl mb-1">🎓</div>
+                    <div class="text-xl font-bold text-deep-arctic">15</div>
+                    <div class="text-xs text-gray-600">Institutes</div>
+                </div>
+                <div class="text-center p-3 bg-yellow-50 rounded-lg hover:transform hover:scale-105 transition-all duration-300">
+                    <div class="text-2xl mb-1">📊</div>
+                    <div class="text-xl font-bold text-deep-arctic">247</div>
+                    <div class="text-xs text-gray-600">Data Points</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Legend -->
+        <div class="arctic-card p-4">
+            <h3 class="text-lg font-bold text-deep-arctic mb-3">🗺️ Research Station Types</h3>
+            <div class="space-y-2 text-sm">
+                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
+                    <div class="w-6 h-6 flex items-center justify-center">🌊</div>
+                    <span class="font-medium">CTD Measurements</span>
+                </div>
+                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
+                    <div class="w-6 h-6 flex items-center justify-center">🧊</div>
+                    <span class="font-medium">Ice Core Sampling</span>
+                </div>
+                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
+                    <div class="w-6 h-6 flex items-center justify-center">🏔️</div>
+                    <span class="font-medium">Sediment Coring</span>
+                </div>
+                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
+                    <div class="w-6 h-6 flex items-center justify-center">💧</div>
+                    <span class="font-medium">Water Sampling</span>
+                </div>
+                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
+                    <div class="w-6 h-6 flex items-center justify-center">🌬️</div>
+                    <span class="font-medium">Aerosol Monitoring</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Controls -->
+        <div class="arctic-card p-4">
+            <h3 class="text-lg font-bold text-deep-arctic mb-3">🎛️ Map Controls</h3>
+            <div class="space-y-2">
+                <button id="toggleLayers" class="w-full arctic-button text-sm py-2 hover:transform hover:scale-105 transition-all">
+                    Hide Research Stations
+                </button>
+                <button id="satelliteView" class="w-full arctic-button text-sm py-2 hover:transform hover:scale-105 transition-all">
+                    Satellite View
+                </button>
+                <button id="resetView" class="w-full arctic-button text-sm py-2 hover:transform hover:scale-105 transition-all">
+                    Reset Map View
+                </button>
+            </div>
+        </div>
+
+        <!-- Quick Access -->
+        {% if current_user.is_authenticated %}
+        <div class="arctic-card p-4">
+            <h3 class="text-lg font-bold text-deep-arctic mb-3">🚀 Quick Access</h3>
+            <div class="space-y-2">
+                <a href="{{ url_for('main.shipment_type_selection') }}" 
+                   class="w-full arctic-button flex items-center justify-center py-3 hover:transform hover:scale-105 transition-all duration-300">
+                    📦 Create Shipment
+                </a>
+                <a href="{{ url_for('main.dashboard') }}" 
+                   class="w-full arctic-button flex items-center justify-center py-3 hover:transform hover:scale-105 transition-all duration-300">
+                    📊 View Dashboard
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Panel - Interactive Map -->
+    <div class="lg:col-span-2">
+        <div class="arctic-card p-4 h-full flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-deep-arctic">🗺️ Arctic Research Locations</h2>
+                <div class="text-sm text-gray-500">
+                    <span id="stationCount">13</span> Active Stations
+                </div>
+            </div>
+            
+            <!-- Map Container - Maximized to Eliminate White Space -->
+            <div id="arcticMap" class="w-full rounded-lg border-2 border-gray-200 shadow-lg" style="height: 980px;"></div>
+            
+            <!-- Status Bar -->
+            <div class="mt-3 flex justify-between items-center text-xs text-gray-500">
+                <span>Click markers for detailed information</span>
+                <span id="mapStatus">Map loaded successfully</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Current People in Arctic Section -->
+<div class="arctic-card p-6 mb-6">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-deep-arctic">👥 Current Personnel in Arctic</h2>
+        <div class="text-sm text-gray-500">
+            <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">15 Active Researchers</span>
+        </div>
+    </div>
+    
+    <!-- Personnel Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <!-- Team Leader -->
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-l-4 border-blue-500 hover:transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center mb-3">
+                <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                    SK
+                </div>
+                <div>
+                    <h3 class="font-bold text-deep-arctic">Dr. Sunil Kumar</h3>
+                    <p class="text-sm text-blue-700 font-medium">Expedition Leader</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>NCPOR, Goa</strong></p>
+            <p class="text-xs text-gray-500">Location: Himadri Station, Ny-Ålesund</p>
+            <div class="mt-2 flex space-x-2">
+                <span class="bg-blue-200 text-blue-800 px-2 py-1 rounded text-xs">Glaciology</span>
+                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            </div>
+        </div>
+
+        <!-- Ice Researcher -->
+        <div class="bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg border-l-4 border-cyan-500 hover:transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center mb-3">
+                <div class="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                    AM
+                </div>
+                <div>
+                    <h3 class="font-bold text-deep-arctic">Dr. Ankit Mahajan</h3>
+                    <p class="text-sm text-cyan-700 font-medium">Ice Core Specialist</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>IITB, Mumbai</strong></p>
+            <p class="text-xs text-gray-500">Location: Sea Ice Station Alpha</p>
+            <div class="mt-2 flex space-x-2">
+                <span class="bg-cyan-200 text-cyan-800 px-2 py-1 rounded text-xs">Ice Physics</span>
+                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            </div>
+        </div>
+
+        <!-- Oceanographer -->
+        <div class="bg-gradient-to-br from-teal-50 to-teal-100 p-4 rounded-lg border-l-4 border-teal-500 hover:transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center mb-3">
+                <div class="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                    RS
+                </div>
+                <div>
+                    <h3 class="font-bold text-deep-arctic">Dr. Rahul Sharma</h3>
+                    <p class="text-sm text-teal-700 font-medium">Physical Oceanographer</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>NIOT, Chennai</strong></p>
+            <p class="text-xs text-gray-500">Location: Kongsfjorden CTD</p>
+            <div class="mt-2 flex space-x-2">
+                <span class="bg-teal-200 text-teal-800 px-2 py-1 rounded text-xs">Oceanography</span>
+                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            </div>
+        </div>
+
+        <!-- Atmospheric Scientist -->
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-l-4 border-purple-500 hover:transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center mb-3">
+                <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                    PK
+                </div>
+                <div>
+                    <h3 class="font-bold text-deep-arctic">Dr. Priya Kapoor</h3>
+                    <p class="text-sm text-purple-700 font-medium">Atmospheric Scientist</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>IITD, New Delhi</strong></p>
+            <p class="text-xs text-gray-500">Location: Himadri Station</p>
+            <div class="mt-2 flex space-x-2">
+                <span class="bg-purple-200 text-purple-800 px-2 py-1 rounded text-xs">Aerosols</span>
+                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            </div>
+        </div>
+
+        <!-- Marine Biologist -->
+        <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border-l-4 border-green-500 hover:transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center mb-3">
+                <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                    VT
+                </div>
+                <div>
+                    <h3 class="font-bold text-deep-arctic">Dr. Vikram Tiwari</h3>
+                    <p class="text-sm text-green-700 font-medium">Marine Biologist</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>CAS, Goa</strong></p>
+            <p class="text-xs text-gray-500">Location: Surface Water Station</p>
+            <div class="mt-2 flex space-x-2">
+                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Marine Biology</span>
+                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            </div>
+        </div>
+
+        <!-- Geologist -->
+        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border-l-4 border-yellow-500 hover:transform hover:scale-105 transition-all duration-300">
+            <div class="flex items-center mb-3">
+                <div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                    AS
+                </div>
+                <div>
+                    <h3 class="font-bold text-deep-arctic">Dr. Anjali Singh</h3>
+                    <p class="text-sm text-yellow-700 font-medium">Marine Geologist</p>
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>WIHG, Dehradun</strong></p>
+            <p class="text-xs text-gray-500">Location: Seafloor Station 1</p>
+            <div class="mt-2 flex space-x-2">
+                <span class="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs">Sedimentology</span>
+                <span class="bg-orange-200 text-orange-800 px-2 py-1 rounded text-xs">Field Work</span>
+            </div>
+        </div>
+
+    </div>
+    
+    <!-- Additional Personnel Summary -->
+    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+        <h3 class="font-bold text-deep-arctic mb-3">📊 Personnel Statistics</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div class="bg-white p-3 rounded-lg">
+                <div class="text-2xl font-bold text-blue-600">15</div>
+                <div class="text-sm text-gray-600">Total Personnel</div>
+            </div>
+            <div class="bg-white p-3 rounded-lg">
+                <div class="text-2xl font-bold text-green-600">8</div>
+                <div class="text-sm text-gray-600">Institutions</div>
+            </div>
+            <div class="bg-white p-3 rounded-lg">
+                <div class="text-2xl font-bold text-purple-600">6</div>
+                <div class="text-sm text-gray-600">Research Areas</div>
+            </div>
+            <div class="bg-white p-3 rounded-lg">
+                <div class="text-2xl font-bold text-orange-600">45</div>
+                <div class="text-sm text-gray-600">Days in Field</div>
+            </div>
+        </div>
+        <div class="mt-4 text-sm text-gray-600">
+            <p><strong>Additional Team Members:</strong> 9 researchers from NIO, ESSO-INCOIS, IISC Bangalore, JNU New Delhi, University of Kashmir, BHU Varanasi, Cochin University, and University of Delhi are currently engaged in various research activities across different Arctic stations.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Font Awesome for better icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize map
+    const map = L.map('arcticMap').setView([78.9, 11.9], 6);
+    
+    // Base layers
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri'
+    });
+    
+    // Custom icons using Font Awesome
+    function createCustomIcon(iconClass, color, bgColor) {
+        return L.divIcon({
+            html: `<div style="background-color: ${bgColor}; border: 2px solid ${color}; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+                     <i class="${iconClass}" style="color: ${color}; font-size: 14px;"></i>
+                   </div>`,
+            className: 'custom-div-icon',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+            popupAnchor: [0, -15]
+        });
+    }
+    
+    // Enhanced research locations
+    const locations = [
+        // CTD Measurements
+        { lat: 78.9, lng: 11.9, type: 'ctd', name: 'Ny-Ålesund CTD Station', 
+          description: 'Deep water conductivity, temperature, and depth measurements', 
+          depth: '200m', status: 'Active', samples: 45 },
+        { lat: 79.1, lng: 12.2, type: 'ctd', name: 'Kongsfjorden CTD', 
+          description: 'Fjord water column analysis and monitoring', 
+          depth: '150m', status: 'Active', samples: 32 },
+        { lat: 78.7, lng: 11.5, type: 'ctd', name: 'Barentsburg CTD', 
+          description: 'Coastal water mass characterization', 
+          depth: '100m', status: 'Completed', samples: 28 },
+        
+        // Ice Sampling
+        { lat: 79.2, lng: 10.8, type: 'ice', name: 'Sea Ice Station Alpha', 
+          description: 'Multi-year ice core drilling and analysis', 
+          thickness: '2.5m', status: 'Active', samples: 18 },
+        { lat: 79.0, lng: 13.1, type: 'ice', name: 'Ice Edge Station', 
+          description: 'First-year ice formation studies', 
+          thickness: '1.2m', status: 'Planned', samples: 0 },
+        { lat: 78.8, lng: 10.2, type: 'ice', name: 'Fast Ice Station', 
+          description: 'Landfast ice dynamics research', 
+          thickness: '3.1m', status: 'Active', samples: 22 },
+        
+        // Sediment Sampling
+        { lat: 78.6, lng: 11.8, type: 'sediment', name: 'Seafloor Station 1', 
+          description: 'Marine sediment coring for paleoclimate', 
+          depth: '300m', status: 'Completed', samples: 15 },
+        { lat: 79.3, lng: 12.5, type: 'sediment', name: 'Deep Basin Core', 
+          description: 'Long-term climate record extraction', 
+          depth: '500m', status: 'Active', samples: 8 },
+        
+        // Water Sampling
+        { lat: 78.95, lng: 11.7, type: 'water', name: 'Surface Water Station', 
+          description: 'Microplastic and pollutant analysis', 
+          depth: '5m', status: 'Active', samples: 67 },
+        { lat: 79.15, lng: 11.3, type: 'water', name: 'Meltwater Station', 
+          description: 'Glacier runoff chemistry monitoring', 
+          depth: '2m', status: 'Seasonal', samples: 34 },
+        { lat: 78.75, lng: 12.8, type: 'water', name: 'Deep Water Station', 
+          description: 'Nutrient cycling and biogeochemistry', 
+          depth: '400m', status: 'Active', samples: 41 },
+        
+        // Aerosol Sampling
+        { lat: 78.92, lng: 11.93, type: 'aerosol', name: 'Himadri Station', 
+          description: 'Continuous atmospheric aerosol monitoring', 
+          elevation: '55m', status: 'Continuous', samples: 156 },
+        { lat: 79.05, lng: 12.1, type: 'aerosol', name: 'Mountain Station', 
+          description: 'High altitude atmospheric composition', 
+          elevation: '400m', status: 'Active', samples: 89 }
+    ];
+    
+    // Icon configurations
+    const iconConfig = {
+        ctd: { icon: 'fas fa-water', color: '#1E40AF', bgColor: '#DBEAFE' },
+        ice: { icon: 'fas fa-snowflake', color: '#0EA5E9', bgColor: '#F0F9FF' },
+        sediment: { icon: 'fas fa-mountain', color: '#D97706', bgColor: '#FEF3C7' },
+        water: { icon: 'fas fa-tint', color: '#059669', bgColor: '#D1FAE5' },
+        aerosol: { icon: 'fas fa-wind', color: '#7C3AED', bgColor: '#EDE9FE' }
+    };
+    
+    // Status colors
+    const statusColors = {
+        'Active': '#10B981',
+        'Completed': '#6B7280',
+        'Planned': '#F59E0B',
+        'Seasonal': '#8B5CF6',
+        'Continuous': '#EF4444'
+    };
+    
+    // Add markers to map
+    const markers = [];
+    locations.forEach(loc => {
+        const config = iconConfig[loc.type];
+        const marker = L.marker([loc.lat, loc.lng], {
+            icon: createCustomIcon(config.icon, config.color, config.bgColor)
+        }).bindPopup(`
+            <div class="p-4 min-w-72">
+                <div class="flex items-center mb-3">
+                    <i class="${config.icon}" style="color: ${config.color}; font-size: 18px; margin-right: 8px;"></i>
+                    <h3 class="font-bold text-lg text-deep-arctic">${loc.name}</h3>
+                </div>
+                <p class="text-sm text-gray-600 mb-3">${loc.description}</p>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-gray-50 p-2 rounded">
+                        <strong>Type:</strong><br>
+                        <span style="color: ${config.color}">${loc.type.toUpperCase()}</span>
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded">
+                        <strong>Status:</strong><br>
+                        <span style="color: ${statusColors[loc.status]}">${loc.status}</span>
+                    </div>
+                    ${loc.depth ? `<div class="bg-gray-50 p-2 rounded"><strong>Depth:</strong><br>${loc.depth}</div>` : ''}
+                    ${loc.thickness ? `<div class="bg-gray-50 p-2 rounded"><strong>Ice Thickness:</strong><br>${loc.thickness}</div>` : ''}
+                    ${loc.elevation ? `<div class="bg-gray-50 p-2 rounded"><strong>Elevation:</strong><br>${loc.elevation}</div>` : ''}
+                    <div class="bg-gray-50 p-2 rounded">
+                        <strong>Samples:</strong><br>${loc.samples}
+                    </div>
+                    <div class="bg-gray-50 p-2 rounded col-span-2">
+                        <strong>Coordinates:</strong><br>${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}
+                    </div>
+                </div>
+            </div>
+        `).addTo(map);
+        markers.push(marker);
+    });
+    
+    // Control functionality
+    let layersVisible = true;
+    let currentLayer = osmLayer;
+    
+    document.getElementById('toggleLayers').addEventListener('click', function() {
+        if (layersVisible) {
+            markers.forEach(marker => map.removeLayer(marker));
+            this.textContent = 'Show Research Stations';
+            document.getElementById('stationCount').textContent = '0';
+        } else {
+            markers.forEach(marker => map.addLayer(marker));
+            this.textContent = 'Hide Research Stations';
+            document.getElementById('stationCount').textContent = locations.length;
+        }
+        layersVisible = !layersVisible;
+    });
+    
+    document.getElementById('satelliteView').addEventListener('click', function() {
+        if (currentLayer === osmLayer) {
+            map.removeLayer(osmLayer);
+            map.addLayer(satelliteLayer);
+            currentLayer = satelliteLayer;
+            this.textContent = 'Street Map View';
+        } else {
+            map.removeLayer(satelliteLayer);
+            map.addLayer(osmLayer);
+            currentLayer = osmLayer;
+            this.textContent = 'Satellite View';
+        }
+    });
+    
+    document.getElementById('resetView').addEventListener('click', function() {
+        map.setView([78.9, 11.9], 6);
+        document.getElementById('mapStatus').textContent = 'Map view reset';
+        setTimeout(() => {
+            document.getElementById('mapStatus').textContent = 'Map loaded successfully';
+        }, 2000);
+    });
+    
+    // Add scale control
+    L.control.scale({
+        position: 'bottomright',
+        metric: true,
+        imperial: false
+    }).addTo(map);
+    
+    // Map event listeners
+    map.on('zoomend', function() {
+        document.getElementById('mapStatus').textContent = `Zoom level: ${map.getZoom()}`;
+        setTimeout(() => {
+            document.getElementById('mapStatus').textContent = 'Map loaded successfully';
+        }, 2000);
+    });
+});
+</script>
+
+<style>
+/* Custom map styles */
+#arcticMap {
+    background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    max-width: 350px;
+}
+
+.leaflet-popup-content {
+    margin: 0;
+    line-height: 1.4;
+}
+
+.custom-div-icon {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    #arcticMap {
+        height: 400px !important;
+        min-height: 400px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #arcticMap {
+        height: 350px !important;
+        min-height: 350px !important;
+    }
+}
+
+/* Smooth transitions for all interactive elements */
+.arctic-card, .arctic-button {
+    transition: all 0.3s ease;
+}
+
+.arctic-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.15);
+}
+</style>
+
+{% endblock %} 

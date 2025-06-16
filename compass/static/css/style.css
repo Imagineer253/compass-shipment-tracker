@@ -1,0 +1,217 @@
+/* Arctic Theme Colors */
+:root {
+    --deep-arctic: #1a4b84;
+    --light-arctic: #e8f1f8;
+    --ice-white: #ffffff;
+    --polar-night: #2e3440;
+    --aurora-green: #a3be8c;
+    --arctic-gradient-start: #1a4b84;
+    --arctic-gradient-end: #2d6dad;
+    --frost-gradient-start: #e8f1f8;
+    --frost-gradient-end: #d1e3f1;
+}
+
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, var(--frost-gradient-start) 0%, var(--frost-gradient-end) 100%);
+    color: var(--polar-night);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Arctic Nav with Gradient */
+.arctic-nav {
+    background: linear-gradient(to right, var(--arctic-gradient-start), var(--arctic-gradient-end));
+    padding: 1rem 0;
+    box-shadow: 0 2px 10px rgba(26, 75, 132, 0.2);
+}
+
+.nav-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-left, .nav-right {
+    display: flex;
+    align-items: center;
+}
+
+.nav-links {
+    margin-left: 2rem;
+}
+
+.brand {
+    color: var(--ice-white);
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.nav-link {
+    color: var(--ice-white);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    margin: 0 0.25rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.3s ease;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.welcome-text {
+    color: var(--ice-white);
+    margin-right: 1rem;
+}
+
+/* Main Content */
+main {
+    flex: 1;
+    padding: 2rem 0;
+}
+
+/* Arctic Cards with Frost Effect */
+.arctic-card {
+    background: linear-gradient(135deg, var(--ice-white) 0%, #f8fafc 100%);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 15px rgba(26, 75, 132, 0.1);
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.features-grid .arctic-card {
+    padding: 1.5rem;
+    margin-bottom: 0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.features-grid .arctic-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Arctic Buttons with Gradient */
+.arctic-button {
+    background: linear-gradient(to right, var(--arctic-gradient-start), var(--arctic-gradient-end));
+    color: var(--ice-white);
+    padding: 1rem 2rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    width: 100%;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 15px rgba(26, 75, 132, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.arctic-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(26, 75, 132, 0.3);
+}
+
+.arctic-button.outline {
+    background: transparent;
+    border: 2px solid var(--deep-arctic);
+    color: var(--deep-arctic);
+    position: relative;
+    z-index: 1;
+}
+
+.arctic-button.outline:hover {
+    background: linear-gradient(to right, rgba(26, 75, 132, 0.1), rgba(45, 109, 173, 0.1));
+}
+
+/* Page Title */
+.page-title {
+    color: var(--deep-arctic);
+    font-size: 3rem;
+    font-weight: bold;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+/* Subtitle */
+.subtitle {
+    font-size: 1.25rem;
+    color: #4a5568;
+    text-align: center;
+    margin-bottom: 3rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+}
+
+/* Button Group */
+.button-group {
+    max-width: 400px;
+    margin: 0 auto 3rem auto;
+}
+
+/* Features Grid */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 3rem;
+}
+
+.feature-title {
+    color: var(--deep-arctic);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.features-grid p {
+    color: #4a5568;
+    line-height: 1.5;
+}
+
+/* Footer */
+footer {
+    background-color: var(--deep-arctic);
+    color: var(--ice-white);
+    padding: 1rem 0;
+    margin-top: auto;
+}
+
+.copyright {
+    text-align: center;
+    margin: 0;
+    font-size: 0.875rem;
+    opacity: 0.9;
+}
+
+/* Snowflake Animation */
+@keyframes snowflakeSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.snowflake-spin {
+    animation: snowflakeSpin 8s linear infinite;
+    color: var(--ice-white);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+} 

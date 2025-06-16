@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - COMPASS{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4">
+    <div class="arctic-card p-8 mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold page-title mb-2">Admin Dashboard</h1>
+                <p class="text-gray-600">Welcome back, {{ user.first_name }}! Here's your system overview.</p>
+            </div>
+            <div class="mt-4 md:mt-0 flex gap-2">
+                <a href="{{ url_for('main.admin_users') }}" 
+                   class="arctic-button bg-deep-arctic text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300">
+                   👥 Manage Users
+                </a>
+                <button id="combineShipmentsBtn" 
+                        class="arctic-button bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-all duration-300 hidden">
+                   🔄 Combine Selected
+                </button>
+                <a href="{{ url_for('main.shipment_type_selection') }}" 
+                   class="arctic-button bg-northern-lights text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300">
+                   📦 New Shipment
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-deep-arctic">{{ users_count or 0 }}</div>
+                <div class="text-gray-600">Total Users</div>
+            </div>
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-deep-arctic">{{ (admin_users|length) if admin_users else 0 }}</div>
+                <div class="text-gray-600">Admin Users</div>
+            </div>
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-deep-arctic">{{ (non_admin_users|length) if non_admin_users else 0 }}</div>
+                <div class="text-gray-600">Regular Users</div>
+            </div>
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-deep-arctic">{{ (shipments|length) if shipments else 0 }}</div>
+                <div class="text-gray-600">Total Shipments</div>
+            </div>
+        </div>
+
+        <!-- Recent Shipments -->
+        <h2 class="text-2xl font-bold text-deep-arctic mb-4">Recent Shipments</h2>
+        
+        {% if shipments %}
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border p-3 text-left">
+                            <input type="checkbox" id="selectAll" class="mr-2">
+                            Select
+                        </th>
+                        <th class="border p-3 text-left">Invoice Number</th>
+                        <th class="border p-3 text-left">Type</th>
+                        <th class="border p-3 text-left">Created By</th>
+                        <th class="border p-3 text-left">Organization</th>
+                        <th class="border p-3 text-left">Status</th>
+                        <th class="border p-3 text-left">Date</th>
+                        <th class="border p-3 text-left">Details</th>
+                        <th class="border p-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shipment in shipments[:10] %}
+                    <tr class="hover:bg-gray-50" data-shipment-id="{{ shipment.id }}">
+                        <td class="border p-3">
+                            {% if shipment.status not in ['Combined', 'Failed'] and not shipment.is_combined %}
+                                <input type="checkbox" class="shipment-checkbox" value="{{ shipment.id }}" 
+                                       data-type="{{ shipment.shipment_type }}" data-year="{{ shipment.expedition_year }}">
+                            {% else %}
+                                <span class="text-gray-400">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="border p-3 font-mono text-sm">
+                            {{ shipment.invoice_number }}
+                            {% if shipment.is_combined %}
+                                <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs ml-2">Combined</span>
+                            {% endif %}
+                        </td>
+                        <td class="border p-3">
+                            <span class="px-2 py-1 rounded text-xs font-medium
+                                {% if shipment.shipment_type == 'export' %}bg-blue-100 text-blue-800
+                                {% elif shipment.shipment_type == 'import' %}bg-green-100 text-green-800
+                                {% elif shipment.shipment_type == 'reimport' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-purple-100 text-purple-800{% endif %}">
+                                {{ shipment.shipment_type.title() }}
+                            </span>
+                        </td>
+                        <td class="border p-3">
+                            <div class="font-medium">{{ shipment.created_by_user.first_name }} {{ shipment.created_by_user.last_name }}</div>
+                            <div class="text-sm text-gray-500">
+                                {% for role in shipment.created_by_user.roles %}
+                                    <span class="inline-block bg-gray-200 rounded px-2 py-1 text-xs mr-1">{{ role.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="border p-3 text-sm">{{ shipment.created_by_user.organization or 'Not specified' }}</td>
+                        <td class="border p-3">
+                            <span class="px-2 py-1 rounded text-xs font-medium
+                                {% if shipment.status == 'Document_Generated' %}bg-blue-100 text-blue-800
+                                {% elif shipment.status == 'Delivered' %}bg-green-100 text-green-800
+                                {% elif shipment.status == 'Acknowledged' %}bg-yellow-100 text-yellow-800
+                                {% elif shipment.status == 'Submitted' %}bg-orange-100 text-orange-800
+                                {% elif shipment.status == 'Needs_Changes' %}bg-red-100 text-red-800
+                                {% elif shipment.status == 'Combined' %}bg-purple-100 text-purple-800
+                                {% elif shipment.status == 'Failed' %}bg-red-100 text-red-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ shipment.status.replace('_', ' ').title() }}
+                            </span>
+                            {% if shipment.acknowledged_by_user %}
+                                <div class="text-xs text-gray-500 mt-1">
+                                    Ack by: {{ shipment.acknowledged_by_user.first_name }} {{ shipment.acknowledged_by_user.last_name }}
+                                    <br>{{ shipment.acknowledged_at.strftime('%d-%m %H:%M') if shipment.acknowledged_at else '' }}
+                                </div>
+                            {% endif %}
+                            {% if shipment.admin_comment %}
+                                <div class="text-xs text-blue-600 mt-1">
+                                    💬 Comment added
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="border p-3 text-sm">{{ shipment.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
+                        <td class="border p-3 text-sm">
+                            <div><strong>Requester:</strong> {{ shipment.requester_name or 'N/A' }}</div>
+                            <div><strong>Year:</strong> {{ shipment.expedition_year or 'N/A' }}</div>
+                            <div><strong>Packages:</strong> {{ shipment.total_packages or 'N/A' }}</div>
+                            {% if shipment.is_combined and shipment.parent_shipment_ids %}
+                                <div class="text-xs text-orange-600 mt-1">
+                                    <strong>Combined from:</strong> 
+                                    {% set parent_ids = shipment.parent_shipment_ids %}
+                                    {% if parent_ids %}
+                                        {% if parent_ids.startswith('[') %}
+                                            Multiple shipments
+                                        {% else %}
+                                            {{ parent_ids }}
+                                        {% endif %}
+                                    {% else %}
+                                        Unknown
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="border p-3 text-sm">
+                            <div class="actions-container">
+                                <!-- Primary Action Buttons - Horizontal Layout -->
+                                <div class="action-row primary-actions">
+                                    <a href="{{ url_for('main.admin_generate_document', shipment_id=shipment.id, document_type='invoice_packing') }}" 
+                                       class="action-btn btn-primary" title="Generate Invoice & Packing List">
+                                        📄 Invoice & Packing
+                                    </a>
+                                    <a href="{{ url_for('main.admin_generate_document', shipment_id=shipment.id, document_type='custom_docs') }}" 
+                                       class="action-btn btn-secondary" title="Generate Custom Documents">
+                                        📋 Custom Docs
+                                    </a>
+                                </div>
+                                
+                                <!-- Secondary Action Buttons -->
+                                <div class="action-row secondary-actions">
+                                    <a href="{{ url_for('main.track_shipment', shipment_id=shipment.id) }}" 
+                                       class="action-btn btn-info">
+                                        🔍 Track Shipment
+                                    </a>
+                                    <a href="{{ url_for('main.edit_shipment', shipment_id=shipment.id) }}" 
+                                       class="action-btn btn-warning">
+                                        ✏️ Edit
+                                    </a>
+                                </div>
+                                
+                                <!-- Management Actions -->
+                                <div class="action-row management-actions">
+                                    <button class="comment-btn action-btn btn-neutral"
+                                            data-shipment-id="{{ shipment.id }}" 
+                                            data-comment="{{ shipment.admin_comment or '' }}">
+                                        💬 Comment
+                                    </button>
+                                    <a href="{{ url_for('main.admin_delete_shipment', shipment_id=shipment.id) }}" 
+                                       class="action-btn btn-danger"
+                                       onclick="return confirm('⚠️ PERMANENT DELETE WARNING!\n\nThis will completely remove shipment {{ shipment.invoice_number }} from the database.\n\nRequester: {{ shipment.requester_name }}\nType: {{ shipment.shipment_type.title() }}\nStatus: {{ shipment.status }}\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to DELETE this shipment?')">
+                                        🗑️ Delete
+                                    </a>
+                                </div>
+                                
+                                <!-- Dropdown Controls - Compact Layout -->
+                                <div class="dropdown-controls">
+                                    <select class="status-selector control-dropdown" 
+                                            data-shipment-id="{{ shipment.id }}">
+                                        <option value="">Change Status...</option>
+                                        <option value="Submitted" {% if shipment.status == 'Submitted' %}selected{% endif %}>📝 Submitted</option>
+                                        <option value="Document_Generation" {% if shipment.status == 'Document_Generation' %}selected{% endif %}>📄 Document Generation</option>
+                                        <option value="Quotation_Requested" {% if shipment.status == 'Quotation_Requested' %}selected{% endif %}>💰 Quotation Requested</option>
+                                        <option value="Documents_Prepared" {% if shipment.status == 'Documents_Prepared' %}selected{% endif %}>📋 Documents Prepared</option>
+                                        <option value="Director_Approval" {% if shipment.status == 'Director_Approval' %}selected{% endif %}>👨‍💼 Director Approval</option>
+                                        <option value="Pickup_Scheduled" {% if shipment.status == 'Pickup_Scheduled' %}selected{% endif %}>📦 Pickup Scheduled</option>
+                                        <option value="At_Courier_Warehouse" {% if shipment.status == 'At_Courier_Warehouse' %}selected{% endif %}>🏢 At Warehouse</option>
+                                        <option value="Custom_Clearance" {% if shipment.status == 'Custom_Clearance' %}selected{% endif %}>🛃 Custom Clearance</option>
+                                        <option value="In_Transit" {% if shipment.status == 'In_Transit' %}selected{% endif %}>🚚 In Transit</option>
+                                        <option value="Destination_City" {% if shipment.status == 'Destination_City' %}selected{% endif %}>🏙️ Destination City</option>
+                                        <option value="Delivered" {% if shipment.status == 'Delivered' %}selected{% endif %}>✅ Delivered</option>
+                                        <option value="Failed" {% if shipment.status == 'Failed' %}selected{% endif %}>❌ Failed</option>
+                                    </select>
+                                    
+                                    <select class="signing-authority-selector control-dropdown" 
+                                            data-shipment-id="{{ shipment.id }}">
+                                        <option value="">
+                                            {% if shipment.signing_authority %}
+                                                {{ shipment.signing_authority.name[:20] }}...
+                                            {% else %}
+                                                Assign Authority...
+                                            {% endif %}
+                                        </option>
+                                        {% for authority in signing_authorities %}
+                                        <option value="{{ authority.id }}" 
+                                                {% if shipment.signing_authority_id == authority.id %}selected{% endif %}>
+                                            {{ authority.name }} - {{ authority.designation }}
+                                            {% if authority.is_default %} (Default){% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">
+            <p>No shipments created yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Comment Modal -->
+<div id="commentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Add Admin Comment</h3>
+            <form id="commentForm" method="POST">
+                <input type="hidden" id="commentShipmentId" name="shipment_id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Comment:</label>
+                    <textarea id="commentText" name="comment" rows="4" 
+                              class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="Enter your comment or feedback for the user..."></textarea>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeCommentModal()" 
+                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Save Comment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Comment Modal Functions
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin Dashboard JavaScript loaded');
+    
+    // Comment button event listeners
+    document.querySelectorAll('.comment-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const shipmentId = this.dataset.shipmentId;
+            const existingComment = this.dataset.comment;
+            openCommentModal(shipmentId, existingComment);
+        });
+    });
+    
+    // Comment form submission
+    document.getElementById('commentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        fetch('{{ url_for("main.admin_add_comment") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closeCommentModal();
+                location.reload();
+            } else {
+                alert('Error saving comment: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error saving comment');
+        });
+    });
+    
+    // Shipment selection and combine functionality
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const shipmentCheckboxes = document.querySelectorAll('.shipment-checkbox');
+    const combineButton = document.getElementById('combineShipmentsBtn');
+    
+    console.log('Found checkboxes:', shipmentCheckboxes.length);
+    console.log('Select all checkbox:', selectAllCheckbox);
+    console.log('Combine button:', combineButton);
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            console.log('Select all clicked:', this.checked);
+            shipmentCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateCombineButton();
+        });
+    }
+    
+    shipmentCheckboxes.forEach((checkbox, index) => {
+        console.log(`Setting up checkbox ${index}:`, checkbox.value);
+        checkbox.addEventListener('change', function() {
+            console.log(`Checkbox ${this.value} changed to:`, this.checked);
+            updateCombineButton();
+        });
+    });
+    
+    if (combineButton) {
+        combineButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Combine button clicked');
+            
+            const selectedShipments = Array.from(shipmentCheckboxes)
+                .filter(cb => cb.checked)
+                .map(cb => ({
+                    id: cb.value,
+                    type: cb.dataset.type,
+                    year: cb.dataset.year
+                }));
+            
+            console.log('Selected shipments:', selectedShipments);
+            
+            if (selectedShipments.length < 2) {
+                alert('Please select at least 2 shipments to combine');
+                return;
+            }
+            
+            // Check if all selected shipments are of same type and year
+            const firstType = selectedShipments[0].type;
+            const firstYear = selectedShipments[0].year;
+            const allSameType = selectedShipments.every(s => s.type === firstType);
+            const allSameYear = selectedShipments.every(s => s.year === firstYear);
+            
+            if (!allSameType || !allSameYear) {
+                alert('Can only combine shipments of the same type and expedition year');
+                return;
+            }
+            
+            // Instead of opening modal, go directly to combine form
+            goToCombineForm(selectedShipments);
+        });
+    }
+    
+    // Initial call to set up combine button state
+    updateCombineButton();
+    
+    // Status selector event delegation
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('status-selector')) {
+            const shipmentId = e.target.dataset.shipmentId;
+            const newStatus = e.target.value;
+            updateStatus(shipmentId, newStatus);
+        }
+    });
+    
+    // Signing Authority selector event delegation
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('signing-authority-selector')) {
+            const shipmentId = e.target.dataset.shipmentId;
+            const authorityId = e.target.value;
+            if (authorityId) {
+                assignSigningAuthority(shipmentId, authorityId);
+            }
+        }
+    });
+});
+
+function updateCombineButton() {
+    const selectedCount = document.querySelectorAll('.shipment-checkbox:checked').length;
+    const combineButton = document.getElementById('combineShipmentsBtn');
+    
+    console.log('Updating combine button, selected count:', selectedCount);
+    
+    if (combineButton) {
+        if (selectedCount >= 2) {
+            combineButton.classList.remove('hidden');
+            combineButton.textContent = `🔄 Combine Selected (${selectedCount})`;
+        } else {
+            combineButton.classList.add('hidden');
+        }
+    }
+}
+
+function openCommentModal(shipmentId, existingComment) {
+    document.getElementById('commentShipmentId').value = shipmentId;
+    document.getElementById('commentText').value = existingComment || '';
+    document.getElementById('commentModal').classList.remove('hidden');
+}
+
+function closeCommentModal() {
+    document.getElementById('commentModal').classList.add('hidden');
+}
+
+function goToCombineForm(selectedShipments) {
+    console.log('Going to combine form with shipments:', selectedShipments);
+    
+    // Create a form to submit the selected shipments to the combine form route
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("main.admin_combine_form") }}';
+    
+    // Add shipment IDs as hidden inputs
+    selectedShipments.forEach(shipment => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'shipment_ids';
+        input.value = shipment.id;
+        form.appendChild(input);
+    });
+    
+    // Submit form to go to combine form page
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function updateStatus(shipmentId, newStatus) {
+    if (newStatus && confirm(`Are you sure you want to update the shipment status to "${newStatus.replace('_', ' ')}"?`)) {
+        window.location.href = `{{ url_for('main.admin_update_status', shipment_id=0, new_status='STATUS') }}`.replace('0', shipmentId).replace('STATUS', newStatus);
+    }
+}
+
+function assignSigningAuthority(shipmentId, authorityId) {
+    const formData = new FormData();
+    formData.append('shipment_id', shipmentId);
+    formData.append('authority_id', authorityId);
+    
+    fetch('{{ url_for("main.admin_assign_signing_authority") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the dropdown display text
+            const selector = document.querySelector(`[data-shipment-id="${shipmentId}"].signing-authority-selector`);
+            if (selector) {
+                selector.options[0].text = `Current: ${data.authority_name}`;
+            }
+            alert(`Signing Authority "${data.authority_name}" assigned successfully!`);
+        } else {
+            alert('Error assigning signing authority: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error assigning signing authority');
+        console.error('Error:', error);
+    });
+}
+</script>
+
+<style>
+/* Professional Actions Column Styling */
+.actions-container {
+    min-width: 200px;
+    max-width: 250px;
+}
+
+.action-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 4px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-height: 24px;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Button Color Schemes */
+.btn-primary {
+    background-color: #10b981;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #059669;
+}
+
+.btn-secondary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #2563eb;
+}
+
+.btn-info {
+    background-color: #6366f1;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #4f46e5;
+}
+
+.btn-warning {
+    background-color: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #d97706;
+}
+
+.btn-neutral {
+    background-color: #6b7280;
+    color: white;
+}
+
+.btn-neutral:hover {
+    background-color: #4b5563;
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+}
+
+/* Dropdown Controls */
+.dropdown-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.control-dropdown {
+    padding: 4px 6px;
+    font-size: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background-color: #f9fafb;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-dropdown:hover {
+    border-color: #9ca3af;
+    background-color: #f3f4f6;
+}
+
+.control-dropdown:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .actions-container {
+        min-width: 180px;
+        max-width: 200px;
+    }
+    
+    .action-btn {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+}
+
+/* Action row specific styling */
+.primary-actions {
+    justify-content: flex-start;
+}
+
+.secondary-actions {
+    justify-content: flex-start;
+}
+
+.management-actions {
+    justify-content: flex-start;
+}
+
+/* Ensure buttons don't break layout */
+.action-btn {
+    flex-shrink: 0;
+}
+</style>
+
+{% endblock %} 

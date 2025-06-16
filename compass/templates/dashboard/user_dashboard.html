@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - COMPASS{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4">
+    <div class="arctic-card p-8 mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold page-title mb-2">My Dashboard</h1>
+                <p class="text-gray-600">Welcome back, {{ user.first_name }}!</p>
+                <div class="text-sm text-gray-500 mt-1">
+                    <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2">{{ user.organization or 'Organization not specified' }}</span>
+                    {% for role in user.roles %}
+                        <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-xs mr-1">{{ role.name }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="mt-4 md:mt-0">
+                <a href="{{ url_for('main.shipment_type_selection') }}" 
+                   class="arctic-button bg-northern-lights text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300">
+                   📦 Create New Shipment
+                </a>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-deep-arctic">{{ shipments|length }}</div>
+                <div class="text-gray-600">Total Shipments</div>
+            </div>
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-yellow-600">{{ shipments|selectattr("status", "equalto", "Submitted")|list|length }}</div>
+                <div class="text-gray-600">Pending Review</div>
+            </div>
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-blue-600">{{ shipments|selectattr("status", "equalto", "Acknowledged")|list|length }}</div>
+                <div class="text-gray-600">Acknowledged</div>
+            </div>
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-purple-600">{{ shipments|selectattr("status", "equalto", "Document_Generated")|list|length }}</div>
+                <div class="text-gray-600">Documents Ready</div>
+            </div>
+            <div class="arctic-card p-6 text-center">
+                <div class="text-3xl font-bold text-green-600">{{ shipments|selectattr("status", "equalto", "Delivered")|list|length }}</div>
+                <div class="text-gray-600">Delivered</div>
+            </div>
+        </div>
+
+        <!-- My Shipments -->
+        <h2 class="text-2xl font-bold text-deep-arctic mb-4">My Shipments</h2>
+        
+        {% if shipments %}
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="border p-3 text-left">Invoice Number</th>
+                        <th class="border p-3 text-left">Type</th>
+                        <th class="border p-3 text-left">Status</th>
+                        <th class="border p-3 text-left">Date Created</th>
+                        <th class="border p-3 text-left">Admin Review</th>
+                        <th class="border p-3 text-left">Details</th>
+                        <th class="border p-3 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shipment in shipments %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="border p-3 font-mono text-sm">{{ shipment.invoice_number }}</td>
+                        <td class="border p-3">
+                            <span class="px-2 py-1 rounded text-xs font-medium
+                                {% if shipment.shipment_type == 'export' %}bg-blue-100 text-blue-800
+                                {% elif shipment.shipment_type == 'import' %}bg-green-100 text-green-800
+                                {% elif shipment.shipment_type == 'reimport' %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-purple-100 text-purple-800{% endif %}">
+                                {{ shipment.shipment_type.title() }}
+                            </span>
+                        </td>
+                        <td class="border p-3">
+                            <span class="px-2 py-1 rounded text-xs font-medium
+                                {% if shipment.status == 'Delivered' %}bg-green-100 text-green-800
+                                {% elif shipment.status in ['In_Transit', 'Destination_City'] %}bg-blue-100 text-blue-800
+                                {% elif shipment.status in ['Pickup_Scheduled', 'At_Courier_Warehouse', 'Custom_Clearance'] %}bg-yellow-100 text-yellow-800
+                                {% elif shipment.status in ['Documents_Prepared', 'Director_Approval'] %}bg-purple-100 text-purple-800
+                                {% elif shipment.status in ['Document_Generation', 'Quotation_Requested'] %}bg-indigo-100 text-indigo-800
+                                {% elif shipment.status == 'Submitted' %}bg-orange-100 text-orange-800
+                                {% elif shipment.status == 'Combined' %}bg-purple-100 text-purple-800
+                                {% elif shipment.status == 'Failed' %}bg-red-100 text-red-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {% set status_display_names = {
+                                    'Submitted': 'Pending Review',
+                                    'Document_Generation': 'Preparing Documents',
+                                    'Quotation_Requested': 'Getting Quotes',
+                                    'Documents_Prepared': 'Documents Ready',
+                                    'Director_Approval': 'Awaiting Approval',
+                                    'Pickup_Scheduled': 'Pickup Scheduled',
+                                    'At_Courier_Warehouse': 'At Courier Warehouse',
+                                    'Custom_Clearance': 'Customs Processing',
+                                    'In_Transit': 'In Transit to Destination',
+                                    'Destination_City': 'Reached Destination City',
+                                    'Delivered': 'Delivered to Final Destination',
+                                    'Combined': 'Combined by Admin',
+                                    'Failed': 'Processing Failed'
+                                } %}
+                                {{ status_display_names.get(shipment.status, shipment.status) }}
+                            </span>
+                            
+                            <!-- Show admin comment if exists -->
+                            {% if shipment.admin_comment %}
+                                <div class="mt-2 p-2 bg-blue-50 border-l-4 border-blue-400 rounded">
+                                    <div class="text-xs font-medium text-blue-800">Admin Comment:</div>
+                                    <div class="text-sm text-blue-700 mt-1">{{ shipment.admin_comment }}</div>
+                                    {% if shipment.comment_by_user and shipment.comment_at %}
+                                        <div class="text-xs text-blue-600 mt-1">
+                                            By: {{ shipment.comment_by_user.first_name }} {{ shipment.comment_by_user.last_name }} 
+                                            on {{ shipment.comment_at.strftime('%d-%m-%Y %H:%M') }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="border p-3 text-sm">{{ shipment.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
+                        <td class="border p-3 text-sm">
+                            {% if shipment.acknowledged_by_user %}
+                                <div class="text-green-600 font-medium">✓ Acknowledged</div>
+                                <div class="text-xs text-gray-500">
+                                    By: {{ shipment.acknowledged_by_user.first_name }} {{ shipment.acknowledged_by_user.last_name }}
+                                    <br>On: {{ shipment.acknowledged_at.strftime('%d-%m-%Y %H:%M') if shipment.acknowledged_at else '' }}
+                                </div>
+                            {% else %}
+                                <div class="text-yellow-600">⏳ Pending</div>
+                            {% endif %}
+                        </td>
+                        <td class="border p-3 text-sm">
+                            <div><strong>Requester:</strong> {{ shipment.requester_name or 'N/A' }}</div>
+                            <div><strong>Year:</strong> {{ shipment.expedition_year or 'N/A' }}</div>
+                            <div><strong>Packages:</strong> {{ shipment.total_packages or 'N/A' }}</div>
+                            <div><strong>Destination:</strong> {{ shipment.destination_country or 'N/A' }}</div>
+                        </td>
+                        <td class="border p-3 text-sm">
+                            <div class="user-actions-container">
+                                <!-- Primary Actions -->
+                                <div class="user-action-row">
+                                    <!-- Track Shipment Button - Always available -->
+                                    <a href="{{ url_for('main.track_shipment', shipment_id=shipment.id) }}" 
+                                       class="user-action-btn btn-info">
+                                        🔍 Track Shipment
+                                    </a>
+                                    
+                                    {% if shipment.status in ['Submitted', 'Document_Generation', 'Quotation_Requested'] and not shipment.is_combined %}
+                                        <!-- Edit Button for non-admin users -->
+                                        <a href="{{ url_for('main.edit_shipment', shipment_id=shipment.id) }}" 
+                                           class="user-action-btn btn-primary">
+                                            ✏️ Edit
+                                        </a>
+                                    {% elif shipment.status in ['Documents_Prepared', 'Director_Approval', 'Pickup_Scheduled', 'At_Courier_Warehouse', 'Custom_Clearance', 'In_Transit', 'Destination_City', 'Delivered'] and not shipment.is_combined %}
+                                        <!-- Generate Documents Buttons - Two Options -->
+                                        <a href="{{ url_for('main.user_generate_document', shipment_id=shipment.id, document_type='invoice_packing') }}" 
+                                           class="user-action-btn btn-success"
+                                           title="Download Invoice & Packing List">
+                                            📄 Invoice & Packing
+                                        </a>
+                                        <a href="{{ url_for('main.user_generate_document', shipment_id=shipment.id, document_type='custom_docs') }}" 
+                                           class="user-action-btn btn-secondary"
+                                           title="Download Full Custom Clearance Documents">
+                                            📋 Custom Docs
+                                        </a>
+                                    {% elif shipment.status == 'Failed' %}
+                                        <!-- Edit Button for failed shipments -->
+                                        <a href="{{ url_for('main.edit_shipment', shipment_id=shipment.id) }}" 
+                                           class="user-action-btn btn-danger">
+                                            🔄 Retry Shipment
+                                        </a>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Status Information -->
+                                <div class="status-info">
+                                    {% if shipment.status in ['Submitted', 'Document_Generation', 'Quotation_Requested'] and not shipment.is_combined %}
+                                        <div class="status-message warning">
+                                            {% if shipment.status == 'Document_Generation' %}
+                                                📄 Documents are being prepared for your shipment.
+                                            {% elif shipment.status == 'Quotation_Requested' %}
+                                                💰 Getting shipping quotes for your shipment.
+                                            {% else %}
+                                                ⏳ Shipment submitted and pending admin review.
+                                            {% endif %}
+                                        </div>
+                                    {% elif shipment.status in ['Documents_Prepared', 'Director_Approval', 'Pickup_Scheduled', 'At_Courier_Warehouse', 'Custom_Clearance', 'In_Transit', 'Destination_City', 'Delivered'] and not shipment.is_combined %}
+                                        <div class="status-message success">
+                                            {% if shipment.status == 'Documents_Prepared' %}
+                                                ✅ Documents ready for download
+                                            {% elif shipment.status == 'Director_Approval' %}
+                                                📋 Awaiting director approval
+                                            {% elif shipment.status == 'Pickup_Scheduled' %}
+                                                📦 Pickup has been scheduled
+                                            {% elif shipment.status == 'At_Courier_Warehouse' %}
+                                                🏢 Shipment is at courier warehouse
+                                            {% elif shipment.status == 'Custom_Clearance' %}
+                                                🛃 Processing through customs
+                                            {% elif shipment.status == 'In_Transit' %}
+                                                🚚 Shipment is in transit
+                                            {% elif shipment.status == 'Destination_City' %}
+                                                🏙️ Reached destination city
+                                            {% elif shipment.status == 'Delivered' %}
+                                                ✅ Delivered to final destination
+                                            {% endif %}
+                                        </div>
+                                    {% elif shipment.status == 'Failed' %}
+                                        <div class="status-message error">
+                                            ❌ Shipment processing failed. Please edit and resubmit or create a new shipment.
+                                        </div>
+                                    {% else %}
+                                        <div class="status-message neutral">
+                                            {% if shipment.status == 'Combined' %}
+                                                🔗 Part of combined shipment {{ shipment.combined_shipment_id }}
+                                            {% else %}
+                                                📋 Shipment status: {{ shipment.status.replace('_', ' ').title() }}
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">
+            <div class="mb-4">
+                <span class="text-6xl">📦</span>
+            </div>
+            <p class="text-lg mb-2">No shipments created yet.</p>
+            <p class="text-sm">Create your first shipment to get started!</p>
+            <a href="{{ url_for('main.shipment_type_selection') }}" 
+               class="inline-block mt-4 arctic-button bg-northern-lights text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-all duration-300">
+               Create Shipment
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Professional User Actions Column Styling */
+.user-actions-container {
+    min-width: 180px;
+    max-width: 220px;
+}
+
+.user-action-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.user-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 4px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-height: 24px;
+    flex-shrink: 0;
+}
+
+.user-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* User Button Color Schemes */
+.btn-primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2563eb;
+}
+
+.btn-secondary {
+    background-color: #6366f1;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #4f46e5;
+}
+
+.btn-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+
+.btn-info {
+    background-color: #6366f1;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #4f46e5;
+}
+
+.btn-danger {
+    background-color: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #dc2626;
+}
+
+/* Status Information Styling */
+.status-info {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.status-message {
+    font-size: 10px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    line-height: 1.3;
+}
+
+.status-message.success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border-left: 3px solid #10b981;
+}
+
+.status-message.warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-left: 3px solid #f59e0b;
+}
+
+.status-message.error {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-left: 3px solid #ef4444;
+}
+
+.status-message.neutral {
+    background-color: #f3f4f6;
+    color: #374151;
+    border-left: 3px solid #6b7280;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .user-actions-container {
+        min-width: 160px;
+        max-width: 180px;
+    }
+    
+    .user-action-btn {
+        font-size: 10px;
+        padding: 3px 6px;
+    }
+    
+    .status-message {
+        font-size: 9px;
+    }
+}
+</style>
+
+{% endblock %} 

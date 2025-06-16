@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Arctic Login Background -->
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" 
+     style="background: linear-gradient(135deg, #E3F2FD 0%, #B3E5FC 50%, #81D4FA 100%);">
+    
+    <!-- Floating particles animation -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="floating-particle" style="top: 10%; left: 10%; animation-delay: 0s;"></div>
+        <div class="floating-particle" style="top: 20%; left: 80%; animation-delay: 2s;"></div>
+        <div class="floating-particle" style="top: 70%; left: 20%; animation-delay: 4s;"></div>
+        <div class="floating-particle" style="top: 80%; left: 70%; animation-delay: 6s;"></div>
+    </div>
+    
+    <div class="max-w-md w-full space-y-8 relative z-10">
+        <!-- Header Section with Logo and Title -->
+        <div class="text-center">
+            <div class="flex justify-center mb-6">
+                <div class="flex items-center space-x-4 p-4 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30">
+                    <img src="{{ url_for('static', filename='images/ncpor_logo.png') }}" 
+                         alt="NCPOR Logo" class="w-12 h-12 object-contain">
+                    <div class="text-left">
+                        <h1 class="text-2xl font-bold text-deep-arctic">COMPASS</h1>
+                        <p class="text-sm text-gray-600">Arctic Research System</p>
+                    </div>
+                </div>
+            </div>
+            <h2 class="text-3xl font-extrabold text-deep-arctic mb-2">
+                Welcome Back
+            </h2>
+            <p class="text-gray-600">Sign in to access your arctic research dashboard</p>
+        </div>
+        
+        <!-- Login Card -->
+        <div class="arctic-card p-8 shadow-2xl border-2 border-white/20">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-4 rounded-lg {% if category == 'success' %}bg-green-50 border border-green-200{% elif category == 'danger' or category == 'error' %}bg-red-50 border border-red-200{% else %}bg-blue-50 border border-blue-200{% endif %}">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    {% if category == 'success' %}
+                                        <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                        </svg>
+                                    {% elif category == 'danger' or category == 'error' %}
+                                        <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                    {% else %}
+                                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                        </svg>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium {% if category == 'success' %}text-green-800{% elif category == 'danger' or category == 'error' %}text-red-800{% else %}text-blue-800{% endif %}">
+                                        {{ message }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Login Form -->
+            <form class="space-y-6" action="{{ url_for('auth.login') }}" method="POST">
+                <div class="space-y-4">
+                    <!-- Email Field -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-deep-arctic mb-2">
+                            📧 Email Address
+                        </label>
+                        <input id="email" name="email" type="email" required 
+                               class="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-deep-arctic focus:border-deep-arctic focus:z-10 sm:text-sm transition-all duration-300 hover:border-deep-arctic" 
+                               placeholder="Enter your email address">
+                    </div>
+                    
+                    <!-- Password Field -->
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-deep-arctic mb-2">
+                            🔒 Password
+                        </label>
+                        <input id="password" name="password" type="password" required 
+                               class="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-deep-arctic focus:border-deep-arctic focus:z-10 sm:text-sm transition-all duration-300 hover:border-deep-arctic" 
+                               placeholder="Enter your password">
+                    </div>
+                </div>
+
+                <!-- Remember Me and Forgot Password -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input id="remember" name="remember" type="checkbox" 
+                               class="h-4 w-4 text-deep-arctic focus:ring-deep-arctic border-gray-300 rounded">
+                        <label for="remember" class="ml-2 block text-sm text-gray-700">
+                            Remember me
+                        </label>
+                    </div>
+
+                    <div class="text-sm">
+                        <a href="{{ url_for('auth.forgot_password') }}" 
+                           class="font-medium text-deep-arctic hover:text-blue-700 transition-colors duration-200">
+                            Forgot password?
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Login Button -->
+                <div>
+                    <button type="submit" 
+                            class="arctic-button w-full flex justify-center items-center py-3 px-4 text-lg font-medium rounded-lg hover:transform hover:-translate-y-1 transition-all duration-300 shadow-lg">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                        </svg>
+                        Sign In to COMPASS
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Divider -->
+            <div class="mt-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">New to COMPASS?</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sign Up Link -->
+            <div class="mt-6 text-center">
+                <a href="{{ url_for('auth.signup_page') }}" 
+                   class="inline-flex items-center px-6 py-3 border border-deep-arctic text-base font-medium rounded-lg text-deep-arctic bg-white hover:bg-gray-50 transition-all duration-300 hover:transform hover:-translate-y-1">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                    </svg>
+                    Create New Account
+                </a>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center text-sm text-gray-600">
+            <p>COMPASS - Arctic Research Shipment System</p>
+            <p class="mt-1">National Centre for Polar and Ocean Research</p>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Styles -->
+<style>
+    .floating-particle {
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 50%;
+        animation: float 8s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); opacity: 0.3; }
+        50% { transform: translateY(-20px); opacity: 1; }
+    }
+    
+    .arctic-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .arctic-button {
+        background: linear-gradient(135deg, var(--deep-arctic), #2C5282);
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .arctic-button:hover {
+        background: linear-gradient(135deg, #2C5282, var(--deep-arctic));
+        box-shadow: 0 10px 25px rgba(30, 63, 102, 0.3);
+    }
+    
+    :root {
+        --deep-arctic: #1E3F66;
+    }
+</style>
+{% endblock %} 

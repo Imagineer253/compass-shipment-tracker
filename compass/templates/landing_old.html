@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}NCPOR Arctic Research Dashboard{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white py-8 -mx-4 -mt-20 mb-8">
+    <div class="max-w-7xl mx-auto px-4 pt-20">
+        <div class="text-center">
+            <h1 class="text-4xl md:text-6xl font-bold mb-4">🧊 Arctic Research Dashboard</h1>
+            <p class="text-xl md:text-2xl mb-6">15th Indian Arctic Expedition - Live Monitoring</p>
+            <div class="bg-yellow-500 text-black px-4 py-2 rounded-lg inline-block font-semibold">
+                ⚠️ Demo Data - Work in Progress - Not Accurate
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div class="arctic-card p-6 text-center">
+        <div class="text-3xl mb-2">🔬</div>
+        <div class="text-2xl font-bold text-deep-arctic">12</div>
+        <div class="text-gray-600">Unique Projects</div>
+    </div>
+    <div class="arctic-card p-6 text-center">
+        <div class="text-3xl mb-2">🏛️</div>
+        <div class="text-2xl font-bold text-deep-arctic">8</div>
+        <div class="text-gray-600">States Participating</div>
+    </div>
+    <div class="arctic-card p-6 text-center">
+        <div class="text-3xl mb-2">🎓</div>
+        <div class="text-2xl font-bold text-deep-arctic">15</div>
+        <div class="text-gray-600">Institutes Involved</div>
+    </div>
+    <div class="arctic-card p-6 text-center">
+        <div class="text-3xl mb-2">📊</div>
+        <div class="text-2xl font-bold text-deep-arctic">247</div>
+        <div class="text-gray-600">Data Points</div>
+    </div>
+</div>
+
+<!-- Map Section -->
+<div class="arctic-card p-6 mb-8">
+    <h2 class="text-2xl font-bold text-deep-arctic mb-4">🗺️ Arctic Research Locations</h2>
+    <div id="arcticMap" class="w-full h-96 rounded-lg border-2 border-gray-200"></div>
+</div>
+
+<!-- Quick Access -->
+{% if current_user.is_authenticated %}
+<div class="arctic-card p-6">
+    <h2 class="text-2xl font-bold text-deep-arctic mb-4">🚀 Quick Access</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a href="{{ url_for('main.shipment_type_selection') }}" class="arctic-button flex items-center justify-center py-4">
+            📦 Create New Shipment
+        </a>
+        <a href="{{ url_for('main.dashboard') }}" class="arctic-button flex items-center justify-center py-4">
+            📊 View Dashboard
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="arctic-card p-6">
+    <h2 class="text-2xl font-bold text-deep-arctic mb-4">🔐 Access System</h2>
+    <div class="text-center">
+        <a href="{{ url_for('auth.login') }}" class="arctic-button px-8 py-3">Login to COMPASS</a>
+    </div>
+</div>
+{% endif %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const map = L.map('arcticMap').setView([78.9, 11.9], 6);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    const locations = [
+        { lat: 78.9, lng: 11.9, type: 'ctd', name: 'Ny-Ålesund CTD Station' },
+        { lat: 79.1, lng: 12.2, type: 'ice', name: 'Ice Sampling Station' },
+        { lat: 78.7, lng: 11.5, type: 'water', name: 'Water Sampling Point' }
+    ];
+    
+    locations.forEach(loc => {
+        L.circleMarker([loc.lat, loc.lng], {
+            color: loc.type === 'ctd' ? '#3B82F6' : loc.type === 'ice' ? '#FFFFFF' : '#10B981',
+            fillColor: loc.type === 'ctd' ? '#3B82F6' : loc.type === 'ice' ? '#FFFFFF' : '#10B981',
+            fillOpacity: 0.8,
+            radius: 8
+        }).bindPopup(loc.name).addTo(map);
+    });
+});
+</script>
+
+{% endblock %} 

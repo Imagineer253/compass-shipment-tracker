@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Edit User - COMPASS{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4">
+    <div class="arctic-card p-8 mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold page-title mb-2">Edit User</h1>
+                <p class="text-gray-600">Modify user details and permissions</p>
+            </div>
+            <div class="mt-4 md:mt-0">
+                <a href="{{ url_for('main.admin_users') }}" 
+                   class="arctic-button bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-all duration-300">
+                   ← Back to User Management
+                </a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="arctic-card p-4 mb-4 {% if category == 'error' or category == 'danger' %}bg-red-100 border-red-300{% else %}bg-green-100 border-green-300{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Edit User Form -->
+        <div class="bg-gray-50 rounded-lg p-6">
+            <h3 class="text-xl font-bold text-deep-arctic mb-4">Edit User: {{ user.first_name }} {{ user.last_name }}</h3>
+            <form method="POST" action="{{ url_for('main.admin_update_user', user_id=user.id) }}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <input type="text" name="first_name" value="{{ user.first_name }}" required
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <input type="text" name="last_name" value="{{ user.last_name }}" required
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" name="email" value="{{ user.email }}" required
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input type="tel" name="phone" value="{{ user.phone or '' }}" required
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                    <input type="text" name="organization" value="{{ user.organization or '' }}" required
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                    <input type="password" name="new_password" 
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic"
+                           placeholder="Leave blank to keep current password">
+                    <p class="text-xs text-gray-500 mt-1">Only enter a password if you want to change it</p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Roles</label>
+                    <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                        <p class="text-xs text-blue-800">
+                            <strong>Note:</strong> Admin users cannot have PI or Field Personnel roles. If Admin is selected, only Admin role will be assigned.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        {% for role in roles %}
+                        <label class="flex items-center">
+                            <input type="checkbox" name="roles" value="{{ role.id }}" class="mr-2" 
+                                   {% if role in user.roles %}checked{% endif %}
+                                   {% if role.name == 'Admin' %}onchange="handleAdminSelection(this)"{% endif %}>
+                            <span class="text-sm {% if role.name == 'Admin' %}font-bold text-red-700{% endif %}">
+                                {{ role.name }}
+                                {% if role.name == 'Admin' %}<span class="text-xs text-red-500">(Exclusive)</span>{% endif %}
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="md:col-span-2 flex gap-2">
+                    <button type="submit" 
+                            class="arctic-button bg-northern-lights text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-all duration-300">
+                        Update User
+                    </button>
+                    <a href="{{ url_for('main.admin_users') }}"
+                       class="arctic-button bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-all duration-300">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- User Info Summary -->
+        <div class="mt-6 bg-white rounded-lg p-4 border">
+            <h4 class="font-bold text-deep-arctic mb-2">Current User Information</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><strong>User ID:</strong> {{ user.id }}</div>
+                <div><strong>Account Status:</strong> 
+                    <span class="px-2 py-1 rounded text-xs {% if user.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                        {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+                <div><strong>Joined:</strong> {{ user.created_at.strftime('%d-%m-%Y %H:%M') }}</div>
+                <div><strong>Last Login:</strong> {{ user.last_login.strftime('%d-%m-%Y %H:%M') if user.last_login else 'Never' }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function handleAdminSelection(adminCheckbox) {
+    const allRoleCheckboxes = document.querySelectorAll('input[name="roles"]');
+    
+    if (adminCheckbox.checked) {
+        // If Admin is selected, uncheck all other roles
+        allRoleCheckboxes.forEach(checkbox => {
+            if (checkbox !== adminCheckbox) {
+                checkbox.checked = false;
+                checkbox.disabled = true;
+            }
+        });
+    } else {
+        // If Admin is unselected, re-enable other roles
+        allRoleCheckboxes.forEach(checkbox => {
+            if (checkbox !== adminCheckbox) {
+                checkbox.disabled = false;
+            }
+        });
+    }
+}
+</script>
+{% endblock %} 

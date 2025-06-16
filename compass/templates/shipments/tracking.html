@@ -1,0 +1,726 @@
+{% extends "base.html" %}
+
+{% block title %}Track Shipment - COMPASS{% endblock %}
+
+{% block content %}
+<style>
+    .tracking-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .progress-container {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .progress-timeline {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin: 3rem 0;
+        padding: 0 2rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .progress-line {
+        position: absolute;
+        top: 2rem;
+        left: 2rem;
+        right: 2rem;
+        height: 4px;
+        background: #e5e7eb;
+        z-index: 1;
+        border-radius: 2px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #059669);
+        border-radius: 2px;
+        transition: width 1s ease;
+        position: relative;
+    }
+
+    .step-item {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        flex: 1;
+        max-width: 120px;
+    }
+
+    .step-circle {
+        width: 4rem;
+        height: 4rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        position: relative;
+        border: 4px solid white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .step-circle.completed {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        transform: scale(1.1);
+    }
+
+    .step-circle.current {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        animation: pulse-glow-green 2s infinite;
+        transform: scale(1.15);
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .step-circle.pending {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        color: #64748b;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Conditional colors based on shipment status */
+    .status-early .step-circle.completed,
+    .status-early .step-circle.current {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+
+    .status-middle .step-circle.completed,
+    .status-middle .step-circle.current {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+
+    .status-late .step-circle.completed,
+    .status-late .step-circle.current {
+        background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .status-delivered .step-circle.completed,
+    .status-delivered .step-circle.current {
+        background: linear-gradient(135deg, #059669, #047857);
+    }
+
+    /* Conditional animations for current step */
+    .status-early .step-circle.current {
+        animation: pulse-glow-blue 2s infinite;
+        box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .status-middle .step-circle.current {
+        animation: pulse-glow-orange 2s infinite;
+        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .status-late .step-circle.current {
+        animation: pulse-glow-green 2s infinite;
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .status-delivered .step-circle.current {
+        animation: pulse-glow-dark-green 2s infinite;
+        box-shadow: 0 0 0 8px rgba(5, 150, 105, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .step-title {
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: #374151;
+        margin-bottom: 0.25rem;
+        line-height: 1.2;
+        min-height: 2.4rem;
+        display: flex;
+        align-items: center;
+        text-align: center;
+    }
+
+    .step-title.completed {
+        color: #059669;
+    }
+
+    .step-title.current {
+        color: #059669;
+        font-weight: 800;
+    }
+
+    .step-date {
+        font-size: 0.625rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .step-date.completed,
+    .step-date.current {
+        color: #374151;
+        font-weight: 600;
+    }
+
+    .current-status {
+        text-align: center;
+        margin: 1.5rem 0;
+        padding: 1.5rem 1rem;
+        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .current-status h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+        word-break: break-word;
+    }
+
+    .current-status p {
+        font-size: 0.95rem;
+        color: #6b7280;
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.5;
+    }
+
+    .status-highlight {
+        display: inline-block;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+        padding: 0.4rem 1rem;
+        border-radius: 9999px;
+        font-weight: 600;
+        margin: 0.75rem 0;
+        font-size: 0.875rem;
+        word-break: break-word;
+    }
+
+    @keyframes pulse-glow {
+        0%, 100% { 
+            box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        50% { 
+            box-shadow: 0 0 0 12px rgba(59, 130, 246, 0.3), 0 6px 20px rgba(59, 130, 246, 0.2);
+        }
+    }
+
+    @keyframes pulse-glow-green {
+        0%, 100% { 
+            box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        50% { 
+            box-shadow: 0 0 0 12px rgba(16, 185, 129, 0.3), 0 6px 20px rgba(16, 185, 129, 0.2);
+        }
+    }
+
+    @keyframes pulse-glow-blue {
+        0%, 100% { 
+            box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        50% { 
+            box-shadow: 0 0 0 12px rgba(59, 130, 246, 0.3), 0 6px 20px rgba(59, 130, 246, 0.2);
+        }
+    }
+
+    @keyframes pulse-glow-orange {
+        0%, 100% { 
+            box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        50% { 
+            box-shadow: 0 0 0 12px rgba(245, 158, 11, 0.3), 0 6px 20px rgba(245, 158, 11, 0.2);
+        }
+    }
+
+    @keyframes pulse-glow-dark-green {
+        0%, 100% { 
+            box-shadow: 0 0 0 8px rgba(5, 150, 105, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        50% { 
+            box-shadow: 0 0 0 12px rgba(5, 150, 105, 0.3), 0 6px 20px rgba(5, 150, 105, 0.2);
+        }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .progress-timeline {
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+        }
+        
+        .progress-line {
+            display: none;
+        }
+        
+        .step-item {
+            flex: 0 0 auto;
+            margin: 0.5rem;
+        }
+        
+        .step-circle {
+            width: 3.5rem;
+            height: 3.5rem;
+            font-size: 1.25rem;
+        }
+        
+        .step-title {
+            font-size: 0.7rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .progress-timeline {
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+        
+        .step-item {
+            max-width: 200px;
+        }
+        
+        .current-status h2 {
+            font-size: 2rem;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .tracking-container {
+            padding: 2rem 1rem;
+        }
+        
+        .progress-container {
+            padding: 2.5rem 1.5rem;
+        }
+        
+        .current-status p {
+            font-size: 1rem;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .current-status {
+            padding: 2rem;
+        }
+        
+        .current-status h2 {
+            font-size: 2.5rem;
+        }
+        
+        .current-status p {
+            font-size: 1.125rem;
+        }
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        margin-top: 2rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    @media (min-width: 768px) {
+        .info-grid {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+    }
+
+    .info-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e5e7eb;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .info-card h3 {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        word-break: break-word;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f3f4f6;
+        gap: 1rem;
+    }
+
+    .info-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        font-weight: 500;
+        color: #6b7280;
+        flex-shrink: 0;
+        min-width: 120px;
+    }
+
+    .info-value {
+        font-weight: 600;
+        color: #1f2937;
+        text-align: right;
+        word-break: break-word;
+        flex-grow: 1;
+    }
+
+    .status-badge {
+        padding: 0.4rem 0.8rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        word-break: break-word;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+        flex: 1;
+        min-width: 140px;
+        justify-content: center;
+    }
+
+    @media (min-width: 640px) {
+        .action-btn {
+            flex: 0 0 auto;
+        }
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+
+    .btn-secondary:hover {
+        background: #e5e7eb;
+    }
+
+    /* Ensure no horizontal overflow */
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+</style>
+
+<div class="tracking-container">
+    <!-- Main Status -->
+    <div class="progress-container">
+        <!-- Current Status -->
+        <div class="current-status">
+            <h2>{{ shipment.status.replace('_', ' ').title() }}</h2>
+            <div class="status-highlight">
+                {% set status_descriptions = {
+                    'Submitted': 'Shipment Created & Submitted',
+                    'Document_Generation': 'Preparing Documentation',
+                    'Quotation_Requested': 'Getting Shipping Quotes',
+                    'Documents_Prepared': 'Documents Ready',
+                    'Director_Approval': 'Awaiting Director Approval',
+                    'Pickup_Scheduled': 'Pickup Scheduled',
+                    'At_Courier_Warehouse': 'At Courier Warehouse',
+                    'Custom_Clearance': 'Customs Processing',
+                    'In_Transit': 'In Transit to Destination',
+                    'Destination_City': 'Arrived at Destination City',
+                    'Delivered': 'Delivered Successfully',
+                    'Combined': 'Combined with Other Shipments',
+                    'Failed': 'Processing Issue Occurred'
+                } %}
+                {{ status_descriptions.get(shipment.status, 'Processing...') }}
+            </div>
+            <p>
+                {% set detailed_descriptions = {
+                    'Submitted': 'Your shipment has been submitted and is awaiting admin review',
+                    'Document_Generation': 'Our team is preparing all required documents for your shipment',
+                    'Quotation_Requested': 'We are getting the best shipping quotes for your package',
+                    'Documents_Prepared': 'All documentation is complete and ready for approval',
+                    'Director_Approval': 'Your shipment is being reviewed by the director for final approval',
+                    'Pickup_Scheduled': 'Pickup has been scheduled and your package will be collected soon',
+                    'At_Courier_Warehouse': 'Your shipment has reached the courier warehouse and is being processed',
+                    'Custom_Clearance': 'Your package is going through customs clearance procedures',
+                    'In_Transit': 'Your shipment is on its way to the destination',
+                    'Destination_City': 'Your package has arrived in the destination city',
+                    'Delivered': 'Your shipment has been successfully delivered to the final destination',
+                    'Combined': 'This shipment has been combined with others for efficient processing',
+                    'Failed': 'There was an issue processing this shipment - please contact support'
+                } %}
+                {{ detailed_descriptions.get(shipment.status, 'Your shipment is being processed') }}
+            </p>
+        </div>
+
+        <!-- Progress Timeline -->
+        <div class="progress-timeline 
+            {% if shipment.status in ['Submitted', 'Document_Generation', 'Quotation_Requested'] %}status-early
+            {% elif shipment.status in ['Documents_Prepared', 'Director_Approval', 'Pickup_Scheduled', 'At_Courier_Warehouse'] %}status-middle
+            {% elif shipment.status in ['Custom_Clearance', 'In_Transit', 'Destination_City'] %}status-late
+            {% elif shipment.status == 'Delivered' %}status-delivered
+            {% else %}status-early{% endif %}">
+            <!-- Progress Line -->
+            <div class="progress-line">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            {% set step_info = [
+                ('Submitted', '📝', 'Shipment Creation', 'Submitted'),
+                ('Document_Generation', '📄', 'Document Generation', 'Preparing Docs'),
+                ('Quotation_Requested', '💰', 'Quotation Request', 'Getting Quotes'),
+                ('Documents_Prepared', '📋', 'Documents Ready', 'Docs Complete'),
+                ('Director_Approval', '👨‍💼', 'Director Approval', 'Awaiting Approval'),
+                ('Pickup_Scheduled', '📦', 'Pickup Scheduled', 'Pickup Ready'),
+                ('At_Courier_Warehouse', '🏢', 'At Warehouse', 'At Facility'),
+                ('Custom_Clearance', '🛃', 'Customs Clearance', 'Customs Processing'),
+                ('In_Transit', '🚚', 'In Transit', 'On the Way'),
+                ('Destination_City', '🏙️', 'Destination City', 'Destination Reached'),
+                ('Delivered', '✅', 'Delivered', 'Completed')
+            ] %}
+            
+            {% set current_step_index = -1 %}
+            {% for step_status, icon, title, description in step_info %}
+                {% if step_status == shipment.status %}
+                    {% set current_step_index = loop.index0 %}
+                {% endif %}
+            {% endfor %}
+            
+            {% for step_status, icon, title, description in step_info %}
+                {% set step_index = loop.index0 %}
+                
+                <div class="step-item">
+                    <div class="step-circle 
+                        {% if step_index < current_step_index %}completed
+                        {% elif step_index == current_step_index %}current
+                        {% else %}pending{% endif %}">
+                        {% if step_index < current_step_index %}✓
+                        {% elif step_index == current_step_index %}{{ icon }}
+                        {% else %}{{ step_index + 1 }}{% endif %}
+                    </div>
+                    
+                    <div class="step-title 
+                        {% if step_index < current_step_index %}completed
+                        {% elif step_index == current_step_index %}current
+                        {% else %}pending{% endif %}">
+                        {{ title }}
+                    </div>
+                    
+                    <div class="step-date 
+                        {% if step_index < current_step_index %}completed
+                        {% elif step_index == current_step_index %}current
+                        {% else %}pending{% endif %}">
+                        {{ description }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Information Grid -->
+    <div class="info-grid">
+        <!-- Shipment Details -->
+        <div class="info-card">
+            <h3>📦 Shipment Details</h3>
+            <div class="info-item">
+                <span class="info-label">Invoice Number</span>
+                <span class="info-value">{{ shipment.invoice_number }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Current Status</span>
+                <span class="status-badge" id="statusBadge">
+                    {{ shipment.status.replace('_', ' ').title() }}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Shipment Type</span>
+                <span class="info-value">{{ shipment.shipment_type.title() }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Total Packages</span>
+                <span class="info-value">{{ shipment.total_packages }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Created Date</span>
+                <span class="info-value">{{ shipment.created_at.strftime('%B %d, %Y at %H:%M') }}</span>
+            </div>
+            {% if shipment.acknowledged_at %}
+            <div class="info-item">
+                <span class="info-label">Processing Started</span>
+                <span class="info-value">{{ shipment.acknowledged_at.strftime('%B %d, %Y at %H:%M') }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Shipping Information -->
+        <div class="info-card">
+            <h3>🌍 Shipping Information</h3>
+            <div class="info-item">
+                <span class="info-label">Requester</span>
+                <span class="info-value">{{ shipment.requester_name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Expedition Year</span>
+                <span class="info-value">{{ shipment.expedition_year }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Batch Number</span>
+                <span class="info-value">{{ shipment.batch_number }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Destination</span>
+                <span class="info-value">{{ shipment.destination_country }}</span>
+            </div>
+            {% if shipment.is_combined %}
+            <div class="info-item">
+                <span class="info-label">Combined Shipment ID</span>
+                <span class="info-value">{{ shipment.combined_shipment_id }}</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Actions & Updates -->
+        <div class="info-card">
+            <h3>⚡ Available Actions</h3>
+            <div class="action-buttons">
+                {% if shipment.status in ['Submitted', 'Document_Generation', 'Quotation_Requested'] and (current_user.id == shipment.created_by or current_user.is_admin()) %}
+                <a href="{{ url_for('main.edit_shipment', shipment_id=shipment.id) }}" class="action-btn btn-primary">
+                    ✏️ Edit Shipment
+                </a>
+                {% endif %}
+                
+                {% if shipment.status in ['Documents_Prepared', 'Director_Approval', 'Pickup_Scheduled', 'At_Courier_Warehouse', 'Custom_Clearance', 'In_Transit', 'Destination_City', 'Delivered'] %}
+                <a href="{{ url_for('main.user_generate_document', shipment_id=shipment.id) }}" class="action-btn btn-primary">
+                    📄 Download Documents
+                </a>
+                {% endif %}
+                
+                <a href="{{ url_for('main.dashboard') }}" class="action-btn btn-secondary">
+                    ← Back to Dashboard
+                </a>
+            </div>
+            
+            {% if shipment.admin_comment %}
+            <div style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 0.5rem; border-left: 4px solid #f59e0b;">
+                <div style="font-weight: 600; color: #92400e; margin-bottom: 0.5rem;">💬 Admin Update</div>
+                <div style="color: #92400e;">{{ shipment.admin_comment }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set status badge styling based on shipment status
+    const statusBadge = document.getElementById('statusBadge');
+    const status = '{{ shipment.status }}';
+    
+    if (statusBadge) {
+        let bgColor, textColor;
+        
+        if (['Delivered'].includes(status)) {
+            bgColor = '#dcfce7';
+            textColor = '#166534';
+        } else if (['In_Transit', 'Destination_City'].includes(status)) {
+            bgColor = '#dbeafe';
+            textColor = '#1e40af';
+        } else if (['Pickup_Scheduled', 'At_Courier_Warehouse', 'Custom_Clearance'].includes(status)) {
+            bgColor = '#fef3c7';
+            textColor = '#92400e';
+        } else if (['Director_Approval'].includes(status)) {
+            bgColor = '#f3e8ff';
+            textColor = '#7c3aed';
+        } else if (['Failed'].includes(status)) {
+            bgColor = '#fee2e2';
+            textColor = '#dc2626';
+        } else {
+            bgColor = '#f3f4f6';
+            textColor = '#374151';
+        }
+        
+        statusBadge.style.backgroundColor = bgColor;
+        statusBadge.style.color = textColor;
+    }
+    
+    // Calculate and animate progress bar
+    const progressFill = document.getElementById('progressFill');
+    if (progressFill) {
+        const statuses = [
+            'Submitted', 'Document_Generation', 'Quotation_Requested', 'Documents_Prepared',
+            'Director_Approval', 'Pickup_Scheduled', 'At_Courier_Warehouse', 'Custom_Clearance',
+            'In_Transit', 'Destination_City', 'Delivered'
+        ];
+        
+        const currentStatusIndex = statuses.indexOf(status);
+        let progressWidth = '0%';
+        
+        if (currentStatusIndex >= 0) {
+            // Calculate progress as percentage of completed steps
+            progressWidth = ((currentStatusIndex + 1) / statuses.length * 100) + '%';
+        } else if (status === 'Combined' || status === 'Failed') {
+            progressWidth = '100%';
+        }
+        
+        // Animate the progress bar
+        setTimeout(() => {
+            progressFill.style.width = progressWidth;
+        }, 500);
+    }
+});
+</script>
+
+{% endblock %} 

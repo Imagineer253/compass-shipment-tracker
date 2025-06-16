@@ -1,0 +1,149 @@
+/* Export Shipment Form Styles */
+
+/* Base styles */
+.form-section {
+    transition: all 0.3s ease;
+}
+
+.input-field {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--arctic-blue);
+    background-color: rgba(255, 255, 255, 0.7);
+    transition: all 0.3s ease;
+}
+
+.input-field:focus {
+    outline: none;
+    border: 2px solid var(--deep-arctic);
+    box-shadow: 0 0 0 2px rgba(30, 63, 102, 0.1);
+}
+
+.input-field:invalid:not(:placeholder-shown) {
+    border-color: #EF4444;
+    background-color: #FEF2F2;
+}
+
+.input-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+.invoice-preview {
+    background: linear-gradient(145deg, #E3F2FD, #F0F8FF);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    border: 2px solid var(--arctic-blue);
+    position: sticky;
+    top: 1rem;
+}
+
+.radio-card {
+    transition: all 0.3s ease;
+}
+
+.radio-card:hover {
+    background-color: rgba(176, 226, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Fixed radio button checked state styling */
+input[type="radio"]:checked + .radio-card {
+    background: linear-gradient(145deg, #E3F2FD, #BBDEFB);
+    border: 2px solid var(--deep-arctic);
+    transform: translateY(-4px);
+}
+
+/* Radio button indicator styling */
+input[type="radio"]:checked + .radio-card .radio-indicator {
+    display: block !important;
+}
+
+.radio-indicator {
+    display: none;
+}
+
+.readonly-field {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    color: #475569;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.section-title {
+    color: var(--deep-arctic);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid rgba(30, 63, 102, 0.1);
+}
+
+/* Text color utilities for Arctic theme */
+.text-deep-arctic {
+    color: var(--deep-arctic);
+}
+
+.border-deep-arctic {
+    border-color: var(--deep-arctic);
+}
+
+.bg-deep-arctic {
+    background-color: var(--deep-arctic);
+}
+
+.border-arctic-blue {
+    border-color: var(--arctic-blue);
+}
+
+/* Package section styles */
+.arctic-card {
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(4px);
+}
+
+.arctic-card:hover {
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+}
+
+/* Animation for new items */
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.items-container > div {
+    animation: fadeInScale 0.3s ease-out;
+}
+
+/* Responsive improvements */
+@media (max-width: 640px) {
+    .input-label {
+        font-size: 0.875rem;
+    }
+    
+    .arctic-card {
+        padding: 1rem;
+    }
+    
+    .grid-cols-3 {
+        grid-template-columns: 1fr;
+    }
+} 

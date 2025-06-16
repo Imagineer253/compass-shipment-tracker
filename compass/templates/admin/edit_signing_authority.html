@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Signing Authority{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-100 py-6">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <!-- Header -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <span class="text-xl mr-2">✏️</span>
+                            <h2 class="text-lg font-semibold text-deep-arctic">Edit Signing Authority</h2>
+                        </div>
+                        <div class="space-x-2">
+                            <a href="{{ url_for('main.admin_signing_authorities') }}" 
+                               class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition duration-200">
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Update the details of the signing authority: {{ authority.name }}
+                    </p>
+                </div>
+
+                <!-- Edit Form -->
+                <form method="POST" action="{{ url_for('main.admin_update_signing_authority', authority_id=authority.id) }}" class="space-y-6">
+                    <!-- Hindi Fields Section -->
+                    <div class="bg-amber-50 border-l-4 border-amber-500 rounded-lg p-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">🇮🇳 Hindi Details (हिंदी विवरण)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="name_hindi" class="input-label">Name in Hindi (नाम)</label>
+                                <input type="text" name="name_hindi" id="name_hindi" value="{{ authority.name_hindi or '' }}"
+                                       class="input-field" placeholder="हस्ताक्षरकर्ता का नाम हिंदी में" style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                            </div>
+                            <div>
+                                <label for="designation_hindi" class="input-label">Designation in Hindi (पदनाम)</label>
+                                <input type="text" name="designation_hindi" id="designation_hindi" value="{{ authority.designation_hindi or '' }}"
+                                       class="input-field" placeholder="पदनाम हिंदी में" style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="department_hindi" class="input-label">Department in Hindi (विभाग)</label>
+                                <input type="text" name="department_hindi" id="department_hindi" value="{{ authority.department_hindi or '' }}"
+                                       class="input-field" placeholder="विभाग का नाम हिंदी में" style="font-family: 'Noto Sans Devanagari', Arial, sans-serif;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- English Fields Section -->
+                    <div class="bg-white border-l-4 border-blue-500 rounded-lg p-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">📝 English Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="name" class="input-label">Name *</label>
+                                <input type="text" name="name" id="name" required value="{{ authority.name }}"
+                                       class="input-field" placeholder="Full name of signing authority">
+                            </div>
+                            <div>
+                                <label for="designation" class="input-label">Designation *</label>
+                                <input type="text" name="designation" id="designation" required value="{{ authority.designation }}"
+                                       class="input-field" placeholder="Job designation/title">
+                            </div>
+                            <div>
+                                <label for="department" class="input-label">Department *</label>
+                                <input type="text" name="department" id="department" required value="{{ authority.department }}"
+                                       class="input-field" placeholder="Department name">
+                            </div>
+                            <div>
+                                <label for="organisation" class="input-label">Organisation *</label>
+                                <input type="text" name="organisation" id="organisation" required value="{{ authority.organisation }}"
+                                       class="input-field" placeholder="Organisation name">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information Section -->
+                    <div class="bg-gray-50 border-l-4 border-gray-500 rounded-lg p-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">📞 Contact Information</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label for="contact_number" class="input-label">Contact Number</label>
+                                <input type="tel" name="contact_number" id="contact_number" value="{{ authority.contact_number or '' }}"
+                                       class="input-field" placeholder="Phone number">
+                            </div>
+                            <div>
+                                <label for="contact_fax" class="input-label">Contact Fax</label>
+                                <input type="tel" name="contact_fax" id="contact_fax" value="{{ authority.contact_fax or '' }}"
+                                       class="input-field" placeholder="Fax number">
+                            </div>
+                            <div>
+                                <label for="email" class="input-label">Email</label>
+                                <input type="email" name="email" id="email" value="{{ authority.email or '' }}"
+                                       class="input-field" placeholder="email@example.com">
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            <input type="checkbox" name="is_default" id="is_default" {{ 'checked' if authority.is_default else '' }}
+                                   class="h-4 w-4 text-arctic-blue focus:ring-arctic-blue border-gray-300 rounded">
+                            <label for="is_default" class="ml-2 block text-sm text-gray-900">
+                                Set as default signing authority
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Status Information -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-gray-900 mb-2">Current Status</h3>
+                        <div class="text-sm text-gray-600">
+                            <p><strong>Status:</strong> 
+                                <span class="px-2 py-1 text-xs rounded-full {{ 'bg-green-100 text-green-800' if authority.is_active else 'bg-red-100 text-red-800' }}">
+                                    {{ 'Active' if authority.is_active else 'Inactive' }}
+                                </span>
+                            </p>
+                            <p class="mt-1"><strong>Created:</strong> {{ authority.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                            <p class="mt-1"><strong>Created by:</strong> {{ authority.created_by_user.first_name }} {{ authority.created_by_user.last_name }} ({{ authority.created_by_user.email }})</p>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex justify-end space-x-3">
+                        <a href="{{ url_for('main.admin_signing_authorities') }}" 
+                           class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400 transition duration-200">
+                            Cancel
+                        </a>
+                        <button type="submit" 
+                                class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition duration-200 font-medium">
+                            Update Signing Authority
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

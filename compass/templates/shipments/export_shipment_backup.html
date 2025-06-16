@@ -1,0 +1,1274 @@
+{% extends "base.html" %}
+
+{% block title %}Export Shipment Details{% endblock %}
+
+{% block content %}
+<style>
+    /* Base styles */
+    .form-section {
+        transition: all 0.3s ease;
+    }
+
+    .input-field {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--arctic-blue);
+        background-color: rgba(255, 255, 255, 0.7);
+        transition: all 0.3s ease;
+    }
+
+    .input-field:focus {
+        outline: none;
+        border: 2px solid var(--deep-arctic);
+        box-shadow: 0 0 0 2px rgba(30, 63, 102, 0.1);
+    }
+
+    .input-field:invalid:not(:placeholder-shown) {
+        border-color: #EF4444;
+        background-color: #FEF2F2;
+    }
+
+    .input-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.25rem;
+    }
+
+    .invoice-preview {
+        background: linear-gradient(145deg, #E3F2FD, #F0F8FF);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        border: 2px solid var(--arctic-blue);
+        position: sticky;
+        top: 1rem;
+    }
+
+    .radio-card {
+        transition: all 0.3s ease;
+    }
+
+    .radio-card:hover {
+        background-color: rgba(176, 226, 255, 0.2);
+        transform: translateY(-2px);
+    }
+
+    input:checked + .radio-card {
+        background: linear-gradient(145deg, #E3F2FD, #BBDEFB);
+        border: 2px solid var(--deep-arctic);
+        transform: translateY(-4px);
+    }
+
+    .readonly-field {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        color: #475569;
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    .section-title {
+        color: var(--deep-arctic);
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(30, 63, 102, 0.1);
+    }
+
+    /* Package section styles */
+    .arctic-card {
+        transition: all 0.3s ease;
+    }
+
+    .arctic-card:hover {
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+    }
+
+    /* Animation for new items */
+    @keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .items-container > div {
+        animation: fadeInScale 0.3s ease-out;
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 640px) {
+        .input-label {
+            font-size: 0.875rem;
+        }
+        
+        .arctic-card {
+            padding: 1rem;
+        }
+        
+        .grid-cols-3 {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="min-h-[80vh] flex items-start justify-center pt-10">
+    <div class="w-full max-w-4xl">
+        <!-- Progress Indicator -->
+        <div class="arctic-card p-4 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <span class="text-xl mr-2">📤</span>
+                    <h2 class="text-lg font-semibold text-deep-arctic">Export Shipment</h2>
+                </div>
+                <div class="text-sm text-gray-600">
+                    Step 1 of 4
+                </div>
+            </div>
+            <div class="mt-3 h-2 bg-gray-200 rounded-full">
+                <div class="h-full w-1/4 bg-deep-arctic rounded-full"></div>
+            </div>
+        </div>
+
+        <!-- Invoice Number Preview -->
+        <div class="arctic-card p-4 mb-6 invoice-preview">
+            <h3 class="text-lg font-semibold text-deep-arctic mb-2">Generated Invoice Number</h3>
+            <div class="text-xl font-mono tracking-wide" id="invoiceNumberPreview">
+                NCPOR/ARC/YYYY/TYPE/BATCH/FIRSTNAME
+            </div>
+            <p class="text-sm text-gray-600 mt-2">This number will be used in your export documentation</p>
+        </div>
+
+        <!-- Main Form -->
+        <div class="arctic-card p-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold page-title mb-2">
+                        {% if edit_data and edit_data.is_editing %}
+                            Edit Export Shipment
+                        {% else %}
+                            Export Shipment Details
+                        {% endif %}
+                    </h1>
+                    <p class="text-gray-600">
+                        {% if edit_data and edit_data.is_editing %}
+                            Modify the export shipment details below
+                            {% if shipment %}
+                                <br><span class="text-sm font-mono text-blue-600">{{ shipment.invoice_number }}</span>
+                            {% endif %}
+                        {% else %}
+                            Fill in the export shipment details below
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('main.submit_shipment') }}" class="space-y-8">
+                <!-- Hidden fields for edit mode -->
+                {% if edit_data and edit_data.is_editing %}
+                    <input type="hidden" name="shipment_id" value="{{ edit_data.shipment_id }}">
+                    <input type="hidden" name="is_editing" value="true">
+                {% endif %}
+                <input type="hidden" name="shipment_type" value="export">
+                <input type="hidden" name="invoice_date" id="invoiceDateHidden">
+
+                <!-- Personal Details -->
+                <div class="space-y-4">
+                    <h3 class="section-title">Personal Details</h3>
+                    <div>
+                        <label class="input-label">Full Name with Title</label>
+                        <input type="text" 
+                               name="requester_name" 
+                               id="requesterName"
+                               class="input-field"
+                               placeholder="e.g., Dr. John Smith"
+                               required>
+                        <p class="text-sm text-gray-500 mt-1">Please include appropriate title (Dr./Mr./Ms./etc.)</p>
+                    </div>
+                </div>
+
+                <!-- Shipment Characteristics -->
+                <div class="space-y-4">
+                    <h3 class="section-title">Shipment Characteristics</h3>
+                    
+                    <!-- Returnable/Non-Returnable Selection -->
+                    <div>
+                        <label class="input-label">Shipment Type</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="cursor-pointer">
+                                <input type="radio" 
+                                       name="return_type" 
+                                       value="RET" 
+                                       class="sr-only" 
+                                       required>
+                                <div class="radio-card arctic-card p-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
+                                            <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-deep-arctic">Returnable</p>
+                                            <p class="text-sm text-gray-600">Items will be returned after use</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" 
+                                       name="return_type" 
+                                       value="NONRET" 
+                                       class="sr-only" 
+                                       required>
+                                <div class="radio-card arctic-card p-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
+                                            <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                        </div>
+                                        <div>
+                                            <p class="font-semibold text-deep-arctic">Non-Returnable</p>
+                                            <p class="text-sm text-gray-600">Items will not be returned</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Expedition Details -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="input-label">Year of Expedition</label>
+                            <input type="number" 
+                                   name="expedition_year" 
+                                   id="expeditionYear"
+                                   class="input-field"
+                                   min="2000"
+                                   max="2100"
+                                   placeholder="YYYY"
+                                   required>
+                        </div>
+                        <div>
+                            <label class="input-label">Batch Number</label>
+                            <input type="text" 
+                                   name="batch_number" 
+                                   id="batchNumber"
+                                   class="input-field"
+                                   placeholder="e.g., BATCH5"
+                                   required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exporter Details Section -->
+                <div class="space-y-4">
+                    <h3 class="section-title">Exporter Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- NCPOR Option -->
+                        <label class="cursor-pointer">
+                            <input type="radio" 
+                                   name="exporter" 
+                                   value="ncpor" 
+                                   class="sr-only" 
+                                   id="exporterNcporRadio"
+                                   checked
+                                   required>
+                            <div class="radio-card arctic-card p-4 h-full">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
+                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-deep-arctic">NCPOR</p>
+                                        <p class="text-sm text-gray-600">National Centre for Polar and Ocean Research</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Others Option -->
+                        <label class="cursor-pointer">
+                            <input type="radio" 
+                                   name="exporter" 
+                                   value="other" 
+                                   class="sr-only" 
+                                   id="exporterOtherRadio">
+                            <div class="radio-card arctic-card p-4 h-full">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
+                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-deep-arctic">Other Organization</p>
+                                        <p class="text-sm text-gray-600">Different exporter details</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Dynamic Exporter Details -->
+                    <div id="exporterDetailsSection" class="mt-4">
+                        <!-- NCPOR Details (Read-only) -->
+                        <div id="ncporExporterDetails">
+                            <div class="readonly-field">
+                                National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]<br>
+                                Ministry of Earth Sciences (Govt. of India)<br>
+                                Headland Sada, Vasco da Gama, Goa - 403804<br>
+                                India<br>
+                                Phone: +91 832 2525501<br>
+                                GST: 30AAAAN4327G1ZJ<br>
+                                IEC No.: 1196000125
+                            </div>
+                        </div>
+                        
+                        <!-- Other Exporter Details -->
+                        <div id="otherExporterDetails" class="hidden space-y-4">
+                            <div>
+                                <label class="input-label">Organization Name</label>
+                                <input type="text" 
+                                       name="other_exporter_org" 
+                                       class="input-field"
+                                       placeholder="Enter organization name">
+                            </div>
+                            <div>
+                                <label class="input-label">Complete Address</label>
+                                <textarea name="other_exporter_address" 
+                                         class="input-field"
+                                         rows="4"
+                                         placeholder="Enter complete address"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="input-label">Contact Person</label>
+                                    <input type="text" 
+                                           name="other_exporter_contact" 
+                                           class="input-field"
+                                           placeholder="Enter contact person name">
+                                </div>
+                                <div>
+                                    <label class="input-label">Designation</label>
+                                    <input type="text" 
+                                           name="other_exporter_designation" 
+                                           class="input-field"
+                                           placeholder="Enter designation">
+                                </div>
+                                <div>
+                                    <label class="input-label">Phone Number</label>
+                                    <input type="tel" 
+                                           name="other_exporter_phone" 
+                                           class="input-field"
+                                           placeholder="Enter phone number">
+                                </div>
+                                <div>
+                                    <label class="input-label">Email</label>
+                                    <input type="email" 
+                                           name="other_exporter_email" 
+                                           class="input-field"
+                                           placeholder="Enter email address">
+                                </div>
+                                <div>
+                                    <label class="input-label">GST Number</label>
+                                    <input type="text" 
+                                           name="other_exporter_gst" 
+                                           class="input-field"
+                                           placeholder="Enter GST number">
+                                </div>
+                                <div>
+                                    <label class="input-label">IEC Number</label>
+                                    <input type="text" 
+                                           name="other_exporter_iec" 
+                                           class="input-field"
+                                           placeholder="Enter IEC number">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Consignee Details Section -->
+                <div class="space-y-4">
+                    <h3 class="section-title">Consignee Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Himadri Option -->
+                        <label class="cursor-pointer">
+                            <input type="radio" 
+                                   name="consignee" 
+                                   value="himadri" 
+                                   class="sr-only" 
+                                   id="consigneeHimadriRadio"
+                                   checked
+                                   required>
+                            <div class="radio-card arctic-card p-4 h-full">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
+                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-deep-arctic">Himadri</p>
+                                        <p class="text-sm text-gray-600">Indian Arctic Research Station</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Others Option -->
+                        <label class="cursor-pointer">
+                            <input type="radio" 
+                                   name="consignee" 
+                                   value="other" 
+                                   class="sr-only" 
+                                   id="consigneeOtherRadio">
+                            <div class="radio-card arctic-card p-4 h-full">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
+                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-deep-arctic">Other Organization</p>
+                                        <p class="text-sm text-gray-600">Different consignee details</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Dynamic Consignee Details -->
+                    <div id="consigneeDetailsSection" class="mt-4">
+                        <!-- Himadri Details (Read-only) -->
+                        <div id="himadriConsigneeDetails">
+                            <div class="readonly-field">
+                                <strong>Himadri - Indian Arctic Research Station C/O Kingsbay AS</strong><br>
+                                N-9173 Ny-Alesund, Norway<br>
+                                Point of Contact: Kingsbay AS, Longyearbyen<br>
+                                Phone: +47 79 027200
+                            </div>
+                        </div>
+                        
+                        <!-- Other Consignee Details -->
+                        <div id="otherConsigneeDetails" class="hidden space-y-4">
+                            <div>
+                                <label class="input-label">Organization Name</label>
+                                <input type="text" 
+                                       name="other_consignee_org" 
+                                       class="input-field"
+                                       placeholder="Enter organization name">
+                            </div>
+                            <div>
+                                <label class="input-label">Complete Address</label>
+                                <textarea name="other_consignee_address" 
+                                         class="input-field"
+                                         rows="4"
+                                         placeholder="Enter complete address"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="input-label">Contact Person</label>
+                                    <input type="text" 
+                                           name="other_consignee_contact" 
+                                           class="input-field"
+                                           placeholder="Enter contact person name">
+                                </div>
+                                <div>
+                                    <label class="input-label">Designation</label>
+                                    <input type="text" 
+                                           name="other_consignee_designation" 
+                                           class="input-field"
+                                           placeholder="Enter designation">
+                                </div>
+                                <div>
+                                    <label class="input-label">Phone Number</label>
+                                    <input type="tel" 
+                                           name="other_consignee_phone" 
+                                           class="input-field"
+                                           placeholder="Enter phone number">
+                                </div>
+                                <div>
+                                    <label class="input-label">Email</label>
+                                    <input type="email" 
+                                           name="other_consignee_email" 
+                                           class="input-field"
+                                           placeholder="Enter email address">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cargo Details Section -->
+                <div class="space-y-4 mt-8">
+                    <h3 class="section-title">Cargo Details</h3>
+                    
+                    <!-- Package Details -->
+                    <div>
+                        <label class="input-label">Number of Packages</label>
+                        <input type="number" 
+                               name="total_packages" 
+                               id="totalPackagesInput"
+                               class="input-field"
+                               min="1"
+                               placeholder="Enter number of packages"
+                               required>
+                    </div>
+
+                    <!-- Package Details Container -->
+                    <div id="packageDetailsContainer" class="hidden space-y-6 mt-6">
+                        <!-- Package details will be dynamically added here -->
+                    </div>
+
+                    <!-- Package Template -->
+                    <template id="packageDetailsTemplate">
+                        <div class="arctic-card p-6" id="package_{packageNumber}">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-lg font-semibold text-deep-arctic">Package {packageNumber} of {totalPackages}</h4>
+                                <span class="bg-deep-arctic text-white px-3 py-1 rounded-full text-sm">#{packageNumber}</span>
+                            </div>
+                            
+                            <!-- Package Type Selection -->
+                            <div class="space-y-4 mb-6">
+                                <label class="input-label">Package Type</label>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" 
+                                               name="package_{packageNumber}_type" 
+                                               value="box" 
+                                               class="sr-only" 
+                                               checked>
+                                        <div class="radio-card arctic-card p-4 text-center">
+                                            <span class="text-2xl">📦</span>
+                                            <p class="mt-1">Box</p>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" 
+                                               name="package_{packageNumber}_type" 
+                                               value="carton" 
+                                               class="sr-only">
+                                        <div class="radio-card arctic-card p-4 text-center">
+                                            <span class="text-2xl">📥</span>
+                                            <p class="mt-1">Carton</p>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" 
+                                               name="package_{packageNumber}_type" 
+                                               value="crate" 
+                                               class="sr-only">
+                                        <div class="radio-card arctic-card p-4 text-center">
+                                            <span class="text-2xl">🗳️</span>
+                                            <p class="mt-1">Crate</p>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" 
+                                               name="package_{packageNumber}_type" 
+                                               value="other" 
+                                               class="sr-only">
+                                        <div class="radio-card arctic-card p-4 text-center">
+                                            <span class="text-2xl">📝</span>
+                                            <p class="mt-1">Other</p>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="other-type-input hidden">
+                                    <input type="text" 
+                                           name="package_{packageNumber}_other_type" 
+                                           class="input-field mt-2"
+                                           placeholder="Specify package type">
+                                </div>
+                            </div>
+
+                            <!-- Package Dimensions -->
+                            <div class="space-y-2 mb-6">
+                                <label class="input-label">Package Dimensions (in cm)</label>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <input type="number" 
+                                               name="package_{packageNumber}_length" 
+                                               class="input-field"
+                                               placeholder="Length"
+                                               min="1" 
+                                               required>
+                                    </div>
+                                    <div>
+                                        <input type="number" 
+                                               name="package_{packageNumber}_width" 
+                                               class="input-field"
+                                               placeholder="Width"
+                                               min="1" 
+                                               required>
+                                    </div>
+                                    <div>
+                                        <input type="number" 
+                                               name="package_{packageNumber}_height" 
+                                               class="input-field"
+                                               placeholder="Height"
+                                               min="1" 
+                                               required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Package Contents -->
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="input-label">Number of Items in Package</label>
+                                    <input type="number" 
+                                           name="package_{packageNumber}_items_count" 
+                                           class="input-field package-items-count"
+                                           min="1"
+                                           placeholder="Enter number of items"
+                                           required>
+                                </div>
+                                
+                                <!-- Items Container -->
+                                <div class="items-container space-y-4">
+                                    <!-- Items will be dynamically added here -->
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <!-- Item Template -->
+                    <template id="itemDetailsTemplate">
+                        <div class="arctic-card p-4 border border-arctic-blue">
+                            <h5 class="font-semibold text-deep-arctic mb-4">
+                                Item {itemNumber} Details
+                            </h5>
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="input-label">Description of Goods</label>
+                                        <textarea name="{prefix}_description" 
+                                                class="input-field"
+                                                rows="2"
+                                                placeholder="Detailed description of item (include model/serial numbers if applicable)"
+                                                required></textarea>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="input-label">HSN</label>
+                                        <input type="text" 
+                                               name="{prefix}_hsn_code" 
+                                               class="input-field"
+                                               placeholder="e.g., 9015.80.90"
+                                               required>
+                                    </div>
+                                    <div>
+                                        <label class="input-label">Quantity</label>
+                                        <input type="number" 
+                                               name="{prefix}_quantity" 
+                                               class="input-field item-quantity"
+                                               min="1"
+                                               placeholder="Qty"
+                                               required
+                                               data-prefix="{prefix}">
+                                    </div>
+                                    <div>
+                                        <label class="input-label">Unit Value (USD)</label>
+                                        <input type="number" 
+                                               name="{prefix}_unit_value" 
+                                               class="input-field item-value"
+                                               min="0"
+                                               step="0.01"
+                                               placeholder="USD"
+                                               required
+                                               data-prefix="{prefix}">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="input-label">Net Weight (kg)</label>
+                                        <input type="number" 
+                                               name="{prefix}_net_weight" 
+                                               class="input-field item-weight"
+                                               min="0"
+                                               step="0.01"
+                                               placeholder="kg"
+                                               required
+                                               data-prefix="{prefix}">
+                                    </div>
+                                    <div>
+                                        <label class="input-label">Country of Origin</label>
+                                        <input type="text" 
+                                               name="{prefix}_origin" 
+                                               class="input-field"
+                                               placeholder="e.g., India"
+                                               required>
+                                    </div>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <p class="font-medium text-deep-arctic">Item Total Value: 
+                                        <span id="{prefix}_total" class="item-total">0.00 USD</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Package Summary -->
+                    <div id="packageSummary" class="arctic-card p-6 mt-8 hidden">
+                        <h4 class="text-xl font-semibold text-deep-arctic mb-4">Shipment Summary</h4>
+                        <div class="grid grid-cols-2 gap-6">
+                            <div>
+                                <p class="text-gray-600">Total Packages:</p>
+                                <p class="text-2xl font-semibold text-deep-arctic" id="totalPackagesDisplay">0</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Total Items:</p>
+                                <p class="text-2xl font-semibold text-deep-arctic" id="totalItemsDisplay">0</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Total Net Weight:</p>
+                                <p class="text-2xl font-semibold text-deep-arctic" id="totalNetWeightDisplay">0 kg</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">Total Value:</p>
+                                <p class="text-2xl font-semibold text-deep-arctic" id="totalValueDisplay">0 USD</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="flex justify-between pt-6">
+                    <a href="{{ url_for('main.shipment_type_selection') }}" 
+                       class="arctic-button bg-gray-500 hover:bg-gray-600">
+                        ← Back
+                    </a>
+                    <button type="submit" 
+                            class="arctic-button">
+                        {% if current_user.is_admin() %}
+                            {% if edit_data and edit_data.is_editing %}
+                                Update & Generate Documents →
+                            {% else %}
+                                Generate Documents →
+                            {% endif %}
+                        {% else %}
+                            {% if edit_data and edit_data.is_editing %}
+                                Update & Resubmit for Review →
+                            {% else %}
+                                Submit for Review →
+                            {% endif %}
+                        {% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elements for invoice number generation
+    const requesterName = document.getElementById('requesterName');
+    const expeditionYear = document.getElementById('expeditionYear');
+    const batchNumber = document.getElementById('batchNumber');
+    const returnTypeInputs = document.getElementsByName('return_type');
+    const invoicePreview = document.getElementById('invoiceNumberPreview');
+
+    // Set current date in hidden field
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('invoiceDateHidden').value = today;
+
+    // Set max year as current year + 1
+    const maxYear = new Date().getFullYear() + 1;
+    expeditionYear.setAttribute('max', maxYear);
+    expeditionYear.setAttribute('min', '2000');
+
+    // Function to generate invoice number
+    function updateInvoiceNumber() {
+        let firstName = 'FIRSTNAME';
+        if (requesterName.value) {
+            const nameParts = requesterName.value.trim().split(' ');
+            // If we have title + first name (or more)
+            if (nameParts.length > 1) {
+                firstName = nameParts[1].toUpperCase(); // Take second word as first name
+            } else {
+                firstName = nameParts[0].toUpperCase(); // If only one word, use that
+            }
+        }
+
+        const year = expeditionYear.value || 'YYYY';
+        const batch = (batchNumber.value || 'BATCH').toUpperCase();
+        let returnType = 'TYPE';
+        
+        for (const input of returnTypeInputs) {
+            if (input.checked) {
+                returnType = input.value;
+                break;
+            }
+        }
+
+        const invoiceNumber = `NCPOR/ARC/${year}/${returnType}/${batch}/${firstName}`;
+        invoicePreview.textContent = invoiceNumber;
+    }
+
+    // Add event listeners for invoice number generation
+    requesterName.addEventListener('input', updateInvoiceNumber);
+    expeditionYear.addEventListener('input', updateInvoiceNumber);
+    batchNumber.addEventListener('input', updateInvoiceNumber);
+    returnTypeInputs.forEach(input => {
+        input.addEventListener('change', updateInvoiceNumber);
+    });
+
+    // Elements for package handling
+    const totalPackagesInput = document.getElementById('totalPackagesInput');
+    const packageDetailsContainer = document.getElementById('packageDetailsContainer');
+    const packageDetailsTemplate = document.getElementById('packageDetailsTemplate');
+    const itemDetailsTemplate = document.getElementById('itemDetailsTemplate');
+    const packageSummary = document.getElementById('packageSummary');
+
+    // Function to handle package type selection
+    function initializePackageTypeHandlers(packageElement) {
+        const typeRadios = packageElement.querySelectorAll('input[type="radio"]');
+        const otherTypeInput = packageElement.querySelector('.other-type-input');
+
+        typeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                otherTypeInput.classList.toggle('hidden', this.value !== 'other');
+                otherTypeInput.querySelector('input').required = (this.value === 'other');
+            });
+        });
+    }
+
+    // Function to update total calculations
+    function updateTotals() {
+        let totalItems = 0;
+        let totalNetWeight = 0;
+        let totalValue = 0;
+
+        document.querySelectorAll('.item-quantity').forEach(quantityInput => {
+            totalItems += parseInt(quantityInput.value) || 0;
+        });
+
+        document.querySelectorAll('.item-weight').forEach(weightInput => {
+            const quantity = parseInt(weightInput.closest('.items-container').querySelector('.item-quantity').value) || 0;
+            totalNetWeight += (parseFloat(weightInput.value) || 0) * quantity;
+        });
+
+        document.querySelectorAll('.item-total').forEach(totalElement => {
+            totalValue += parseFloat(totalElement.textContent) || 0;
+        });
+
+        // Update summary display
+        document.getElementById('totalPackagesDisplay').textContent = totalPackagesInput.value || '0';
+        document.getElementById('totalItemsDisplay').textContent = totalItems;
+        document.getElementById('totalNetWeightDisplay').textContent = `${totalNetWeight.toFixed(2)} kg`;
+        document.getElementById('totalValueDisplay').textContent = `${totalValue.toFixed(2)} USD`;
+    }
+
+    // Function to calculate item total value
+    function calculateItemTotal(prefix) {
+        const quantity = parseInt(document.querySelector(`[name="${prefix}_quantity"]`).value) || 0;
+        const unitValue = parseFloat(document.querySelector(`[name="${prefix}_unit_value"]`).value) || 0;
+        const total = quantity * unitValue;
+        document.getElementById(`${prefix}_total`).textContent = `${total.toFixed(2)} USD`;
+        updateTotals();
+    }
+
+    // Function to generate item details
+    function generateItemDetails(packageNum, itemCount, container) {
+        container.innerHTML = '';
+        for (let itemNum = 1; itemNum <= itemCount; itemNum++) {
+            const prefix = `package_${packageNum}_item_${itemNum}`;
+            const itemHtml = itemDetailsTemplate.innerHTML
+                .replaceAll('{itemNumber}', itemNum)
+                .replaceAll('{prefix}', prefix);
+            
+            const itemElement = document.createElement('div');
+            itemElement.innerHTML = itemHtml;
+            container.appendChild(itemElement);
+
+            // Add event listeners for calculations
+            const inputs = container.querySelectorAll(`[data-prefix="${prefix}"]`);
+            inputs.forEach(input => {
+                input.addEventListener('input', () => calculateItemTotal(prefix));
+            });
+        }
+    }
+
+    // Function to generate package details
+    function generatePackageDetails(totalPackages) {
+        packageDetailsContainer.innerHTML = '';
+        for (let packageNum = 1; packageNum <= totalPackages; packageNum++) {
+            const packageHtml = packageDetailsTemplate.innerHTML
+                .replaceAll('{packageNumber}', packageNum)
+                .replaceAll('{totalPackages}', totalPackages);
+            
+            const packageElement = document.createElement('div');
+            packageElement.innerHTML = packageHtml;
+            packageDetailsContainer.appendChild(packageElement);
+
+            // Initialize handlers for this package
+            initializePackageTypeHandlers(packageElement);
+            
+            // Handle items count for this package
+            const itemsCountInput = packageElement.querySelector('.package-items-count');
+            const itemsContainer = packageElement.querySelector('.items-container');
+            
+            itemsCountInput.addEventListener('change', function() {
+                const itemCount = parseInt(this.value) || 0;
+                if (itemCount > 0) {
+                    generateItemDetails(packageNum, itemCount, itemsContainer);
+                    updateTotals();
+                } else {
+                    itemsContainer.innerHTML = '';
+                    updateTotals();
+                }
+            });
+        }
+    }
+
+    // Handle total packages input
+    totalPackagesInput.addEventListener('change', function() {
+        const totalPackages = parseInt(this.value) || 0;
+        if (totalPackages > 0) {
+            packageDetailsContainer.classList.remove('hidden');
+            packageSummary.classList.remove('hidden');
+            generatePackageDetails(totalPackages);
+        } else {
+            packageDetailsContainer.classList.add('hidden');
+            packageSummary.classList.add('hidden');
+        }
+    });
+
+    // Initialize exporters and consignees sections
+    const exporterNcporRadio = document.getElementById('exporterNcporRadio');
+    const exporterOtherRadio = document.getElementById('exporterOtherRadio');
+    const ncporExporterDetails = document.getElementById('ncporExporterDetails');
+    const otherExporterDetails = document.getElementById('otherExporterDetails');
+
+    const consigneeHimadriRadio = document.getElementById('consigneeHimadriRadio');
+    const consigneeOtherRadio = document.getElementById('consigneeOtherRadio');
+    const himadriConsigneeDetails = document.getElementById('himadriConsigneeDetails');
+    const otherConsigneeDetails = document.getElementById('otherConsigneeDetails');
+
+    // Function to toggle required fields
+    function toggleRequiredFields(container, required) {
+        const inputs = container.querySelectorAll('input, textarea');
+        inputs.forEach(input => {
+            input.required = required;
+        });
+    }
+
+    // Function to handle exporter selection
+    function handleExporterSelection() {
+        if (exporterNcporRadio.checked) {
+            ncporExporterDetails.classList.remove('hidden');
+            otherExporterDetails.classList.add('hidden');
+            toggleRequiredFields(otherExporterDetails, false);
+        } else {
+            ncporExporterDetails.classList.add('hidden');
+            otherExporterDetails.classList.remove('hidden');
+            toggleRequiredFields(otherExporterDetails, true);
+        }
+    }
+
+    // Function to handle consignee selection
+    function handleConsigneeSelection() {
+        if (consigneeHimadriRadio.checked) {
+            himadriConsigneeDetails.classList.remove('hidden');
+            otherConsigneeDetails.classList.add('hidden');
+            toggleRequiredFields(otherConsigneeDetails, false);
+        } else {
+            himadriConsigneeDetails.classList.add('hidden');
+            otherConsigneeDetails.classList.remove('hidden');
+            toggleRequiredFields(otherConsigneeDetails, true);
+        }
+    }
+
+    // Add event listeners
+    exporterNcporRadio.addEventListener('change', handleExporterSelection);
+    exporterOtherRadio.addEventListener('change', handleExporterSelection);
+    consigneeHimadriRadio.addEventListener('change', handleConsigneeSelection);
+    consigneeOtherRadio.addEventListener('change', handleConsigneeSelection);
+
+    // Initial setup
+    handleExporterSelection();
+    handleConsigneeSelection();
+
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!form.checkValidity()) {
+            // Find the first invalid input
+            const firstInvalid = form.querySelector(':invalid');
+            if (firstInvalid) {
+                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstInvalid.focus();
+            }
+            return false;
+        }
+
+        // Additional validation
+        const totalPackages = parseInt(totalPackagesInput.value) || 0;
+        if (totalPackages === 0) {
+            alert('Please enter at least one package');
+            totalPackagesInput.focus();
+            return false;
+        }
+
+        // All validations passed, submit the form
+        this.submit();
+    });
+});
+
+{% if edit_data and edit_data.is_editing %}
+<script>
+// Enhanced edit mode pre-filling - handles ALL form fields
+document.addEventListener('DOMContentLoaded', function() {
+    var editData = {{ edit_data | tojson | safe }};
+    console.log('Edit data:', editData);
+    
+    // Wait for form to be fully loaded
+    setTimeout(function() {
+        // Pre-fill basic fields
+        if (editData.requester_name) {
+            var requesterField = document.getElementById('requesterName');
+            if (requesterField) requesterField.value = editData.requester_name;
+        }
+        
+        if (editData.expedition_year) {
+            var expeditionField = document.getElementById('expeditionYear');
+            if (expeditionField) expeditionField.value = editData.expedition_year;
+        }
+        
+        if (editData.batch_number) {
+            var batchField = document.getElementById('batchNumber');
+            if (batchField) batchField.value = editData.batch_number;
+        }
+        
+        // Pre-fill return type radio buttons
+        if (editData.return_type) {
+            var returnTypeRadio = document.querySelector(`input[name="return_type"][value="${editData.return_type}"]`);
+            if (returnTypeRadio) {
+                returnTypeRadio.checked = true;
+                returnTypeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+        
+        // Pre-fill exporter selection
+        if (editData.exporter) {
+            var exporterRadio = document.querySelector(`input[name="exporter"][value="${editData.exporter}"]`);
+            if (exporterRadio) {
+                exporterRadio.checked = true;
+                exporterRadio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+        
+        // Pre-fill consignee selection
+        if (editData.consignee) {
+            var consigneeRadio = document.querySelector(`input[name="consignee"][value="${editData.consignee}"]`);
+            if (consigneeRadio) {
+                consigneeRadio.checked = true;
+                consigneeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+        
+        // Pre-fill other exporter details if selected
+        if (editData.exporter === 'other') {
+            setTimeout(function() {
+                if (editData.other_exporter_org) {
+                    var field = document.querySelector('input[name="other_exporter_org"]');
+                    if (field) field.value = editData.other_exporter_org;
+                }
+                if (editData.other_exporter_address) {
+                    var field = document.querySelector('textarea[name="other_exporter_address"]');
+                    if (field) field.value = editData.other_exporter_address;
+                }
+                if (editData.other_exporter_contact) {
+                    var field = document.querySelector('input[name="other_exporter_contact"]');
+                    if (field) field.value = editData.other_exporter_contact;
+                }
+                if (editData.other_exporter_designation) {
+                    var field = document.querySelector('input[name="other_exporter_designation"]');
+                    if (field) field.value = editData.other_exporter_designation;
+                }
+                if (editData.other_exporter_phone) {
+                    var field = document.querySelector('input[name="other_exporter_phone"]');
+                    if (field) field.value = editData.other_exporter_phone;
+                }
+                if (editData.other_exporter_email) {
+                    var field = document.querySelector('input[name="other_exporter_email"]');
+                    if (field) field.value = editData.other_exporter_email;
+                }
+                if (editData.other_exporter_gst) {
+                    var field = document.querySelector('input[name="other_exporter_gst"]');
+                    if (field) field.value = editData.other_exporter_gst;
+                }
+                if (editData.other_exporter_iec) {
+                    var field = document.querySelector('input[name="other_exporter_iec"]');
+                    if (field) field.value = editData.other_exporter_iec;
+                }
+            }, 500);
+        }
+        
+        // Pre-fill other consignee details if selected
+        if (editData.consignee === 'other') {
+            setTimeout(function() {
+                if (editData.other_consignee_org) {
+                    var field = document.querySelector('input[name="other_consignee_org"]');
+                    if (field) field.value = editData.other_consignee_org;
+                }
+                if (editData.other_consignee_address) {
+                    var field = document.querySelector('textarea[name="other_consignee_address"]');
+                    if (field) field.value = editData.other_consignee_address;
+                }
+                if (editData.other_consignee_contact) {
+                    var field = document.querySelector('input[name="other_consignee_contact"]');
+                    if (field) field.value = editData.other_consignee_contact;
+                }
+                if (editData.other_consignee_designation) {
+                    var field = document.querySelector('input[name="other_consignee_designation"]');
+                    if (field) field.value = editData.other_consignee_designation;
+                }
+                if (editData.other_consignee_phone) {
+                    var field = document.querySelector('input[name="other_consignee_phone"]');
+                    if (field) field.value = editData.other_consignee_phone;
+                }
+                if (editData.other_consignee_email) {
+                    var field = document.querySelector('input[name="other_consignee_email"]');
+                    if (field) field.value = editData.other_consignee_email;
+                }
+            }, 500);
+        }
+        
+        // Pre-fill total packages and generate package fields
+        if (editData.total_packages) {
+            var totalPackagesField = document.getElementById('totalPackagesInput');
+            if (totalPackagesField) {
+                totalPackagesField.value = editData.total_packages;
+                totalPackagesField.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Wait for packages to be generated, then fill them
+                setTimeout(function() {
+                    fillPackageData(editData);
+                }, 1000);
+            }
+        }
+        
+        // Update invoice number preview
+        updateInvoiceNumber();
+    }, 500);
+});
+
+function fillPackageData(editData) {
+    var totalPackages = parseInt(editData.total_packages || 0);
+    
+    for (var packageNum = 1; packageNum <= totalPackages; packageNum++) {
+        // Fill package type
+        var packageTypeKey = `package_${packageNum}_type`;
+        if (editData[packageTypeKey]) {
+            var typeRadio = document.querySelector(`input[name="package_${packageNum}_type"][value="${editData[packageTypeKey]}"]`);
+            if (typeRadio) {
+                typeRadio.checked = true;
+                typeRadio.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+        
+        // Fill other package type if applicable
+        var otherTypeKey = `package_${packageNum}_other_type`;
+        if (editData[otherTypeKey]) {
+            var otherTypeField = document.querySelector(`input[name="${otherTypeKey}"]`);
+            if (otherTypeField) otherTypeField.value = editData[otherTypeKey];
+        }
+        
+        // Fill package dimensions
+        var lengthField = document.querySelector(`input[name="package_${packageNum}_length"]`);
+        if (lengthField && editData[`package_${packageNum}_length`]) {
+            lengthField.value = editData[`package_${packageNum}_length`];
+        }
+        
+        var widthField = document.querySelector(`input[name="package_${packageNum}_width"]`);
+        if (widthField && editData[`package_${packageNum}_width`]) {
+            widthField.value = editData[`package_${packageNum}_width`];
+        }
+        
+        var heightField = document.querySelector(`input[name="package_${packageNum}_height"]`);
+        if (heightField && editData[`package_${packageNum}_height`]) {
+            heightField.value = editData[`package_${packageNum}_height`];
+        }
+        
+        // Fill items count and generate items
+        var itemsCountKey = `package_${packageNum}_items_count`;
+        if (editData[itemsCountKey]) {
+            var itemsCountField = document.querySelector(`input[name="${itemsCountKey}"]`);
+            if (itemsCountField) {
+                itemsCountField.value = editData[itemsCountKey];
+                itemsCountField.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // Wait for items to be generated, then fill them
+                setTimeout(function(pkgNum) {
+                    return function() {
+                        fillItemsData(editData, pkgNum);
+                    };
+                }(packageNum), 500);
+            }
+        }
+    }
+}
+
+function fillItemsData(editData, packageNum) {
+    var itemsCount = parseInt(editData[`package_${packageNum}_items_count`] || 0);
+    
+    for (var itemNum = 1; itemNum <= itemsCount; itemNum++) {
+        var prefix = `package_${packageNum}_item_${itemNum}`;
+        
+        // Fill item description
+        var descField = document.querySelector(`textarea[name="${prefix}_description"]`);
+        if (descField && editData[`${prefix}_description`]) {
+            descField.value = editData[`${prefix}_description`];
+        }
+        
+        // Fill HSN code
+        var hsnField = document.querySelector(`input[name="${prefix}_hsn_code"]`);
+        if (hsnField && editData[`${prefix}_hsn_code`]) {
+            hsnField.value = editData[`${prefix}_hsn_code`];
+        }
+        
+        // Fill quantity
+        var qtyField = document.querySelector(`input[name="${prefix}_quantity"]`);
+        if (qtyField && editData[`${prefix}_quantity`]) {
+            qtyField.value = editData[`${prefix}_quantity`];
+            qtyField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        // Fill unit value
+        var valueField = document.querySelector(`input[name="${prefix}_unit_value"]`);
+        if (valueField && editData[`${prefix}_unit_value`]) {
+            valueField.value = editData[`${prefix}_unit_value`];
+            valueField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        // Fill net weight
+        var weightField = document.querySelector(`input[name="${prefix}_net_weight"]`);
+        if (weightField && editData[`${prefix}_net_weight`]) {
+            weightField.value = editData[`${prefix}_net_weight`];
+            weightField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        // Fill country of origin
+        var originField = document.querySelector(`input[name="${prefix}_origin"]`);
+        if (originField && editData[`${prefix}_origin`]) {
+            originField.value = editData[`${prefix}_origin`];
+        }
+    }
+    
+    // Update totals after filling all data
+    setTimeout(updateTotals, 200);
+}
+</script>
+{% endif %}
+</script>
+{% endblock %}
