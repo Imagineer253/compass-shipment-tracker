@@ -3,16 +3,66 @@
 {% block title %}NCPOR Arctic Research Dashboard{% endblock %}
 
 {% block content %}
-<!-- Hero Section - Compact -->
-<div class="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 text-white py-6 -mx-4 -mt-20 mb-6">
-    <div class="max-w-7xl mx-auto px-4 pt-20">
+<!-- Hero Section - Enhanced -->
+<div class="bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-900 text-white py-8 -mx-4 -mt-20 mb-8 relative overflow-hidden">
+    <!-- Background pattern -->
+    <div class="absolute inset-0 opacity-10">
+        <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 60 60%22><defs><pattern id=%22grid%22 width=%2260%22 height=%2260%22 patternUnits=%22userSpaceOnUse%22><path d=%22M 60 0 L 0 0 0 60%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-width=%221%22/></pattern></defs><rect width=%22100%%22 height=%22100%%22 fill=%22url(%23grid)%22/></svg>');"></div>
+    </div>
+    
+    <div class="max-w-7xl mx-auto px-4 pt-20 relative z-10">
         <div class="text-center">
-            <h1 class="text-3xl md:text-5xl font-bold mb-3">Arctic Research Dashboard</h1>
-            <p class="text-lg md:text-xl mb-4">15th Indian Arctic Expedition - Live Monitoring</p>
-            <div class="bg-yellow-500 text-black px-3 py-1 rounded-lg inline-block font-semibold text-sm">
-                ⚠️ Demo Data - Work in Progress - Not Accurate
+            <!-- Logo and Title -->
+            <div class="mb-6">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-full mb-4 backdrop-blur-sm">
+                    <i class="fas fa-globe-americas text-3xl text-cyan-300"></i>
+                </div>
+                <h1 class="text-4xl md:text-6xl font-bold mb-3 bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">
+                    COMPASS
+                </h1>
+                <h2 class="text-xl md:text-2xl font-semibold text-cyan-100 mb-2">
+                    Arctic Research Dashboard
+                </h2>
+                <p class="text-base md:text-lg text-blue-200 mb-4">
+                    15th Indian Arctic Expedition - Real-time Monitoring & Logistics
+                </p>
+            </div>
+            
+            <!-- Status and Authentication -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <div class="bg-gradient-to-r from-yellow-500 to-orange-500 text-black px-4 py-2 rounded-full font-semibold text-sm flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Live System - Research Operations Active
+                </div>
+                
+                {% if not current_user.is_authenticated %}
+                <div class="flex gap-3">
+                    <a href="{{ url_for('auth.login') }}" 
+                       class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-6 py-2 rounded-full font-semibold transition-all duration-300 hover:transform hover:scale-105">
+                        <i class="fas fa-sign-in-alt mr-2"></i>Login
+                    </a>
+                    <a href="{{ url_for('auth.signup_page') }}" 
+                       class="bg-cyan-500 hover:bg-cyan-400 text-white px-6 py-2 rounded-full font-semibold transition-all duration-300 hover:transform hover:scale-105">
+                        <i class="fas fa-user-plus mr-2"></i>Register
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-cyan-200">
+                    <i class="fas fa-user-check mr-2"></i>
+                    Welcome back, <strong>{{ current_user.first_name }}</strong>
+                </div>
+                {% endif %}
             </div>
         </div>
+    </div>
+    
+    <!-- Floating particles animation -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="snowflake absolute animate-pulse">❄</div>
+        <div class="snowflake absolute animate-pulse" style="left: 20%; animation-delay: 2s;">❄</div>
+        <div class="snowflake absolute animate-pulse" style="left: 40%; animation-delay: 4s;">❄</div>
+        <div class="snowflake absolute animate-pulse" style="left: 60%; animation-delay: 6s;">❄</div>
+        <div class="snowflake absolute animate-pulse" style="left: 80%; animation-delay: 8s;">❄</div>
     </div>
 </div>
 
@@ -22,56 +72,124 @@
     <!-- Left Panel - Statistics and Controls -->
     <div class="lg:col-span-1 space-y-6 flex flex-col justify-between">
         
-        <!-- Statistics Cards - Compact -->
-        <div class="arctic-card p-4">
-            <h2 class="text-xl font-bold text-deep-arctic mb-4 text-center">📊 Expedition Overview</h2>
-            <div class="grid grid-cols-2 gap-3">
-                <div class="text-center p-3 bg-blue-50 rounded-lg hover:transform hover:scale-105 transition-all duration-300">
-                    <div class="text-2xl mb-1">🔬</div>
-                    <div class="text-xl font-bold text-deep-arctic">12</div>
-                    <div class="text-xs text-gray-600">Projects</div>
+        <!-- Enhanced Statistics Cards -->
+        <div class="arctic-card p-5 bg-gradient-to-br from-blue-50 to-cyan-50 border-l-4 border-blue-500">
+            <div class="flex items-center mb-4">
+                <div class="bg-blue-500 rounded-lg p-2 mr-3">
+                    <i class="fas fa-chart-line text-white text-lg"></i>
                 </div>
-                <div class="text-center p-3 bg-green-50 rounded-lg hover:transform hover:scale-105 transition-all duration-300">
-                    <div class="text-2xl mb-1">🏛️</div>
-                    <div class="text-xl font-bold text-deep-arctic">8</div>
-                    <div class="text-xs text-gray-600">States</div>
+                <h2 class="text-xl font-bold text-deep-arctic">Mission Overview</h2>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="bg-white p-4 rounded-xl text-center shadow-sm hover:shadow-md transition-all duration-300 hover:transform hover:scale-105">
+                    <div class="text-3xl mb-2 text-blue-500">
+                        <i class="fas fa-microscope"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-deep-arctic">12</div>
+                    <div class="text-sm text-gray-600 font-medium">Active Projects</div>
                 </div>
-                <div class="text-center p-3 bg-purple-50 rounded-lg hover:transform hover:scale-105 transition-all duration-300">
-                    <div class="text-2xl mb-1">🎓</div>
-                    <div class="text-xl font-bold text-deep-arctic">15</div>
-                    <div class="text-xs text-gray-600">Institutes</div>
+                <div class="bg-white p-4 rounded-xl text-center shadow-sm hover:shadow-md transition-all duration-300 hover:transform hover:scale-105">
+                    <div class="text-3xl mb-2 text-green-500">
+                        <i class="fas fa-university"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-deep-arctic">15</div>
+                    <div class="text-sm text-gray-600 font-medium">Institutes</div>
                 </div>
-                <div class="text-center p-3 bg-yellow-50 rounded-lg hover:transform hover:scale-105 transition-all duration-300">
-                    <div class="text-2xl mb-1">📊</div>
-                    <div class="text-xl font-bold text-deep-arctic">247</div>
-                    <div class="text-xs text-gray-600">Data Points</div>
+                <div class="bg-white p-4 rounded-xl text-center shadow-sm hover:shadow-md transition-all duration-300 hover:transform hover:scale-105">
+                    <div class="text-3xl mb-2 text-purple-500">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-deep-arctic">25</div>
+                    <div class="text-sm text-gray-600 font-medium">Researchers</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl text-center shadow-sm hover:shadow-md transition-all duration-300 hover:transform hover:scale-105">
+                    <div class="text-3xl mb-2 text-orange-500">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-deep-arctic">247</div>
+                    <div class="text-sm text-gray-600 font-medium">Samples</div>
+                </div>
+            </div>
+            
+            <!-- Live Status Indicators -->
+            <div class="border-t pt-3 mt-3">
+                <h3 class="text-sm font-semibold text-gray-700 mb-2">System Status</h3>
+                <div class="flex justify-between text-xs">
+                    <span class="flex items-center">
+                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                        Logistics System
+                    </span>
+                    <span class="flex items-center">
+                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                        Data Collection
+                    </span>
+                    <span class="flex items-center">
+                        <div class="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
+                        Weather Monitor
+                    </span>
                 </div>
             </div>
         </div>
 
-        <!-- Map Legend -->
-        <div class="arctic-card p-4">
-            <h3 class="text-lg font-bold text-deep-arctic mb-3">🗺️ Research Station Types</h3>
-            <div class="space-y-2 text-sm">
-                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
-                    <div class="w-6 h-6 flex items-center justify-center">🌊</div>
-                    <span class="font-medium">CTD Measurements</span>
+        <!-- Enhanced Map Legend -->
+        <div class="arctic-card p-4 bg-gradient-to-br from-gray-50 to-blue-50">
+            <div class="flex items-center mb-3">
+                <div class="bg-gray-600 rounded-lg p-2 mr-3">
+                    <i class="fas fa-map-marked-alt text-white"></i>
                 </div>
-                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
-                    <div class="w-6 h-6 flex items-center justify-center">🧊</div>
-                    <span class="font-medium">Ice Core Sampling</span>
+                <h3 class="text-lg font-bold text-deep-arctic">Research Stations</h3>
+            </div>
+            
+            <div class="space-y-3 text-sm">
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-water text-blue-600"></i>
+                        </div>
+                        <span class="font-medium text-gray-800">CTD Stations</span>
+                    </div>
+                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">3</span>
                 </div>
-                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
-                    <div class="w-6 h-6 flex items-center justify-center">🏔️</div>
-                    <span class="font-medium">Sediment Coring</span>
+                
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-snowflake text-cyan-600"></i>
+                        </div>
+                        <span class="font-medium text-gray-800">Ice Cores</span>
+                    </div>
+                    <span class="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-semibold">3</span>
                 </div>
-                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
-                    <div class="w-6 h-6 flex items-center justify-center">💧</div>
-                    <span class="font-medium">Water Sampling</span>
+                
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-mountain text-yellow-600"></i>
+                        </div>
+                        <span class="font-medium text-gray-800">Sediment</span>
+                    </div>
+                    <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-semibold">2</span>
                 </div>
-                <div class="flex items-center space-x-3 p-2 hover:bg-blue-50 rounded transition-all">
-                    <div class="w-6 h-6 flex items-center justify-center">🌬️</div>
-                    <span class="font-medium">Aerosol Monitoring</span>
+                
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-tint text-green-600"></i>
+                        </div>
+                        <span class="font-medium text-gray-800">Water Sampling</span>
+                    </div>
+                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold">3</span>
+                </div>
+                
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-wind text-purple-600"></i>
+                        </div>
+                        <span class="font-medium text-gray-800">Aerosol</span>
+                    </div>
+                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-semibold">2</span>
                 </div>
             </div>
         </div>
@@ -92,19 +210,76 @@
             </div>
         </div>
 
-        <!-- Quick Access -->
+        <!-- Enhanced Quick Access -->
         {% if current_user.is_authenticated %}
-        <div class="arctic-card p-4">
-            <h3 class="text-lg font-bold text-deep-arctic mb-3">🚀 Quick Access</h3>
-            <div class="space-y-2">
+        <div class="arctic-card p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-green-500">
+            <div class="flex items-center mb-3">
+                <div class="bg-green-500 rounded-lg p-2 mr-3">
+                    <i class="fas fa-rocket text-white"></i>
+                </div>
+                <h3 class="text-lg font-bold text-deep-arctic">Quick Actions</h3>
+            </div>
+            
+            <div class="space-y-3">
                 <a href="{{ url_for('main.shipment_type_selection') }}" 
-                   class="w-full arctic-button flex items-center justify-center py-3 hover:transform hover:scale-105 transition-all duration-300">
-                    📦 Create Shipment
+                   class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 hover:transform hover:scale-105 shadow-sm hover:shadow-md">
+                    <i class="fas fa-box mr-2"></i>
+                    Create Shipment
                 </a>
                 <a href="{{ url_for('main.dashboard') }}" 
-                   class="w-full arctic-button flex items-center justify-center py-3 hover:transform hover:scale-105 transition-all duration-300">
-                    📊 View Dashboard
+                   class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 hover:transform hover:scale-105 shadow-sm hover:shadow-md">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    Dashboard
                 </a>
+                
+                {% if current_user.is_admin() %}
+                <a href="{{ url_for('main.admin_users') }}" 
+                   class="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 hover:transform hover:scale-105 shadow-sm hover:shadow-md">
+                    <i class="fas fa-users-cog mr-2"></i>
+                    Admin Panel
+                </a>
+                {% endif %}
+            </div>
+            
+            <!-- User Info -->
+            <div class="mt-4 pt-3 border-t border-green-200">
+                <div class="flex items-center text-sm text-gray-600">
+                    <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold mr-3 text-xs">
+                        {{ current_user.first_name[:1] }}{{ current_user.last_name[:1] }}
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-800">{{ current_user.first_name }} {{ current_user.last_name }}</div>
+                        <div class="text-xs text-gray-500">{{ current_user.organization or 'COMPASS User' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Guest Quick Actions -->
+        <div class="arctic-card p-4 bg-gradient-to-br from-amber-50 to-orange-50 border-l-4 border-amber-500">
+            <div class="flex items-center mb-3">
+                <div class="bg-amber-500 rounded-lg p-2 mr-3">
+                    <i class="fas fa-sign-in-alt text-white"></i>
+                </div>
+                <h3 class="text-lg font-bold text-deep-arctic">Get Started</h3>
+            </div>
+            
+            <div class="space-y-3">
+                <a href="{{ url_for('auth.login') }}" 
+                   class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 hover:transform hover:scale-105 shadow-sm hover:shadow-md">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    Login
+                </a>
+                <a href="{{ url_for('auth.signup_page') }}" 
+                   class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 hover:transform hover:scale-105 shadow-sm hover:shadow-md">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    Register
+                </a>
+            </div>
+            
+            <div class="mt-4 pt-3 border-t border-amber-200 text-xs text-gray-600">
+                <i class="fas fa-info-circle mr-1"></i>
+                Register to access shipment management and research tools
             </div>
         </div>
         {% endif %}
@@ -114,9 +289,20 @@
     <div class="lg:col-span-2">
         <div class="arctic-card p-4 h-full flex flex-col">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-deep-arctic">🗺️ Arctic Research Locations</h2>
-                <div class="text-sm text-gray-500">
-                    <span id="stationCount">13</span> Active Stations
+                <div class="flex items-center">
+                    <div class="bg-blue-500 rounded-lg p-2 mr-3">
+                        <i class="fas fa-globe-americas text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-deep-arctic">Arctic Research Map</h2>
+                        <p class="text-sm text-gray-600">Svalbard, Norway - Live Locations</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-lg font-bold text-blue-600">
+                        <span id="stationCount">13</span>
+                    </div>
+                    <div class="text-xs text-gray-500">Active Stations</div>
                 </div>
             </div>
             
@@ -485,7 +671,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-/* Custom map styles */
+/* Enhanced Custom Styles */
 #arcticMap {
     background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
 }
@@ -506,11 +692,73 @@ document.addEventListener('DOMContentLoaded', function() {
     border: none !important;
 }
 
+/* Floating Animation for Hero Section */
+.snowflake {
+    position: absolute;
+    top: 10%;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 20px;
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px) translateX(0px);
+        opacity: 0.8;
+    }
+    50% {
+        transform: translateY(-20px) translateX(10px);
+        opacity: 1;
+    }
+}
+
+/* Enhanced Card Styles */
+.arctic-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
+    transition: all 0.3s ease;
+}
+
+.arctic-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(31, 38, 135, 0.2);
+}
+
+/* Gradient Text */
+.gradient-text {
+    background: linear-gradient(45deg, #1E40AF, #06B6D4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Status Indicator Animation */
+@keyframes pulse-dot {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+.animate-pulse-dot {
+    animation: pulse-dot 2s infinite;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
     #arcticMap {
         height: 400px !important;
         min-height: 400px !important;
+    }
+    
+    .snowflake {
+        display: none;
     }
 }
 
@@ -519,16 +767,31 @@ document.addEventListener('DOMContentLoaded', function() {
         height: 350px !important;
         min-height: 350px !important;
     }
+    
+    .grid-cols-2 {
+        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    }
 }
 
-/* Smooth transitions for all interactive elements */
-.arctic-card, .arctic-button {
-    transition: all 0.3s ease;
+/* Button Animations */
+.btn-shimmer {
+    position: relative;
+    overflow: hidden;
 }
 
-.arctic-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(31, 38, 135, 0.15);
+.btn-shimmer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn-shimmer:hover::before {
+    left: 100%;
 }
 </style>
 
