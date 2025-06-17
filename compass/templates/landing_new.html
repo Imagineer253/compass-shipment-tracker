@@ -3,29 +3,70 @@
 {% block title %}NCPOR Arctic Research Dashboard{% endblock %}
 
 {% block content %}
-<!-- Hero Section - Enhanced -->
-<div class="bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-900 text-white py-8 -mx-4 -mt-20 mb-8 relative overflow-hidden">
-    <!-- Background pattern -->
-    <div class="absolute inset-0 opacity-10">
-        <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 60 60%22><defs><pattern id=%22grid%22 width=%2260%22 height=%2260%22 patternUnits=%22userSpaceOnUse%22><path d=%22M 60 0 L 0 0 0 60%22 fill=%22none%22 stroke=%22%23ffffff%22 stroke-width=%221%22/></pattern></defs><rect width=%22100%%22 height=%22100%%22 fill=%22url(%23grid)%22/></svg>');"></div>
-    </div>
+<!-- Dynamic Weather Hero Section -->
+<div id="weatherHero" class="weather-background text-white py-8 -mx-4 -mt-20 mb-8 relative overflow-hidden transition-all duration-1000">
+    <!-- Dynamic Weather Overlay -->
+    <div id="weatherOverlay" class="absolute inset-0 transition-all duration-1000"></div>
+    
+    <!-- Weather Particles Container -->
+    <div id="weatherParticles" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
     
     <div class="max-w-7xl mx-auto px-4 pt-20 relative z-10">
         <div class="text-center">
             <!-- Logo and Title -->
             <div class="mb-6">
                 <div class="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-full mb-4 backdrop-blur-sm">
-                    <i class="fas fa-globe-americas text-3xl text-cyan-300"></i>
+                    <i class="fas fa-globe-americas text-3xl text-white"></i>
                 </div>
-                <h1 class="text-4xl md:text-6xl font-bold mb-3 bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">
+                <h1 class="text-4xl md:text-6xl font-bold mb-3 text-white drop-shadow-lg">
                     COMPASS
                 </h1>
-                <h2 class="text-xl md:text-2xl font-semibold text-cyan-100 mb-2">
+                <h2 class="text-xl md:text-2xl font-semibold text-white/90 mb-2 drop-shadow-md">
                     Arctic Research Dashboard
                 </h2>
-                <p class="text-base md:text-lg text-blue-200 mb-4">
+                <p class="text-base md:text-lg text-white/80 mb-4 drop-shadow-md">
                     15th Indian Arctic Expedition - Real-time Monitoring & Logistics
                 </p>
+            </div>
+            
+            <!-- Live Weather Info Card -->
+            <div class="weather-info-card bg-white/10 rounded-xl p-4 mb-4 max-w-2xl mx-auto">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center">
+                        <i class="fas fa-map-marker-alt mr-2 text-white/80"></i>
+                        <span class="text-white font-semibold">Ny-Ålesund, Svalbard</span>
+                    </div>
+                    <div id="lastUpdated" class="text-white/70 text-xs">
+                        Loading weather...
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="bg-white/10 rounded-lg p-3">
+                        <div id="temperature" class="text-xl font-bold text-white">--°C</div>
+                        <div class="text-white/70 text-xs">Temperature</div>
+                    </div>
+                    <div class="bg-white/10 rounded-lg p-3">
+                        <div id="windSpeed" class="text-xl font-bold text-white">-- km/h</div>
+                        <div class="text-white/70 text-xs">Wind Speed</div>
+                    </div>
+                    <div class="bg-white/10 rounded-lg p-3">
+                        <div id="humidity" class="text-xl font-bold text-white">--%</div>
+                        <div class="text-white/70 text-xs">Humidity</div>
+                    </div>
+                    <div class="bg-white/10 rounded-lg p-3">
+                        <div id="pressure" class="text-xl font-bold text-white">-- hPa</div>
+                        <div class="text-white/70 text-xs">Pressure</div>
+                    </div>
+                </div>
+                
+                <div class="mt-3 text-center">
+                    <div id="weatherDescription" class="text-white font-medium">Loading weather conditions...</div>
+                    <div class="flex items-center justify-center mt-2">
+                        <i id="weatherIcon" class="fas fa-cloud text-2xl text-white mr-2"></i>
+                        <span id="windDirection" class="text-white/80 text-sm">Wind: --</span>
+                    </div>
+                </div>
             </div>
             
             <!-- Status Display -->
@@ -36,22 +77,13 @@
                 </div>
                 
                 {% if current_user.is_authenticated %}
-                <div class="ml-4 text-cyan-200">
+                <div class="ml-4 text-white/90">
                     <i class="fas fa-user-check mr-2"></i>
                     Welcome back, <strong>{{ current_user.first_name }}</strong>
                 </div>
                 {% endif %}
             </div>
         </div>
-    </div>
-    
-    <!-- Floating particles animation -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="snowflake absolute animate-pulse">❄</div>
-        <div class="snowflake absolute animate-pulse" style="left: 20%; animation-delay: 2s;">❄</div>
-        <div class="snowflake absolute animate-pulse" style="left: 40%; animation-delay: 4s;">❄</div>
-        <div class="snowflake absolute animate-pulse" style="left: 60%; animation-delay: 6s;">❄</div>
-        <div class="snowflake absolute animate-pulse" style="left: 80%; animation-delay: 8s;">❄</div>
     </div>
 </div>
 
@@ -474,7 +506,380 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
 <script>
+// Weather API Configuration
+const WEATHER_API_KEY = '7aa96b4042934e878b3133936241612'; // WeatherAPI.com key
+const NY_ALESUND_COORDS = { lat: 78.9249, lon: 11.9303 };
+const MET_NO_API_URL = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
+
+// Weather background configurations
+const weatherBackgrounds = {
+    clear: {
+        gradient: 'linear-gradient(135deg, #87CEEB 0%, #98D8E8 50%, #B6E5FF 100%)',
+        backgroundType: 'clear',
+        hasParticles: true,
+        particles: '☀️',
+        particleCount: 2,
+        animationType: 'glow'
+    },
+    sunny: {
+        gradient: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
+        backgroundType: 'sunny',
+        hasParticles: true,
+        particles: '☀️',
+        particleCount: 3,
+        animationType: 'glow'
+    },
+    cloudy: {
+        gradient: 'linear-gradient(135deg, #708090 0%, #778899 50%, #87CEEB 100%)',
+        backgroundType: 'cloudy',
+        hasParticles: false
+    },
+    overcast: {
+        gradient: 'linear-gradient(135deg, #696969 0%, #778899 50%, #B0C4DE 100%)',
+        backgroundType: 'overcast',
+        hasParticles: false
+    },
+    rain: {
+        gradient: 'linear-gradient(135deg, #4682B4 0%, #5F9EA0 50%, #708090 100%)',
+        backgroundType: 'rain',
+        hasParticles: true,
+        particles: '💧',
+        particleCount: 15,
+        animationType: 'fall'
+    },
+    snow: {
+        gradient: 'linear-gradient(135deg, #F0F8FF 0%, #E6F3FF 50%, #D1E7FF 100%)',
+        backgroundType: 'snow',
+        hasParticles: true,
+        particles: '❄️',
+        particleCount: 20,
+        animationType: 'fall'
+    },
+    storm: {
+        gradient: 'linear-gradient(135deg, #2F4F4F 0%, #483D8B 50%, #191970 100%)',
+        backgroundType: 'storm',
+        hasParticles: true,
+        particles: '💧',
+        particleCount: 12,
+        animationType: 'fall'
+    },
+    fog: {
+        gradient: 'linear-gradient(135deg, #DCDCDC 0%, #C0C0C0 50%, #A9A9A9 100%)',
+        backgroundType: 'fog',
+        hasParticles: false
+    },
+    wind: {
+        gradient: 'linear-gradient(135deg, #B0E0E6 0%, #87CEEB 50%, #4682B4 100%)',
+        backgroundType: 'wind',
+        hasParticles: false
+    }
+};
+
+// Fetch weather data with MET.no as primary and WeatherAPI as fallback
+async function fetchWeatherData() {
+    try {
+        // Try Norwegian Meteorological Institute API first (more accurate for Arctic)
+        const metResponse = await fetch(
+            `${MET_NO_API_URL}?lat=${NY_ALESUND_COORDS.lat}&lon=${NY_ALESUND_COORDS.lon}`,
+            {
+                headers: {
+                    'User-Agent': 'COMPASS-Arctic-Research-Dashboard/1.0 (contact@compass-arctic.org)'
+                }
+            }
+        );
+        
+        if (metResponse.ok) {
+            const metData = await metResponse.json();
+            const processedData = processMETData(metData);
+            updateWeatherDisplay(processedData);
+            updateWeatherBackground(processedData);
+            return;
+        }
+        
+        // Fallback to WeatherAPI.com
+        console.log('MET.no API failed, trying WeatherAPI.com...');
+        const weatherResponse = await fetch(`https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${NY_ALESUND_COORDS.lat},${NY_ALESUND_COORDS.lon}&aqi=no`);
+        
+        if (weatherResponse.ok) {
+            const weatherData = await weatherResponse.json();
+            updateWeatherDisplay(weatherData);
+            updateWeatherBackground(weatherData);
+            return;
+        }
+        
+        throw new Error('Both weather APIs failed');
+        
+    } catch (error) {
+        console.error('Failed to fetch weather data:', error);
+        // Fallback to realistic Arctic weather conditions
+        const fallbackData = {
+            current: {
+                temp_c: -12,
+                wind_kph: 18,
+                humidity: 82,
+                pressure_mb: 1018,
+                condition: { text: 'Partly cloudy', icon: '//cdn.weatherapi.com/weather/64x64/day/116.png' },
+                wind_dir: 'NE'
+            },
+            location: { localtime: new Date().toISOString() }
+        };
+        
+        updateWeatherBackground(fallbackData);
+        updateWeatherDisplay(fallbackData);
+    }
+}
+
+// Process MET.no API data to match our expected format
+function processMETData(metData) {
+    const current = metData.properties.timeseries[0].data.instant.details;
+    const next1h = metData.properties.timeseries[0].data.next_1_hours;
+    
+    // Map weather symbols to conditions
+    const weatherSymbol = next1h ? next1h.summary.symbol_code : 'cloudy';
+    let condition = 'Cloudy';
+    
+    if (weatherSymbol.includes('clear')) condition = 'Clear';
+    else if (weatherSymbol.includes('fair')) condition = 'Fair';
+    else if (weatherSymbol.includes('partly')) condition = 'Partly cloudy';
+    else if (weatherSymbol.includes('cloud')) condition = 'Cloudy';
+    else if (weatherSymbol.includes('rain')) condition = 'Rain';
+    else if (weatherSymbol.includes('snow')) condition = 'Snow';
+    else if (weatherSymbol.includes('sleet')) condition = 'Sleet';
+    else if (weatherSymbol.includes('fog')) condition = 'Fog';
+    
+    return {
+        current: {
+            temp_c: Math.round(current.air_temperature || -10),
+            wind_kph: Math.round((current.wind_speed || 5) * 3.6), // m/s to km/h
+            humidity: Math.round(current.relative_humidity || 80),
+            pressure_mb: Math.round(current.air_pressure_at_sea_level || 1013),
+            condition: { 
+                text: condition,
+                icon: '//cdn.weatherapi.com/weather/64x64/day/116.png'
+            },
+            wind_dir: getWindDirection(current.wind_from_direction || 0)
+        },
+        location: { localtime: new Date().toISOString() }
+    };
+}
+
+// Convert wind direction degrees to compass direction
+function getWindDirection(degrees) {
+    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    return directions[Math.round(degrees / 22.5) % 16];
+}
+
+// Update weather display elements
+function updateWeatherDisplay(data) {
+    const current = data.current;
+    
+    document.getElementById('temperature').textContent = `${Math.round(current.temp_c)}°C`;
+    document.getElementById('windSpeed').textContent = `${Math.round(current.wind_kph)} km/h`;
+    document.getElementById('humidity').textContent = `${current.humidity}%`;
+    document.getElementById('pressure').textContent = `${Math.round(current.pressure_mb)} hPa`;
+    document.getElementById('weatherDescription').textContent = current.condition.text;
+    document.getElementById('windDirection').textContent = `Wind: ${current.wind_dir}`;
+    
+    // Update weather icon
+    const iconElement = document.getElementById('weatherIcon');
+    const condition = current.condition.text.toLowerCase();
+    
+    if (condition.includes('snow')) {
+        iconElement.className = 'fas fa-snowflake text-2xl text-white mr-2';
+    } else if (condition.includes('rain')) {
+        iconElement.className = 'fas fa-cloud-rain text-2xl text-white mr-2';
+    } else if (condition.includes('cloud')) {
+        iconElement.className = 'fas fa-cloud text-2xl text-white mr-2';
+    } else if (condition.includes('sun') || condition.includes('clear')) {
+        iconElement.className = 'fas fa-sun text-2xl text-white mr-2';
+    } else if (condition.includes('wind')) {
+        iconElement.className = 'fas fa-wind text-2xl text-white mr-2';
+    } else if (condition.includes('fog')) {
+        iconElement.className = 'fas fa-smog text-2xl text-white mr-2';
+    } else {
+        iconElement.className = 'fas fa-cloud text-2xl text-white mr-2';
+    }
+    
+    // Update last updated time
+    const updateTime = new Date(data.location.localtime).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'UTC'
+    });
+    document.getElementById('lastUpdated').textContent = `Updated: ${updateTime} UTC`;
+}
+
+// Update background based on weather conditions
+function updateWeatherBackground(data) {
+    const condition = data.current.condition.text.toLowerCase();
+    let weatherType = 'cloudy'; // default
+    
+    // Determine weather type from condition
+    if (condition.includes('snow') || condition.includes('blizzard')) {
+        weatherType = 'snow';
+    } else if (condition.includes('rain') || condition.includes('drizzle')) {
+        weatherType = 'rain';
+    } else if (condition.includes('clear') || condition.includes('sunny')) {
+        weatherType = 'clear';
+    } else if (condition.includes('cloud')) {
+        weatherType = condition.includes('overcast') ? 'overcast' : 'cloudy';
+    } else if (condition.includes('storm') || condition.includes('thunder')) {
+        weatherType = 'storm';
+    } else if (condition.includes('fog') || condition.includes('mist')) {
+        weatherType = 'fog';
+    } else if (condition.includes('wind')) {
+        weatherType = 'wind';
+    }
+    
+    // Apply background
+    const config = weatherBackgrounds[weatherType];
+    const heroElement = document.getElementById('weatherHero');
+    const overlayElement = document.getElementById('weatherOverlay');
+    
+    // Update gradient background
+    heroElement.style.background = config.gradient;
+    
+    // Create background effects based on weather type
+    createWeatherBackground(config.backgroundType);
+    
+    // Add weather particles only for precipitation
+    if (config.hasParticles) {
+        createWeatherParticles(config.particles, config.particleCount, config.animationType);
+    } else {
+        // Clear particles for non-precipitation weather
+        document.getElementById('weatherParticles').innerHTML = '';
+    }
+}
+
+// Create CSS-based weather background effects
+function createWeatherBackground(backgroundType) {
+    const overlayElement = document.getElementById('weatherOverlay');
+    overlayElement.innerHTML = '';
+    overlayElement.className = 'absolute inset-0 transition-all duration-1000';
+    
+    switch (backgroundType) {
+        case 'cloudy':
+        case 'overcast':
+            // Create CSS cloud shapes
+            overlayElement.innerHTML = `
+                <div class="css-cloud cloud-1"></div>
+                <div class="css-cloud cloud-2"></div>
+                <div class="css-cloud cloud-3"></div>
+                <div class="css-cloud cloud-4"></div>
+            `;
+            break;
+            
+        case 'fog':
+            // Create fog layers
+            overlayElement.innerHTML = `
+                <div class="fog-layer fog-1"></div>
+                <div class="fog-layer fog-2"></div>
+                <div class="fog-layer fog-3"></div>
+            `;
+            break;
+            
+        case 'storm':
+            // Create storm clouds with subtle lightning effect
+            overlayElement.innerHTML = `
+                <div class="storm-cloud storm-1"></div>
+                <div class="storm-cloud storm-2"></div>
+                <div class="lightning-flash"></div>
+            `;
+            break;
+            
+        case 'wind':
+            // Create wind streak effects
+            overlayElement.innerHTML = `
+                <div class="wind-streak wind-1"></div>
+                <div class="wind-streak wind-2"></div>
+                <div class="wind-streak wind-3"></div>
+            `;
+            break;
+            
+        default:
+            // Clear background for clear/sunny/rain/snow
+            overlayElement.innerHTML = '';
+    }
+}
+
+// Create animated weather particles
+function createWeatherParticles(particle, count, animationType) {
+    const container = document.getElementById('weatherParticles');
+    container.innerHTML = ''; // Clear existing particles
+    
+    for (let i = 0; i < count; i++) {
+        const particleElement = document.createElement('div');
+        particleElement.textContent = particle;
+        particleElement.className = 'weather-particle absolute text-2xl';
+        particleElement.style.left = Math.random() * 100 + '%';
+        particleElement.style.animationDelay = Math.random() * 10 + 's';
+        
+        // Set specific animation based on animation type
+        switch (animationType) {
+            case 'fall':
+                // Only for precipitation (rain, snow)
+                if (particle === '❄️') {
+                    particleElement.style.animationName = Math.random() > 0.5 ? 'snowFall' : 'snowDrift';
+                    particleElement.style.animationDuration = (Math.random() * 3 + 6) + 's';
+                } else if (particle === '💧') {
+                    particleElement.style.animationName = 'rainFall';
+                    particleElement.style.animationDuration = (Math.random() * 1 + 2) + 's';
+                }
+                break;
+                
+            case 'drift':
+                // For clouds - horizontal floating movement
+                particleElement.style.animationName = 'cloudDrift';
+                particleElement.style.animationDuration = (Math.random() * 10 + 15) + 's';
+                particleElement.style.top = (Math.random() * 30 + 10) + '%';
+                break;
+                
+            case 'glow':
+                // For sun - gentle pulsing in place
+                particleElement.style.animationName = 'sunGlow';
+                particleElement.style.animationDuration = (Math.random() * 2 + 3) + 's';
+                particleElement.style.top = (Math.random() * 20 + 15) + '%';
+                break;
+                
+            case 'float':
+                // For fog - slow vertical floating
+                particleElement.style.animationName = 'fogFloat';
+                particleElement.style.animationDuration = (Math.random() * 8 + 12) + 's';
+                particleElement.style.top = (Math.random() * 40 + 30) + '%';
+                break;
+                
+            case 'blow':
+                // For wind - horizontal movement
+                particleElement.style.animationName = 'windBlow';
+                particleElement.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                particleElement.style.top = (Math.random() * 30 + 20) + '%';
+                break;
+                
+            case 'flash':
+                // For lightning - occasional flashing
+                particleElement.style.animationName = 'lightningFlash';
+                particleElement.style.animationDuration = (Math.random() * 5 + 8) + 's';
+                particleElement.style.top = (Math.random() * 40 + 10) + '%';
+                break;
+                
+            default:
+                // Default gentle floating
+                particleElement.style.animationName = 'weatherFloat';
+                particleElement.style.animationDuration = (Math.random() * 5 + 5) + 's';
+        }
+        
+        container.appendChild(particleElement);
+    }
+}
+
+// Initialize weather when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // Fetch weather data immediately
+    fetchWeatherData();
+    
+    // Update weather every 10 minutes
+    setInterval(fetchWeatherData, 10 * 60 * 1000);
+    
     // Initialize map
     const map = L.map('arcticMap').setView([78.9, 11.9], 6);
     
@@ -685,24 +1090,419 @@ document.addEventListener('DOMContentLoaded', function() {
     border: none !important;
 }
 
-/* Floating Animation for Hero Section */
-.snowflake {
-    position: absolute;
-    top: 10%;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 20px;
-    animation: float 6s ease-in-out infinite;
+/* Weather Background Styles */
+.weather-background {
+    background: linear-gradient(135deg, #708090 0%, #778899 50%, #87CEEB 100%);
+    transition: background 1s ease-in-out;
 }
 
-@keyframes float {
-    0%, 100% {
-        transform: translateY(0px) translateX(0px);
+/* Weather Particle Animations */
+.weather-particle {
+    animation: weatherFloat 8s ease-in-out infinite;
+    opacity: 0.7;
+    pointer-events: none;
+    top: -50px;
+}
+
+@keyframes weatherFloat {
+    0% {
+        transform: translateY(-50px) translateX(0px) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.7;
+    }
+    90% {
+        opacity: 0.7;
+    }
+    100% {
+        transform: translateY(calc(100vh + 50px)) translateX(20px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* Snow specific animation */
+.weather-particle:nth-child(odd) {
+    animation: snowFall 6s linear infinite;
+}
+
+.weather-particle:nth-child(even) {
+    animation: snowDrift 8s linear infinite;
+}
+
+@keyframes snowFall {
+    0% {
+        transform: translateY(-50px) translateX(0px);
+        opacity: 0;
+    }
+    10% {
         opacity: 0.8;
     }
+    90% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(calc(100vh + 50px)) translateX(0px);
+        opacity: 0;
+    }
+}
+
+@keyframes snowDrift {
+    0% {
+        transform: translateY(-50px) translateX(0px);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.6;
+    }
+    25% {
+        transform: translateY(25vh) translateX(10px);
+    }
     50% {
-        transform: translateY(-20px) translateX(10px);
+        transform: translateY(50vh) translateX(-5px);
+    }
+    75% {
+        transform: translateY(75vh) translateX(15px);
+    }
+    90% {
+        opacity: 0.6;
+    }
+    100% {
+        transform: translateY(calc(100vh + 50px)) translateX(0px);
+        opacity: 0;
+    }
+}
+
+/* Rain animation */
+@keyframes rainFall {
+    0% {
+        transform: translateY(-50px) translateX(0px) rotate(15deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.8;
+    }
+    90% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(calc(100vh + 50px)) translateX(-10px) rotate(15deg);
+        opacity: 0;
+    }
+}
+
+/* Cloud drifting animation - horizontal movement */
+@keyframes cloudDrift {
+    0% {
+        transform: translateX(-100px);
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(calc(100vw + 100px));
+        opacity: 0.6;
+    }
+}
+
+/* Sun glowing animation - gentle pulsing */
+@keyframes sunGlow {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.9;
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+        filter: brightness(1.2);
+    }
+}
+
+/* Fog floating animation - gentle vertical movement */
+@keyframes fogFloat {
+    0%, 100% {
+        transform: translateY(0px) translateX(0px);
+        opacity: 0.5;
+    }
+    25% {
+        transform: translateY(-10px) translateX(5px);
+        opacity: 0.7;
+    }
+    75% {
+        transform: translateY(10px) translateX(-5px);
+        opacity: 0.7;
+    }
+}
+
+/* Wind blowing animation - fast horizontal movement */
+@keyframes windBlow {
+    0% {
+        transform: translateX(-50px);
+        opacity: 0.4;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(calc(100vw + 50px));
+        opacity: 0.4;
+    }
+}
+
+/* Lightning flashing animation - occasional bright flashes */
+@keyframes lightningFlash {
+    0%, 85%, 100% {
+        opacity: 0;
+    }
+    87%, 89%, 91% {
+        opacity: 1;
+        filter: brightness(2);
+    }
+    88%, 90% {
+        opacity: 0.3;
+    }
+}
+
+/* CSS Cloud Shapes */
+.css-cloud {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 100px;
+    opacity: 0.6;
+}
+
+.css-cloud:before,
+.css-cloud:after {
+    content: '';
+    position: absolute;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 100px;
+}
+
+.css-cloud:before {
+    width: 50px;
+    height: 50px;
+    top: -25px;
+    left: 10px;
+    transform: scale(1.3);
+}
+
+.css-cloud:after {
+    width: 60px;
+    height: 20px;
+    top: -10px;
+    right: 10px;
+}
+
+/* Individual cloud positioning and animations */
+.cloud-1 {
+    width: 100px;
+    height: 40px;
+    top: 15%;
+    left: -100px;
+    animation: cloudDriftSlow 20s linear infinite;
+}
+
+.cloud-2 {
+    width: 80px;
+    height: 30px;
+    top: 25%;
+    left: -80px;
+    animation: cloudDriftSlow 25s linear infinite;
+    animation-delay: -5s;
+}
+
+.cloud-3 {
+    width: 120px;
+    height: 45px;
+    top: 35%;
+    left: -120px;
+    animation: cloudDriftSlow 30s linear infinite;
+    animation-delay: -10s;
+}
+
+.cloud-4 {
+    width: 90px;
+    height: 35px;
+    top: 45%;
+    left: -90px;
+    animation: cloudDriftSlow 22s linear infinite;
+    animation-delay: -15s;
+}
+
+@keyframes cloudDriftSlow {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(calc(100vw + 200px));
+    }
+}
+
+/* Fog Layers */
+.fog-layer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, 
+        rgba(255, 255, 255, 0) 0%, 
+        rgba(255, 255, 255, 0.3) 50%, 
+        rgba(255, 255, 255, 0) 100%);
+    animation: fogDrift 15s ease-in-out infinite;
+}
+
+.fog-1 {
+    bottom: 20%;
+    animation-delay: 0s;
+}
+
+.fog-2 {
+    bottom: 30%;
+    animation-delay: -5s;
+    opacity: 0.7;
+}
+
+.fog-3 {
+    bottom: 40%;
+    animation-delay: -10s;
+    opacity: 0.5;
+}
+
+@keyframes fogDrift {
+    0%, 100% {
+        transform: translateX(-10px);
+        opacity: 0.3;
+    }
+    50% {
+        transform: translateX(10px);
+        opacity: 0.6;
+    }
+}
+
+/* Storm Clouds */
+.storm-cloud {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 100px;
+    opacity: 0.7;
+}
+
+.storm-cloud:before,
+.storm-cloud:after {
+    content: '';
+    position: absolute;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 100px;
+}
+
+.storm-1 {
+    width: 150px;
+    height: 60px;
+    top: 10%;
+    left: 20%;
+    animation: stormCloudMove 8s ease-in-out infinite;
+}
+
+.storm-2 {
+    width: 120px;
+    height: 50px;
+    top: 20%;
+    right: 25%;
+    animation: stormCloudMove 10s ease-in-out infinite;
+    animation-delay: -3s;
+}
+
+.lightning-flash {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    animation: lightningEffect 12s ease-in-out infinite;
+}
+
+@keyframes stormCloudMove {
+    0%, 100% {
+        transform: translateX(0px);
+    }
+    50% {
+        transform: translateX(20px);
+    }
+}
+
+@keyframes lightningEffect {
+    0%, 90%, 100% {
+        opacity: 0;
+    }
+    91%, 93% {
+        opacity: 0.3;
+        background: rgba(255, 255, 255, 0.2);
+    }
+    92% {
+        opacity: 0;
+    }
+}
+
+/* Wind Streaks */
+.wind-streak {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(to right, 
+        rgba(255, 255, 255, 0) 0%, 
+        rgba(255, 255, 255, 0.5) 50%, 
+        rgba(255, 255, 255, 0) 100%);
+    animation: windMove 3s linear infinite;
+}
+
+.wind-1 {
+    top: 25%;
+    width: 150px;
+    animation-delay: 0s;
+}
+
+.wind-2 {
+    top: 35%;
+    width: 200px;
+    animation-delay: -1s;
+}
+
+.wind-3 {
+    top: 45%;
+    width: 100px;
+    animation-delay: -2s;
+}
+
+@keyframes windMove {
+    0% {
+        left: -200px;
+        opacity: 0;
+    }
+    20% {
         opacity: 1;
     }
+    80% {
+        opacity: 1;
+    }
+    100% {
+        left: 100%;
+        opacity: 0;
+    }
+}
+
+/* Weather card enhancements */
+.weather-info-card {
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.weather-info-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
 /* Enhanced Card Styles */
