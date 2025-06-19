@@ -518,16 +518,16 @@ const weatherBackgrounds = {
         backgroundType: 'clear',
         hasParticles: true,
         particles: '☀️',
-        particleCount: 2,
-        animationType: 'glow'
+        particleCount: 1,
+        animationType: 'sun'
     },
     sunny: {
         gradient: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
         backgroundType: 'sunny',
         hasParticles: true,
         particles: '☀️',
-        particleCount: 3,
-        animationType: 'glow'
+        particleCount: 1,
+        animationType: 'sun'
     },
     cloudy: {
         gradient: 'linear-gradient(135deg, #708090 0%, #778899 50%, #87CEEB 100%)',
@@ -839,6 +839,16 @@ function createWeatherParticles(particle, count, animationType) {
                 particleElement.style.animationName = 'sunGlow';
                 particleElement.style.animationDuration = (Math.random() * 2 + 3) + 's';
                 particleElement.style.top = (Math.random() * 20 + 15) + '%';
+                break;
+                
+            case 'sun':
+                // For realistic sun - single sun positioned in upper sky
+                particleElement.style.animationName = 'sunGlow';
+                particleElement.style.animationDuration = '4s';
+                particleElement.style.top = '15%'; // Fixed position in upper sky
+                particleElement.style.left = '75%'; // Fixed position (upper right)
+                particleElement.style.fontSize = '3rem'; // Larger sun
+                particleElement.style.textShadow = '0 0 20px rgba(255, 215, 0, 0.8)'; // Sun glow effect
                 break;
                 
             case 'float':
@@ -1210,13 +1220,13 @@ document.addEventListener('DOMContentLoaded', function() {
 @keyframes sunGlow {
     0%, 100% {
         transform: scale(1);
-        opacity: 0.9;
-        filter: brightness(1);
+        opacity: 0.95;
+        filter: brightness(1) drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
     }
     50% {
-        transform: scale(1.1);
+        transform: scale(1.05);
         opacity: 1;
-        filter: brightness(1.2);
+        filter: brightness(1.1) drop-shadow(0 0 25px rgba(255, 215, 0, 0.8));
     }
 }
 

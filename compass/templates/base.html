@@ -58,11 +58,72 @@
             padding: 0.5rem 1rem;
             border-radius: 6px;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(135deg, var(--glacier-blue), var(--arctic-blue));
+            transition: width 0.3s ease;
+            z-index: -1;
+            border-radius: 6px;
+        }
+
+        .nav-link:hover::before {
+            width: 100%;
         }
 
         .nav-link:hover {
-            background-color: var(--glacier-blue);
             color: var(--deep-arctic);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(30, 63, 102, 0.15);
+        }
+
+        .nav-link-mobile {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: var(--deep-arctic);
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .nav-link-mobile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            background: linear-gradient(135deg, var(--glacier-blue), var(--arctic-blue));
+            transition: width 0.3s ease;
+            z-index: -1;
+            border-radius: 6px;
+        }
+
+        .nav-link-mobile:hover::before {
+            width: 100%;
+        }
+
+        .nav-link-mobile:hover {
+            color: var(--deep-arctic);
+            transform: translateX(4px);
+            box-shadow: 0 2px 8px rgba(30, 63, 102, 0.15);
+        }
+
+        .mobile-menu {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .page-title {
@@ -76,20 +137,26 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <nav class="arctic-nav fixed w-full z-10">
+    <nav class="arctic-nav fixed w-full z-50">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <a href="/" class="flex items-center space-x-3">
                         <!-- NCPOR Logo -->
                         <img src="{{ url_for('static', filename='images/ncpor_logo.png') }}" alt="NCPOR Logo" class="w-10 h-10 object-contain">
-                        <div class="flex flex-col">
+                        <div class="hidden sm:flex flex-col">
                             <span class="text-sm font-bold text-deep-arctic">National Center for Polar and Ocean Research</span>
                             <span class="text-xs text-gray-600">COMPASS - Arctic Research System</span>
                         </div>
+                        <div class="sm:hidden flex flex-col">
+                            <span class="text-xs font-bold text-deep-arctic">NCPOR</span>
+                            <span class="text-xs text-gray-600">COMPASS</span>
+                        </div>
                     </a>
                 </div>
-                <div class="flex items-center space-x-4">
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-4">
                     {% if current_user.is_authenticated %}
                         <a href="{{ url_for('main.shipment_type_selection') }}" class="nav-link">New Shipment</a>
                         <a href="{{ url_for('main.dashboard') }}" class="nav-link">Dashboard</a>
@@ -102,6 +169,38 @@
                         <a href="{{ url_for('auth.register') }}" class="nav-link">Register</a>
                     {% endif %}
                 </div>
+                
+                <!-- Mobile menu button -->
+                <div class="md:hidden flex items-center">
+                    <button type="button" class="mobile-menu-button inline-flex items-center justify-center p-2 rounded-md text-deep-arctic hover:bg-glacier-blue focus:outline-none focus:ring-2 focus:ring-inset focus:ring-deep-arctic" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <!-- Hamburger icon -->
+                        <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                        <!-- Close icon -->
+                        <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile menu -->
+        <div class="md:hidden hidden mobile-menu" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 bg-white border-t border-gray-200">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('main.shipment_type_selection') }}" class="nav-link-mobile">New Shipment</a>
+                    <a href="{{ url_for('main.dashboard') }}" class="nav-link-mobile">Dashboard</a>
+                    {% if current_user.is_admin() %}
+                        <a href="{{ url_for('main.admin_users') }}" class="nav-link-mobile">👥 Users</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.logout') }}" class="nav-link-mobile">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="nav-link-mobile">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="nav-link-mobile">Register</a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -131,5 +230,55 @@
             </div>
         </div>
     </footer>
+
+    <!-- Mobile Menu JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.querySelector('.mobile-menu-button');
+            const mobileMenu = document.querySelector('.mobile-menu');
+            const hamburgerIcon = mobileMenuButton.querySelector('svg:first-of-type');
+            const closeIcon = mobileMenuButton.querySelector('svg:last-of-type');
+
+            mobileMenuButton.addEventListener('click', function() {
+                const isMenuOpen = !mobileMenu.classList.contains('hidden');
+                
+                if (isMenuOpen) {
+                    // Close menu
+                    mobileMenu.classList.add('hidden');
+                    hamburgerIcon.classList.remove('hidden');
+                    closeIcon.classList.add('hidden');
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                } else {
+                    // Open menu
+                    mobileMenu.classList.remove('hidden');
+                    hamburgerIcon.classList.add('hidden');
+                    closeIcon.classList.remove('hidden');
+                    mobileMenuButton.setAttribute('aria-expanded', 'true');
+                }
+            });
+
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(event) {
+                const isClickInsideNav = mobileMenuButton.contains(event.target) || mobileMenu.contains(event.target);
+                
+                if (!isClickInsideNav && !mobileMenu.classList.contains('hidden')) {
+                    mobileMenu.classList.add('hidden');
+                    hamburgerIcon.classList.remove('hidden');
+                    closeIcon.classList.add('hidden');
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            // Close mobile menu when window is resized to desktop size
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 768) { // md breakpoint
+                    mobileMenu.classList.add('hidden');
+                    hamburgerIcon.classList.remove('hidden');
+                    closeIcon.classList.add('hidden');
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

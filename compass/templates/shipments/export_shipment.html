@@ -161,16 +161,60 @@
                 <!-- Personal Details -->
                 <div class="space-y-4">
                     <h3 class="section-title">Personal Details</h3>
-                    <div>
-                        <label class="input-label">Full Name with Title</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="input-label">Title</label>
+                            <select name="requester_title" 
+                                    id="requesterTitle"
+                                    class="input-field"
+                                    required>
+                                <option value="">Select Title</option>
+                                <option value="Mr." {% if edit_mode and form_data.get('requester_title') == 'Mr.' %}selected{% endif %}>Mr.</option>
+                                <option value="Ms." {% if edit_mode and form_data.get('requester_title') == 'Ms.' %}selected{% endif %}>Ms.</option>
+                                <option value="Mrs." {% if edit_mode and form_data.get('requester_title') == 'Mrs.' %}selected{% endif %}>Mrs.</option>
+                                <option value="Dr." {% if edit_mode and form_data.get('requester_title') == 'Dr.' %}selected{% endif %}>Dr.</option>
+                                <option value="Prof." {% if edit_mode and form_data.get('requester_title') == 'Prof.' %}selected{% endif %}>Prof.</option>
+                                <option value="Other" {% if edit_mode and form_data.get('requester_title') == 'Other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="input-label">Given Name</label>
+                            <input type="text" 
+                                   name="requester_given_name" 
+                                   id="requesterGivenName"
+                                   class="input-field"
+                                   placeholder="As in passport"
+                                   pattern="^[A-Za-z\.\s]+$"
+                                   title="Only letters, periods (.) and spaces are allowed"
+                                   value="{% if edit_mode %}{{ form_data.get('requester_given_name', '') }}{% endif %}"
+                                   required>
+                            <p class="text-xs text-gray-500 mt-1">Write your given name as in your passport (only letters, periods, and spaces)</p>
+                        </div>
+                        <div>
+                            <label class="input-label">Last Name</label>
+                            <input type="text" 
+                                   name="requester_last_name" 
+                                   id="requesterLastName"
+                                   class="input-field"
+                                   placeholder="As in passport"
+                                   pattern="^[A-Za-z\.\s]+$"
+                                   title="Only letters, periods (.) and spaces are allowed"
+                                   value="{% if edit_mode %}{{ form_data.get('requester_last_name', '') }}{% endif %}"
+                                   required>
+                            <p class="text-xs text-gray-500 mt-1">Write your last name as in your passport (only letters, periods, and spaces)</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom Title Input (shown when "Other" is selected) -->
+                    <div id="customTitleSection" class="hidden mt-4">
+                        <label class="input-label">Custom Title</label>
                         <input type="text" 
-                               name="requester_name" 
-                               id="requesterName"
+                               name="requester_custom_title" 
+                               id="requesterCustomTitle"
                                class="input-field"
-                               placeholder="e.g., Dr. John Smith"
-                               value="{% if edit_mode %}{{ form_data.get('requester_name', '') }}{% endif %}"
-                               required>
-                        <p class="text-sm text-gray-500 mt-1">Please include appropriate title (Dr./Mr./Ms./etc.)</p>
+                               placeholder="Enter custom title"
+                               value="{% if edit_mode %}{{ form_data.get('requester_custom_title', '') }}{% endif %}">
+                        <p class="text-xs text-gray-500 mt-1">Please enter your custom title</p>
                     </div>
                 </div>
 
@@ -186,13 +230,13 @@
                                 <input type="radio" 
                                        name="return_type" 
                                        value="RET" 
-                                       class="sr-only" 
+                                       class="sr-only return-type-radio" 
                                        {% if edit_mode and form_data.get('return_type') == 'RET' %}checked{% endif %}
                                        required>
-                                <div class="radio-card arctic-card p-4">
+                                <div class="radio-card arctic-card p-4 {% if edit_mode and form_data.get('return_type') == 'RET' %}selected{% endif %}">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                            <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                        <div class="radio-indicator">
+                                            <div class="radio-dot"></div>
                                         </div>
                                         <div>
                                             <p class="font-semibold text-deep-arctic">Returnable</p>
@@ -205,13 +249,13 @@
                                 <input type="radio" 
                                        name="return_type" 
                                        value="NONRET" 
-                                       class="sr-only" 
+                                       class="sr-only return-type-radio" 
                                        {% if edit_mode and form_data.get('return_type') == 'NONRET' %}checked{% endif %}
                                        required>
-                                <div class="radio-card arctic-card p-4">
+                                <div class="radio-card arctic-card p-4 {% if edit_mode and form_data.get('return_type') == 'NONRET' %}selected{% endif %}">
                                     <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                            <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                        <div class="radio-indicator">
+                                            <div class="radio-dot"></div>
                                         </div>
                                         <div>
                                             <p class="font-semibold text-deep-arctic">Non-Returnable</p>
@@ -270,14 +314,14 @@
                             <input type="radio" 
                                    name="exporter" 
                                    value="ncpor" 
-                                   class="sr-only" 
+                                   class="sr-only exporter-radio" 
                                    id="exporterNcporRadio"
                                    checked
                                    required>
-                            <div class="radio-card arctic-card p-4 h-full">
+                            <div class="radio-card arctic-card p-4 h-full selected">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    <div class="radio-indicator">
+                                        <div class="radio-dot"></div>
                                     </div>
                                     <div>
                                         <p class="font-semibold text-deep-arctic">NCPOR</p>
@@ -292,12 +336,12 @@
                             <input type="radio" 
                                    name="exporter" 
                                    value="other" 
-                                   class="sr-only" 
+                                   class="sr-only exporter-radio" 
                                    id="exporterOtherRadio">
                             <div class="radio-card arctic-card p-4 h-full">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    <div class="radio-indicator">
+                                        <div class="radio-dot"></div>
                                     </div>
                                     <div>
                                         <p class="font-semibold text-deep-arctic">Other Organization</p>
@@ -396,14 +440,14 @@
                             <input type="radio" 
                                    name="consignee" 
                                    value="himadri" 
-                                   class="sr-only" 
+                                   class="sr-only consignee-radio" 
                                    id="consigneeHimadriRadio"
                                    checked
                                    required>
-                            <div class="radio-card arctic-card p-4 h-full">
+                            <div class="radio-card arctic-card p-4 h-full selected">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    <div class="radio-indicator">
+                                        <div class="radio-dot"></div>
                                     </div>
                                     <div>
                                         <p class="font-semibold text-deep-arctic">Himadri</p>
@@ -418,12 +462,12 @@
                             <input type="radio" 
                                    name="consignee" 
                                    value="other" 
-                                   class="sr-only" 
+                                   class="sr-only consignee-radio" 
                                    id="consigneeOtherRadio">
                             <div class="radio-card arctic-card p-4 h-full">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    <div class="radio-indicator">
+                                        <div class="radio-dot"></div>
                                     </div>
                                     <div>
                                         <p class="font-semibold text-deep-arctic">Other Organization</p>
@@ -508,7 +552,8 @@
                                id="totalPackagesInput"
                                class="input-field"
                                min="1"
-                               placeholder="Enter number of packages"
+                               max="10"
+                               placeholder="Enter number of packages (max 10)"
                                required>
                     </div>
 
@@ -528,36 +573,56 @@
                             <!-- Package Type Selection -->
                             <div class="space-y-4 mb-6">
                                 <label class="input-label">Package Type</label>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                                     <label class="cursor-pointer">
                                         <input type="radio" 
                                                name="package_{packageNumber}_type" 
-                                               value="box" 
-                                               class="sr-only" 
+                                               value="cardboard_box" 
+                                               class="sr-only package-type-radio" 
                                                checked>
-                                        <div class="radio-card arctic-card p-4 text-center">
+                                        <div class="package-type-card radio-card arctic-card p-4 selected">
                                             <span class="text-2xl">📦</span>
-                                            <p class="mt-1">Box</p>
+                                            <p class="mt-1">Cardboard Box</p>
                                         </div>
                                     </label>
                                     <label class="cursor-pointer">
                                         <input type="radio" 
                                                name="package_{packageNumber}_type" 
-                                               value="carton" 
-                                               class="sr-only">
-                                        <div class="radio-card arctic-card p-4 text-center">
-                                            <span class="text-2xl">📥</span>
-                                            <p class="mt-1">Carton</p>
+                                               value="plastic_crate" 
+                                               class="sr-only package-type-radio">
+                                        <div class="package-type-card radio-card arctic-card p-4">
+                                            <span class="text-2xl">🗃️</span>
+                                            <p class="mt-1">Plastic Crate</p>
                                         </div>
                                     </label>
                                     <label class="cursor-pointer">
                                         <input type="radio" 
                                                name="package_{packageNumber}_type" 
-                                               value="crate" 
-                                               class="sr-only">
-                                        <div class="radio-card arctic-card p-4 text-center">
+                                               value="metal_trunk" 
+                                               class="sr-only package-type-radio">
+                                        <div class="package-type-card radio-card arctic-card p-4">
                                             <span class="text-2xl">🗳️</span>
-                                            <p class="mt-1">Crate</p>
+                                            <p class="mt-1">Metal Trunk</p>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" 
+                                               name="package_{packageNumber}_type" 
+                                               value="zarges" 
+                                               class="sr-only package-type-radio">
+                                        <div class="package-type-card radio-card arctic-card p-4">
+                                            <span class="text-2xl">🧳</span>
+                                            <p class="mt-1">Zarges</p>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" 
+                                               name="package_{packageNumber}_type" 
+                                               value="pelican_case" 
+                                               class="sr-only">
+                                        <div class="radio-card arctic-card p-4 text-center">
+                                            <span class="text-2xl">💼</span>
+                                            <p class="mt-1">Pelican Case</p>
                                         </div>
                                     </label>
                                     <label class="cursor-pointer">
@@ -932,6 +997,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle total packages input
     totalPackagesInput.addEventListener('change', function() {
         const totalPackages = parseInt(this.value) || 0;
+        if (totalPackages > 10) {
+            alert('Maximum 10 packages allowed. Please enter a value between 1 and 10.');
+            this.value = 10;
+            return;
+        }
         if (totalPackages > 0) {
             packageDetailsContainer.classList.remove('hidden');
             packageSummary.classList.remove('hidden');
@@ -996,6 +1066,96 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial setup
     handleExporterSelection();
     handleConsigneeSelection();
+
+    // Handle custom title selection
+    const requesterTitle = document.getElementById('requesterTitle');
+    const customTitleSection = document.getElementById('customTitleSection');
+    const customTitleInput = document.getElementById('requesterCustomTitle');
+
+    function handleTitleSelection() {
+        if (requesterTitle.value === 'Other') {
+            customTitleSection.classList.remove('hidden');
+            customTitleInput.required = true;
+        } else {
+            customTitleSection.classList.add('hidden');
+            customTitleInput.required = false;
+            customTitleInput.value = '';
+        }
+    }
+
+    requesterTitle.addEventListener('change', handleTitleSelection);
+    handleTitleSelection(); // Initial setup
+
+    // Add real-time validation for given name and last name
+    function validateNameInput(input) {
+        const namePattern = /^[A-Za-z\.\s]*$/;
+        input.addEventListener('input', function() {
+            if (!namePattern.test(this.value)) {
+                this.value = this.value.replace(/[^A-Za-z\.\s]/g, '');
+                this.setCustomValidity('Only letters, periods (.) and spaces are allowed');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+
+    const givenNameInput = document.getElementById('requesterGivenName');
+    const lastNameInput = document.getElementById('requesterLastName');
+    
+    if (givenNameInput) validateNameInput(givenNameInput);
+    if (lastNameInput) validateNameInput(lastNameInput);
+
+    // Handle radio button visual selection for return type
+    const returnTypeRadios = document.querySelectorAll('.return-type-radio');
+    returnTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Remove selected class from all return type radio cards
+            const returnTypeCards = document.querySelectorAll('input[name="return_type"]').forEach(input => {
+                const card = input.nextElementSibling;
+                if (card && card.classList.contains('radio-card')) {
+                    card.classList.remove('selected');
+                }
+            });
+            
+            // Add selected class to the selected radio's card
+            if (this.checked) {
+                const card = this.nextElementSibling;
+                if (card && card.classList.contains('radio-card')) {
+                    card.classList.add('selected');
+                }
+            }
+        });
+    });
+
+    // Handle package type radio button selections
+    function setupPackageTypeRadios() {
+        const packageTypeRadios = document.querySelectorAll('.package-type-radio');
+        packageTypeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Get the package number from the radio name
+                const packageName = this.name; // e.g., "package_1_type"
+                
+                // Remove selected class from all package type cards with the same name
+                document.querySelectorAll(`input[name="${packageName}"]`).forEach(input => {
+                    const card = input.nextElementSibling;
+                    if (card && card.classList.contains('package-type-card')) {
+                        card.classList.remove('selected');
+                    }
+                });
+                
+                // Add selected class to the selected radio's card
+                if (this.checked) {
+                    const card = this.nextElementSibling;
+                    if (card && card.classList.contains('package-type-card')) {
+                        card.classList.add('selected');
+                    }
+                }
+            });
+        });
+    }
+
+    // Initial setup for package type radios
+    setupPackageTypeRadios();
 
     // Form validation
     const form = document.querySelector('form');

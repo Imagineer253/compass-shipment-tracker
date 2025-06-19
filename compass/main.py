@@ -871,26 +871,90 @@ def submit_shipment():
         'coldchain_required': request.form.get('coldchain_required') == 'yes'
     }
 
+    # Build full name from separate fields
+    title = request.form.get('requester_title', '')
+    if title == 'Other':
+        title = request.form.get('requester_custom_title', '')
+    given_name = request.form.get('requester_given_name', '')
+    last_name = request.form.get('requester_last_name', '')
+    
+    # Validate name fields (only letters, periods, and spaces)
+    import re
+    name_pattern = re.compile(r'^[A-Za-z\.\s]+$')
+    
+    if given_name and not name_pattern.match(given_name):
+        flash('Error: Given name can only contain letters, periods (.) and spaces.', 'error')
+        return redirect(url_for('main.shipment_type_selection'))
+        
+    if last_name and not name_pattern.match(last_name):
+        flash('Error: Last name can only contain letters, periods (.) and spaces.', 'error')
+        return redirect(url_for('main.shipment_type_selection'))
+    
+    # Additional validation for cold shipment consignee names
+    if data['shipment_type'] == 'cold':
+        # Validate NCPOR consignee names
+        ncpor_given_name = request.form.get('ncpor_consignee_given_name', '')
+        ncpor_last_name = request.form.get('ncpor_consignee_last_name', '')
+        
+        if ncpor_given_name and not name_pattern.match(ncpor_given_name):
+            flash('Error: NCPOR consignee given name can only contain letters, periods (.) and spaces.', 'error')
+            return redirect(url_for('main.cold_shipment'))
+            
+        if ncpor_last_name and not name_pattern.match(ncpor_last_name):
+            flash('Error: NCPOR consignee last name can only contain letters, periods (.) and spaces.', 'error')
+            return redirect(url_for('main.cold_shipment'))
+        
+        # Validate other consignee names
+        other_given_name = request.form.get('other_consignee_given_name', '')
+        other_last_name = request.form.get('other_consignee_last_name', '')
+        
+        if other_given_name and not name_pattern.match(other_given_name):
+            flash('Error: Other consignee given name can only contain letters, periods (.) and spaces.', 'error')
+            return redirect(url_for('main.cold_shipment'))
+            
+        if other_last_name and not name_pattern.match(other_last_name):
+            flash('Error: Other consignee last name can only contain letters, periods (.) and spaces.', 'error')
+            return redirect(url_for('main.cold_shipment'))
+    
+    full_name = f"{title} {given_name} {last_name}".strip()
+    
+    # Update data with the combined name
+    data['requester_name'] = full_name
+    
     # Generate invoice number based on shipment type
-    first_name = data['requester_name'].strip().split()[1] if len(data['requester_name'].strip().split()) > 1 else data['requester_name'].strip().split()[0]
-    first_name = first_name.upper()
+    last_name_upper = last_name.upper() if last_name else 'LASTNAME'
     year = data['expedition_year']
     month = data['expedition_month']
     
     if data['shipment_type'] == 'export':
-        invoice_number = f"NCPOR/ARC/{year}/{month}/{data['return_type']}/{first_name}"
+        invoice_number = f"NCPOR/ARC/{year}/{month}/{data['return_type']}/{last_name_upper}"
     elif data['shipment_type'] == 'import':
-        invoice_number = f"NCPOR/IMP/{year}/{month}/{data['return_type']}/{first_name}"
+        invoice_number = f"NCPOR/IMP/{year}/{month}/{data['return_type']}/{last_name_upper}"
     elif data['shipment_type'] == 'reimport':
-        invoice_number = f"NCPOR/REIMP/{year}/{month}/{data['return_type']}/{first_name}"
+        invoice_number = f"NCPOR/REIMP/{year}/{month}/{data['return_type']}/{last_name_upper}"
     elif data['shipment_type'] == 'cold':
-        invoice_number = f"NCPOR/COLD/{year}/{month}/{first_name}"
+        invoice_number = f"NCPOR/COLD/{year}/{month}/{last_name_upper}"
     else:
-        invoice_number = f"NCPOR/UNKNOWN/{year}/{month}/{first_name}"
+        invoice_number = f"NCPOR/UNKNOWN/{year}/{month}/{last_name_upper}"
     
     try:
         # Get form data
         form_data = request.form.to_dict()
+        
+        # Validate package limit
+        total_packages = int(form_data.get('total_packages', 0))
+        if total_packages > 10:
+            flash('Error: Maximum 10 packages allowed per shipment.', 'error')
+            # Redirect back to the appropriate shipment form based on type
+            if data['shipment_type'] == 'export':
+                return redirect(url_for('main.export_shipment'))
+            elif data['shipment_type'] == 'import':
+                return redirect(url_for('main.import_shipment'))
+            elif data['shipment_type'] == 'reimport':
+                return redirect(url_for('main.reimport_shipment'))
+            elif data['shipment_type'] == 'cold':
+                return redirect(url_for('main.cold_shipment'))
+            return redirect(url_for('main.shipment_type_selection'))
         
         # Ensure batch number is always uppercase
         batch_number = form_data.get('batch_number', '').upper()
@@ -1180,13 +1244,31 @@ def admin_create_user():
     """Admin endpoint to create new users"""
     email = request.form.get('email')
     password = request.form.get('password')
+    
+    # Get name fields
+    title = request.form.get('title', '')
+    if title == 'Other':
+        title = request.form.get('custom_title', '')
     first_name = request.form.get('first_name')
     last_name = request.form.get('last_name')
+    
+    # Validate name fields (only letters, periods, and spaces)
+    import re
+    name_pattern = re.compile(r'^[A-Za-z\.\s]+$')
+    
+    if first_name and not name_pattern.match(first_name):
+        flash('Error: Given name can only contain letters, periods (.) and spaces.', 'error')
+        return redirect(url_for('main.admin_users'))
+        
+    if last_name and not name_pattern.match(last_name):
+        flash('Error: Last name can only contain letters, periods (.) and spaces.', 'error')
+        return redirect(url_for('main.admin_users'))
+    
     phone = request.form.get('phone')
     organization = request.form.get('organization')
     role_ids = request.form.getlist('roles')
 
-    if not all([email, password, first_name, last_name, phone, organization]):
+    if not all([email, password, title, first_name, last_name, phone, organization]):
         flash('All fields are required', 'error')
         return redirect(url_for('main.admin_users'))
 
@@ -1194,7 +1276,8 @@ def admin_create_user():
         flash('Email already registered', 'error')
         return redirect(url_for('main.admin_users'))
 
-    # Create new user
+    # Create new user with full name combining title and names
+    display_name = f"{title} {first_name} {last_name}".strip()
     new_user = User(
         email=email,
         password=generate_password_hash(password),
@@ -1282,6 +1365,18 @@ def admin_update_user(user_id):
     organization = request.form.get('organization')
     new_password = request.form.get('new_password')
     role_ids = request.form.getlist('roles')
+
+    # Validate name fields (only letters, periods, and spaces)
+    import re
+    name_pattern = re.compile(r'^[A-Za-z\.\s]+$')
+    
+    if first_name and not name_pattern.match(first_name):
+        flash('Error: Given name can only contain letters, periods (.) and spaces.', 'error')
+        return redirect(url_for('main.admin_edit_user', user_id=user_id))
+        
+    if last_name and not name_pattern.match(last_name):
+        flash('Error: Last name can only contain letters, periods (.) and spaces.', 'error')
+        return redirect(url_for('main.admin_edit_user', user_id=user_id))
 
     # Validate required fields
     if not all([email, first_name, last_name, phone, organization]):

@@ -42,6 +42,9 @@ instance/
 *.sqlite
 *.sqlite3
 
+# Allow the main compass database
+!instance/compass.db
+
 # IDE
 .vscode/
 .idea/

@@ -25,17 +25,55 @@
         <!-- Create User Form (Hidden by default) -->
         <div id="createUserForm" class="hidden mb-8 p-6 bg-gray-50 rounded-lg">
             <h3 class="text-xl font-bold text-deep-arctic mb-4">Create New User</h3>
-            <form method="POST" action="{{ url_for('main.admin_create_user') }}" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                    <input type="text" name="first_name" required
-                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic">
+            <form method="POST" action="{{ url_for('main.admin_create_user') }}" class="grid grid-cols-1 gap-4">
+                <!-- Name Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <select name="title" id="userTitle" required
+                                class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic">
+                            <option value="">Select Title</option>
+                            <option value="Mr.">Mr.</option>
+                            <option value="Ms.">Ms.</option>
+                            <option value="Mrs.">Mrs.</option>
+                            <option value="Dr.">Dr.</option>
+                            <option value="Prof.">Prof.</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Given Name</label>
+                        <input type="text" name="first_name" required
+                               id="userGivenName"
+                               class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic"
+                               placeholder="As in passport"
+                               pattern="^[A-Za-z\.\s]+$"
+                               title="Only letters, periods (.) and spaces are allowed">
+                        <p class="text-xs text-gray-500 mt-1">Write your given name as in your passport (only letters, periods, and spaces)</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                        <input type="text" name="last_name" required
+                               id="userLastName"
+                               class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic"
+                               placeholder="As in passport"
+                               pattern="^[A-Za-z\.\s]+$"
+                               title="Only letters, periods (.) and spaces are allowed">
+                        <p class="text-xs text-gray-500 mt-1">Write your last name as in your passport (only letters, periods, and spaces)</p>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                    <input type="text" name="last_name" required
-                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic">
+                
+                <!-- Custom Title Input (shown when "Other" is selected) -->
+                <div id="customUserTitleSection" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Custom Title</label>
+                    <input type="text" name="custom_title" id="userCustomTitle"
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:border-deep-arctic focus:ring-2 focus:ring-deep-arctic"
+                           placeholder="Enter custom title">
+                    <p class="text-xs text-gray-500 mt-1">Please enter your custom title</p>
                 </div>
+                
+                <!-- Other Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input type="email" name="email" required
@@ -195,5 +233,47 @@ function handleAdminSelection(adminCheckbox) {
         });
     }
 }
+
+// Handle custom title selection for user creation
+document.addEventListener('DOMContentLoaded', function() {
+    const userTitle = document.getElementById('userTitle');
+    const customUserTitleSection = document.getElementById('customUserTitleSection');
+    const userCustomTitle = document.getElementById('userCustomTitle');
+
+    function handleUserTitleSelection() {
+        if (userTitle.value === 'Other') {
+            customUserTitleSection.classList.remove('hidden');
+            userCustomTitle.required = true;
+        } else {
+            customUserTitleSection.classList.add('hidden');
+            userCustomTitle.required = false;
+            userCustomTitle.value = '';
+        }
+    }
+
+    if (userTitle) {
+        userTitle.addEventListener('change', handleUserTitleSelection);
+        handleUserTitleSelection(); // Initial setup
+    }
+
+    // Add real-time validation for given name and last name
+    function validateNameInput(input) {
+        const namePattern = /^[A-Za-z\.\s]*$/;
+        input.addEventListener('input', function() {
+            if (!namePattern.test(this.value)) {
+                this.value = this.value.replace(/[^A-Za-z\.\s]/g, '');
+                this.setCustomValidity('Only letters, periods (.) and spaces are allowed');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+
+    const userGivenName = document.getElementById('userGivenName');
+    const userLastName = document.getElementById('userLastName');
+    
+    if (userGivenName) validateNameInput(userGivenName);
+    if (userLastName) validateNameInput(userLastName);
+});
 </script>
 {% endblock %} 
