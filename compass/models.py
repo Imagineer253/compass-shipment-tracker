@@ -1,5 +1,7 @@
 from flask_login import UserMixin
 from datetime import datetime
+import secrets
+import string
 from . import db
 
 # Association table for many-to-many relationship between users and roles
@@ -17,12 +19,25 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(20), nullable=True)
     organization = db.Column(db.String(100), nullable=True)
+    unique_id = db.Column(db.String(6), unique=True, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     
     # Relationships
     roles = db.relationship('Role', secondary=user_roles, back_populates='users')
+    
+    @staticmethod
+    def generate_unique_id():
+        """Generate a unique 6-character alphanumeric ID"""
+        while True:
+            # Generate a 6-character ID using letters and numbers
+            chars = string.ascii_uppercase + string.digits
+            unique_id = ''.join(secrets.choice(chars) for _ in range(6))
+            
+            # Check if this ID already exists
+            if not User.query.filter_by(unique_id=unique_id).first():
+                return unique_id
     
     def has_role(self, role_name):
         """Check if user has a specific role"""
@@ -59,6 +74,7 @@ class Shipment(db.Model):
     """Shipment model to track shipments created by users"""
     id = db.Column(db.Integer, primary_key=True)
     invoice_number = db.Column(db.String(100), nullable=False)
+    serial_number = db.Column(db.String(10), nullable=False)  # 4-digit serial number
     shipment_type = db.Column(db.String(50), nullable=False)  # export, import, reimport, cold
     status = db.Column(db.String(50), default='Submitted')  # Submitted, Acknowledged, Document_Generated, Delivered, Failed, Needs_Changes, Combined
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -115,6 +131,24 @@ class CombinedShipmentCounter(db.Model):
         
         db.session.commit()
         return counter_record.counter
+
+class ShipmentSerialCounter(db.Model):
+    """Model to track unique shipment serial numbers"""
+    id = db.Column(db.Integer, primary_key=True)
+    counter = db.Column(db.Integer, default=0, nullable=False)
+    
+    @classmethod
+    def get_next_serial(cls):
+        """Get the next unique shipment serial number (4-digit format)"""
+        counter_record = cls.query.first()
+        if not counter_record:
+            counter_record = cls(counter=1)
+            db.session.add(counter_record)
+        else:
+            counter_record.counter += 1
+        
+        db.session.commit()
+        return f"{counter_record.counter:04d}"  # Returns 4-digit format like 0001, 0002, etc.
 
 class SigningAuthority(db.Model):
     """Model to store signing authority details for documents"""

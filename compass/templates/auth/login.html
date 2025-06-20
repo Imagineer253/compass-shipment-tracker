@@ -35,88 +35,88 @@
         <!-- Login Card -->
         <div class="arctic-card p-8 shadow-2xl border-2 border-white/20">
             <!-- Flash Messages -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
                         <div class="mb-4 p-4 rounded-lg {% if category == 'success' %}bg-green-50 border border-green-200{% elif category == 'danger' or category == 'error' %}bg-red-50 border border-red-200{% else %}bg-blue-50 border border-blue-200{% endif %}">
                             <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    {% if category == 'success' %}
+                            <div class="flex-shrink-0">
+                                {% if category == 'success' %}
                                         <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                        </svg>
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
                                     {% elif category == 'danger' or category == 'error' %}
                                         <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-                                        </svg>
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    </svg>
                                     {% else %}
                                         <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                                         </svg>
-                                    {% endif %}
-                                </div>
-                                <div class="ml-3">
+                                {% endif %}
+                            </div>
+                            <div class="ml-3">
                                     <p class="text-sm font-medium {% if category == 'success' %}text-green-800{% elif category == 'danger' or category == 'error' %}text-red-800{% else %}text-blue-800{% endif %}">
-                                        {{ message }}
-                                    </p>
-                                </div>
+                                    {{ message }}
+                                </p>
                             </div>
                         </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
             <!-- Login Form -->
             <form class="space-y-6" action="{{ url_for('auth.login') }}" method="POST">
                 <div class="space-y-4">
                     <!-- Email Field -->
-                    <div>
+                <div>
                         <label for="email" class="block text-sm font-medium text-deep-arctic mb-2">
                             📧 Email Address
                         </label>
                         <input id="email" name="email" type="email" required 
                                class="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-deep-arctic focus:border-deep-arctic focus:z-10 sm:text-sm transition-all duration-300 hover:border-deep-arctic" 
                                placeholder="Enter your email address">
-                    </div>
+                </div>
                     
                     <!-- Password Field -->
-                    <div>
+                <div>
                         <label for="password" class="block text-sm font-medium text-deep-arctic mb-2">
                             🔒 Password
                         </label>
-                        <input id="password" name="password" type="password" required 
+                    <input id="password" name="password" type="password" required 
                                class="appearance-none relative block w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-2 focus:ring-deep-arctic focus:border-deep-arctic focus:z-10 sm:text-sm transition-all duration-300 hover:border-deep-arctic" 
                                placeholder="Enter your password">
-                    </div>
                 </div>
+            </div>
 
                 <!-- Remember Me and Forgot Password -->
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <input id="remember" name="remember" type="checkbox" 
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <input id="remember" name="remember" type="checkbox" 
                                class="h-4 w-4 text-deep-arctic focus:ring-deep-arctic border-gray-300 rounded">
                         <label for="remember" class="ml-2 block text-sm text-gray-700">
-                            Remember me
-                        </label>
-                    </div>
+                        Remember me
+                    </label>
+                </div>
 
-                    <div class="text-sm">
+                <div class="text-sm">
                         <a href="{{ url_for('auth.forgot_password') }}" 
                            class="font-medium text-deep-arctic hover:text-blue-700 transition-colors duration-200">
                             Forgot password?
-                        </a>
-                    </div>
+                    </a>
                 </div>
+            </div>
 
                 <!-- Login Button -->
-                <div>
-                    <button type="submit" 
+            <div>
+                <button type="submit" 
                             class="arctic-button w-full flex justify-center items-center py-3 px-4 text-lg font-medium rounded-lg hover:transform hover:-translate-y-1 transition-all duration-300 shadow-lg">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
                         </svg>
                         Sign In to COMPASS
-                    </button>
+                </button>
                 </div>
             </form>
             

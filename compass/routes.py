@@ -598,31 +598,10 @@ def submit_shipment():
                 return parts[1].upper()  # Take second word as first name
             return parts[0].upper()  # If only one word, use that
 
-        # Build full name from separate fields
-        title = form_data.get('requester_title', '')
-        if title == 'Other':
-            title = form_data.get('requester_custom_title', '')
-        given_name = form_data.get('requester_given_name', '')
-        last_name = form_data.get('requester_last_name', '')
-        
-        # Validate name fields (only letters, periods, and spaces)
-        import re
-        name_pattern = re.compile(r'^[A-Za-z\.\s]+$')
-        
-        if given_name and not name_pattern.match(given_name):
-            flash('Error: Given name can only contain letters, periods (.) and spaces.', 'error')
-            return redirect(url_for('main.new_shipment'))
-            
-        if last_name and not name_pattern.match(last_name):
-            flash('Error: Last name can only contain letters, periods (.) and spaces.', 'error')
-            return redirect(url_for('main.new_shipment'))
-        
-        full_name = f"{title} {given_name} {last_name}".strip()
-        
         # Prepare context for template rendering
         context = {
             # Invoice Number Generation
-            'invoice_no': f"NCPOR/ARC/{form_data.get('expedition_year', '')}/{form_data.get('return_type', '')}/{form_data.get('batch_number', '')}/{last_name.upper() if last_name else 'LASTNAME'}",
+            'invoice_no': f"NCPOR/ARC/{form_data.get('expedition_year', '')}/{form_data.get('return_type', '')}/{form_data.get('batch_number', '')}/{form_data.get('requester_name', '').split()[1].upper() if len(form_data.get('requester_name', '').split()) > 1 else form_data.get('requester_name', '').split()[0].upper() if form_data.get('requester_name', '') else 'FIRSTNAME'}",
             
             # Current Date
             'invoice_date': datetime.now().strftime('%d-%m-%Y'),
@@ -645,7 +624,7 @@ def submit_shipment():
             # Shipment Details
             'destination_country': form_data.get('destination_country', 'NORWAY'),
             'airport_of_loading': form_data.get('airport_loading', 'MUMBAI'),
-            'requester_name': full_name,
+            'requester_name': form_data.get('requester_name', ''),
             'expedition_year': form_data.get('expedition_year', ''),
             'batch_number': form_data.get('batch_number', ''),
             'return_type': form_data.get('return_type', ''),
@@ -729,31 +708,10 @@ def submit_import_shipment():
         # Load the template with docxtpl for initial replacements
         tpl = DocxTemplate(template_path)
 
-        # Build full name from separate fields for import
-        import_title = form_data.get('requester_title', '')
-        if import_title == 'Other':
-            import_title = form_data.get('requester_custom_title', '')
-        import_given_name = form_data.get('requester_given_name', '')
-        import_last_name = form_data.get('requester_last_name', '')
-        
-        # Validate name fields (only letters, periods, and spaces)
-        import re
-        name_pattern = re.compile(r'^[A-Za-z\.\s]+$')
-        
-        if import_given_name and not name_pattern.match(import_given_name):
-            flash('Error: Given name can only contain letters, periods (.) and spaces.', 'error')
-            return redirect(url_for('main.index'))
-            
-        if import_last_name and not name_pattern.match(import_last_name):
-            flash('Error: Last name can only contain letters, periods (.) and spaces.', 'error')
-            return redirect(url_for('main.index'))
-        
-        import_full_name = f"{import_title} {import_given_name} {import_last_name}".strip()
-        
         # Prepare context for template rendering
         context = {
             # Invoice Number Generation
-            'invoice_no': f"NCPOR/IMP/{form_data.get('expedition_year', '')}/{form_data.get('import_purpose', 'RESEARCH')}/{form_data.get('batch_number', '')}/{import_last_name.upper() if import_last_name else 'LASTNAME'}",
+            'invoice_no': f"NCPOR/IMP/{form_data.get('expedition_year', '')}/{form_data.get('import_purpose', 'RESEARCH')}/{form_data.get('batch_number', '')}/{form_data.get('requester_name', '').split()[1].upper() if len(form_data.get('requester_name', '').split()) > 1 else form_data.get('requester_name', '').split()[0].upper() if form_data.get('requester_name', '') else 'FIRSTNAME'}",
             
             # Current Date
             'invoice_date': datetime.now().strftime('%d-%m-%Y'),
@@ -783,7 +741,7 @@ def submit_import_shipment():
             # Import Details
             'destination_country': 'INDIA',
             'airport_of_loading': form_data.get('import_mode', 'AIR').upper(),
-            'requester_name': import_full_name,
+            'requester_name': form_data.get('requester_name', ''),
             'expedition_year': form_data.get('expedition_year', ''),
             'batch_number': form_data.get('batch_number', ''),
             'import_purpose': form_data.get('import_purpose', 'RESEARCH'),

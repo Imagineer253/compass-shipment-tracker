@@ -2,118 +2,209 @@
 
 ## Clean Architecture Overview
 
-The COMPASS shipment management system has been restructured with a **clean separation of concerns** for better maintainability and organization.
+The COMPASS shipment management system follows a **clean separation of concerns** with no duplicate files or backup clutter.
 
 ## Directory Structure
 
 ```
 COMPASS/
-├── compass/
-│   ├── static/
-│   │   ├── css/                    # Dedicated CSS files (legacy, now embedded)
-│   │   │   ├── export_shipment.css # Export form styling (now inline)
-│   │   │   ├── import_shipment.css # Import form styling (future)
-│   │   │   └── cold_shipment.css   # Cold shipment styling (future)
-│   │   ├── js/                     # Dedicated JavaScript files (legacy, now embedded)
-│   │   │   ├── export_shipment.js  # Export form functionality (now inline)
-│   │   │   ├── import_shipment.js  # Import form functionality (future)
-│   │   │   └── cold_shipment.js    # Cold shipment functionality (future)
-│   │   └── images/                 # Static images
-│   ├── templates/
-│   │   ├── base.html               # Base template with Arctic theme
-│   │   ├── shipments/              # Shipment templates with embedded CSS/JS
-│   │   │   ├── export_shipment.html    # Working export form (embedded style)
-│   │   │   ├── import_shipment.html    # Import form (embedded style)
-│   │   │   ├── cold_shipment.html      # Cold shipment form
-│   │   │   └── type_selection.html     # Shipment type selection
-│   │   ├── dashboard/              # Dashboard templates
-│   │   │   ├── admin_dashboard.html    # Admin interface
-│   │   │   └── user_dashboard.html     # User interface
-│   │   └── admin/                  # Admin specific templates
-│   ├── models.py                   # Database models
-│   ├── main.py                     # Route handlers with package type mapping
-│   └── __init__.py                 # Flask app initialization
-├── templates for reference/        # Original reference templates
-├── requirements.txt               # Python dependencies
-└── app.py                        # Application entry point
+├── app.py                      # Application entry point
+├── requirements.txt            # Python dependencies
+├── .gitignore                  # Git ignore rules (enhanced to prevent duplicates)
+├── PROJECT_STRUCTURE.md        # This file
+├── MIGRATION_INSTRUCTIONS.md   # Database migration guide
+├── UNIQUE_ID_IMPLEMENTATION.md # Unique ID feature documentation
+├── template_setup_instructions.md # Template setup guide
+├── compass/                    # Main application package
+│   ├── __init__.py            # Flask app initialization
+│   ├── config.py              # Configuration settings
+│   ├── models.py              # Database models
+│   ├── auth.py                # Authentication blueprint
+│   ├── main.py                # Main routes blueprint
+│   ├── static/                # Static assets
+│   │   ├── css/               # Stylesheets
+│   │   │   ├── style.css      # Main stylesheet
+│   │   │   └── export_shipment.css # Export form styles
+│   │   ├── js/                # JavaScript files
+│   │   │   └── export_shipment.js # Export form functionality
+│   │   └── images/            # Static images
+│   │       ├── logo.svg       # COMPASS logo
+│   │       └── ncpor_logo.png # NCPOR logo
+│   └── templates/             # Jinja2 templates
+│       ├── base.html          # Base template with Arctic theme
+│       ├── index.html         # Home page
+│       ├── landing_new.html   # Interactive landing page
+│       ├── dashboard.html     # General dashboard
+│       ├── auth/              # Authentication templates
+│       │   ├── login.html     # Login form
+│       │   ├── signup.html    # Registration form
+│       │   ├── profile.html   # User profile
+│       │   ├── register.html  # Registration page
+│       │   ├── forgot_password.html # Password reset
+│       │   └── verify_otp.html # OTP verification
+│       ├── dashboard/         # Dashboard templates
+│       │   ├── admin_dashboard.html # Admin interface
+│       │   └── user_dashboard.html  # User interface
+│       ├── admin/             # Admin-specific templates
+│       │   ├── users.html     # User management
+│       │   ├── edit_user.html # User editing
+│       │   ├── combine_form.html # Shipment combining
+│       │   ├── signing_authorities.html # Authority management
+│       │   └── edit_signing_authority.html # Authority editing
+│       ├── shipments/         # Shipment templates
+│       │   ├── type_selection.html # Shipment type selector
+│       │   ├── export_shipment.html # Export form (user)
+│       │   ├── admin_export_shipment.html # Export form (admin)
+│       │   ├── import_shipment.html # Import form
+│       │   ├── reimport_shipment.html # Reimport form
+│       │   ├── cold_shipment.html # Cold storage form
+│       │   ├── list.html      # Shipment listing
+│       │   ├── dashboard.html # Shipment dashboard
+│       │   └── tracking.html  # Shipment tracking
+│       └── documents/         # Document templates
+│           └── cold_shipment/ # Cold shipment documents
+├── migrations/                # Flask-Migrate database migrations
+│   ├── alembic.ini           # Alembic configuration
+│   ├── env.py                # Migration environment
+│   ├── script.py.mako        # Migration script template
+│   └── versions/             # Migration versions
+│       ├── 5cb52fc6d689_initial_migration.py
+│       ├── 2c9791241c6b_add_unique_id_field_to_users.py
+│       ├── 4af799bc00db_add_pi_id_to_users_and_create_.py
+│       ├── 886326e13fe2_add_serial_number_to_shipments.py
+│       └── dc9a2244290f_make_pi_id_required_and_add_unique_.py
+├── scripts/                  # Utility scripts
+│   ├── check_db.py          # Database verification
+│   ├── create_tables.py     # Table creation
+│   ├── setup_admin.py       # Admin user setup
+│   ├── setup_main_admin.py  # Main admin setup
+│   ├── setup_signing_authorities.py # Authority setup
+│   ├── test_login.py        # Login testing
+│   ├── update_base_template.py # Template updates
+│   ├── update_landing_layout.ps1 # Layout updates
+│   └── legacy_migrations/   # Old migration files
+├── templates/               # Document templates
+│   ├── export_custom_docs.docx # Custom export template
+│   └── invoice_packinglist.docx # Invoice template
+├── instance/               # Instance-specific files (ignored)
+└── venv/                  # Virtual environment (ignored)
 ```
 
-## Key Improvements
+## Key Features
 
-### 1. **Embedded CSS and JavaScript** (Current Working Solution)
-- **Architecture**: CSS and JavaScript are embedded directly in HTML templates
-- **Reason**: Tailwind CSS peer utilities require processing with HTML for radio button functionality
-- **Benefits**: 
-  - Functional radio button interactions
-  - Proper Arctic theme color application
-  - Working invoice number generation
-  - Functional dynamic form generation
+### 1. **Unique ID System** ✅
+- 6-character alphanumeric IDs for all users
+- Cryptographically secure generation
+- Integrated into invoice number format
+- Examples: `C9O0MU`, `QKSQOM`, `0EFJJE`
 
-### 2. **Standardized Package Types**
-- **New Package Types**: 
-  1. Cardboard Box (📦)
-  2. Plastic Crate (🗃️)
-  3. Metal Trunk (🗳️)
-  4. Zarges (🧳)
-  5. Pelican Case (💼)
-  6. Other (📝)
-- **Backend Support**: `get_package_type_display_name()` function converts codes to display names
-- **Legacy Compatibility**: Maintains backward compatibility with old package type values
+### 2. **Serial Number System** ✅
+- 4-digit sequential serial numbers (`0001`, `0002`, etc.)
+- Automatic assignment per shipment
+- Proper handling of existing data
 
-### 3. **Arctic Theme Integration**
-- **Color Variables**: Proper CSS variable system for Arctic colors
-- **Visual Feedback**: Working radio button selections with visual indicators
-- **Consistent Styling**: Unified Arctic theme across all components
+### 3. **Invoice Number Generation** ✅
+Current format: `NCPOR/ARC/YYYY/MMM/EXP/TYPE/UNIQUE_ID/SERIAL`
 
-### 4. **Simplified Backend**
-- **Package Type Mapping**: Centralized function for package type display names
-- **Removed Edit Functionality**: Clean CRUD operations without complex edit logic
-- **Streamlined Document Generation**: Improved document creation with proper package type display
-- **User Workflow**: Users create new shipments instead of editing existing ones for changes
+**Formats by Type:**
+- **Export**: `NCPOR/ARC/2025/JUN/EXP/RET/C9O0MU/0001`
+- **Import**: `NCPOR/IMP/2025/JUN/RET/C9O0MU/0001`
+- **Reimport**: `NCPOR/REIMP/2025/JUN/RET/C9O0MU/0001`
+- **Cold**: `NCPOR/COLD/2025/JUN/C9O0MU/0001`
 
-### Package Type System
-COMPASS now supports 6 standardized package types:
+### 4. **Package Type System**
+Standardized package types with emoji icons:
 - 📦 Cardboard Box
-- 🗃️ Plastic Crate  
+- 🗃️ Plastic Crate
 - 🗳️ Metal Trunk
 - 🧳 Zarges
 - 💼 Pelican Case
 - 📝 Other
 
-The `get_package_type_display_name()` function handles conversion and legacy compatibility.
+### 5. **Document Generation**
+- **Invoice & Packing List** (`invoice_packinglist.docx`)
+- **Custom Documents** (`export_custom_docs.docx`)
+- Real-time preview with proper formatting
+- Arctic-themed professional templates
 
-### Document Generation System
-COMPASS supports two document types:
-- **Invoice & Packing List** (`invoice_packinglist.docx`) - For basic shipping needs
-- **Custom Documents** (`export_custom_docs.docx`) - For full customs clearance documentation
+### 6. **User Management**
+- Role-based access control (Admin, Project Incharge, Field Personnel)
+- User registration with email verification
+- Profile management
+- Admin user management interface
 
-Both admin and user dashboards offer separate buttons for each document type.
+### 7. **Shipment Management**
+- Multiple shipment types (Export, Import, Reimport, Cold)
+- Status tracking and updates
+- Admin acknowledgment system
+- Combined shipment functionality
+- Real-time invoice preview
 
-### Combined Shipment System
-COMPASS allows admins to combine multiple shipments of the same type and expedition year:
+## Database Models
 
-#### Invoice Number Format
-- **Export**: `NCPOR/ARC/{year}/COMBINED/{batch}/Combined/{number}`
-- **Import/Reimport**: `NCPOR/IMP/{year}/RESEARCH/{batch}/Combined/{number}`  
-- **Cold**: `NCPOR/COLD/{year}/{batch}/Combined/{number}`
+### Core Models:
+- **User**: Authentication and user data with unique IDs
+- **Role**: Role-based permissions
+- **Shipment**: Shipment tracking with serial numbers
+- **SigningAuthority**: Document signing authorities
+- **ShipmentSerialCounter**: Serial number tracking
+- **CombinedShipmentCounter**: Combined shipment numbering
 
-#### Combine Form Features
-- **Editable Fields**: All shipment and item details are fully editable
-- **Requester Mapping**: Original requester names populate item-level "Attn" fields
-- **Dynamic Calculations**: Total values update automatically when quantity/unit value changes
-- **Real-time Validation**: Form validates all required fields with visual feedback
-- **Original Tracking**: Combined shipments reference parent shipment IDs
+## API Endpoints
 
-#### Workflow
-1. Admin selects multiple compatible shipments
-2. System generates unique combined invoice number using sequential counter
-3. Combine form displays all items with original requester names pre-populated
-4. Admin can edit any field including descriptions, quantities, values
-5. System validates all required fields before document generation
-6. Original shipments marked as "Combined"
+### Key APIs:
+- `/api/generate-invoice-preview` - Real-time invoice number generation
+- `/admin/*` - Admin management routes
+- `/auth/*` - Authentication routes
+- `/shipment/*` - Shipment management routes
 
-The system maintains full traceability between combined and original shipments.
+## Clean Code Principles
 
-## File-by-File Details
+### ✅ **No Duplicates Policy**
+- All backup and duplicate files removed
+- Enhanced `.gitignore` to prevent future duplicates
+- Single source of truth for all components
 
-### HTML Templates (`
+### ✅ **Organized Structure**
+- Clear separation of concerns
+- Consistent naming conventions
+- Logical file organization
+
+### ✅ **Production Ready**
+- No test files in production
+- Clean template structure
+- Proper error handling
+
+## Development Guidelines
+
+### File Organization:
+1. **No backup files** - Use version control instead
+2. **No test files in root** - Keep in separate test directory
+3. **Consistent naming** - Follow Python/Flask conventions
+4. **Clean templates** - No backup or reference templates
+
+### Naming Conventions:
+- **Python files**: `snake_case.py`
+- **Templates**: `snake_case.html`
+- **Static files**: `kebab-case.css/js`
+- **Directories**: `lowercase`
+
+### Git Workflow:
+- Use meaningful commit messages
+- No committing of backup files
+- Regular cleanup of temporary files
+- Use feature branches for new development
+
+## Deployment Notes
+
+The application is ready for deployment with:
+- Clean project structure
+- No duplicate files
+- Proper configuration management
+- Enhanced security with unique IDs
+- Professional document generation
+- Real-time features
+
+---
+
+**Structure Status**: ✅ **CLEAN** - No duplicates, well-organized, production-ready

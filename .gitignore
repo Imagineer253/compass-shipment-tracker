@@ -42,9 +42,6 @@ instance/
 *.sqlite
 *.sqlite3
 
-# Allow the main compass database
-!instance/compass.db
-
 # IDE
 .vscode/
 .idea/
@@ -58,14 +55,57 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
 # Backup files
 *.bak
 *.backup
+*_backup.*
+*_old.*
+backup/
+old/
 
 # Temporary files
 tmp/
 temp/
+debug_*.html
+test_*.html
+simple_*.html
 
 # Flask-Migrate
-migrations/versions/*.pyc 
+migrations/versions/*.pyc
+
+# Prevent duplicate folders
+*backup*/
+*old*/
+*copy*/
+*duplicate*/
+*latest*/
+*Latest*/
+*june*/
+*June*/
+
+# Template backups
+templates/backup/
+templates/old/
+templates/reference/
+
+# Generated documents
+generated_documents/
+output/
+
+# Test files
+test_*
+debug_*
+*_test.*
+
+# Node modules (if using any frontend tools)
+node_modules/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# pytest
+.pytest_cache/ 

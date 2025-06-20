@@ -75,7 +75,8 @@ def signup():
         first_name=first_name,
         last_name=last_name,
         phone=phone,
-        organization=organization
+        organization=organization,
+        unique_id=User.generate_unique_id()
     )
     
     # Assign ONLY the selected role (clear any existing roles first for safety)

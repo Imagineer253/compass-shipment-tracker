@@ -52,10 +52,13 @@ def shipment_type_selection():
 @main.route('/export-shipment')
 @login_required
 def export_shipment():
+    # Get all active users for dropdown selection (both admin and regular users need this)
+    all_users = User.query.filter_by(is_active=True).order_by(User.first_name, User.last_name).all()
+    
     if current_user.is_admin():
-        return render_template('shipments/admin_export_shipment.html', user=current_user)
+        return render_template('shipments/admin_export_shipment.html', user=current_user, all_users=all_users)
     else:
-        return render_template('shipments/export_shipment.html', user=current_user)
+        return render_template('shipments/export_shipment.html', user=current_user, all_users=all_users)
 
 @main.route('/import-shipment')
 @login_required
@@ -871,71 +874,70 @@ def submit_shipment():
         'coldchain_required': request.form.get('coldchain_required') == 'yes'
     }
 
-    # Build full name from separate fields
-    title = request.form.get('requester_title', '')
-    if title == 'Other':
-        title = request.form.get('requester_custom_title', '')
-    given_name = request.form.get('requester_given_name', '')
-    last_name = request.form.get('requester_last_name', '')
-    
-    # Validate name fields (only letters, periods, and spaces)
-    import re
-    name_pattern = re.compile(r'^[A-Za-z\.\s]+$')
-    
-    if given_name and not name_pattern.match(given_name):
-        flash('Error: Given name can only contain letters, periods (.) and spaces.', 'error')
-        return redirect(url_for('main.shipment_type_selection'))
-        
-    if last_name and not name_pattern.match(last_name):
-        flash('Error: Last name can only contain letters, periods (.) and spaces.', 'error')
-        return redirect(url_for('main.shipment_type_selection'))
-    
-    # Additional validation for cold shipment consignee names
-    if data['shipment_type'] == 'cold':
-        # Validate NCPOR consignee names
-        ncpor_given_name = request.form.get('ncpor_consignee_given_name', '')
-        ncpor_last_name = request.form.get('ncpor_consignee_last_name', '')
-        
-        if ncpor_given_name and not name_pattern.match(ncpor_given_name):
-            flash('Error: NCPOR consignee given name can only contain letters, periods (.) and spaces.', 'error')
-            return redirect(url_for('main.cold_shipment'))
-            
-        if ncpor_last_name and not name_pattern.match(ncpor_last_name):
-            flash('Error: NCPOR consignee last name can only contain letters, periods (.) and spaces.', 'error')
-            return redirect(url_for('main.cold_shipment'))
-        
-        # Validate other consignee names
-        other_given_name = request.form.get('other_consignee_given_name', '')
-        other_last_name = request.form.get('other_consignee_last_name', '')
-        
-        if other_given_name and not name_pattern.match(other_given_name):
-            flash('Error: Other consignee given name can only contain letters, periods (.) and spaces.', 'error')
-            return redirect(url_for('main.cold_shipment'))
-            
-        if other_last_name and not name_pattern.match(other_last_name):
-            flash('Error: Other consignee last name can only contain letters, periods (.) and spaces.', 'error')
-            return redirect(url_for('main.cold_shipment'))
-    
-    full_name = f"{title} {given_name} {last_name}".strip()
-    
-    # Update data with the combined name
-    data['requester_name'] = full_name
-    
-    # Generate invoice number based on shipment type
-    last_name_upper = last_name.upper() if last_name else 'LASTNAME'
+    # Generate invoice number based on shipment type with user's unique ID and serial number
     year = data['expedition_year']
     month = data['expedition_month']
     
-    if data['shipment_type'] == 'export':
-        invoice_number = f"NCPOR/ARC/{year}/{month}/{data['return_type']}/{last_name_upper}"
-    elif data['shipment_type'] == 'import':
-        invoice_number = f"NCPOR/IMP/{year}/{month}/{data['return_type']}/{last_name_upper}"
-    elif data['shipment_type'] == 'reimport':
-        invoice_number = f"NCPOR/REIMP/{year}/{month}/{data['return_type']}/{last_name_upper}"
-    elif data['shipment_type'] == 'cold':
-        invoice_number = f"NCPOR/COLD/{year}/{month}/{last_name_upper}"
+    # Generate next serial number
+    from compass.models import ShipmentSerialCounter, User
+    serial_number = ShipmentSerialCounter.get_next_serial()
+    
+    # For admin users creating export shipments, check for combined export
+    if current_user.is_admin() and data['shipment_type'] == 'export':
+        # Get selected requester user ID
+        requester_user_id = request.form.get('requester_user_id')
+        
+        # Extract package user assignments from form data
+        package_user_assignments = {}
+        total_packages = int(request.form.get('total_packages', 0))
+        
+        for i in range(1, total_packages + 1):
+            user_id = request.form.get(f'package_{i}_belongs_to')
+            if user_id:
+                package_user_assignments[str(i)] = int(user_id)
+        
+        # Extract unique user IDs in order of first package assignment
+        unique_user_ids = []
+        seen_users = set()
+        
+        for package_num in sorted(package_user_assignments.keys(), key=int):
+            user_id = package_user_assignments[package_num]
+            if user_id and user_id not in seen_users:
+                user = User.query.get(user_id)
+                if user and user.unique_id:
+                    unique_user_ids.append(user.unique_id)
+                    seen_users.add(user_id)
+        
+        # Generate combined or single export invoice
+        if len(unique_user_ids) > 1:
+            # Combined export
+            unique_ids_str = "/".join(unique_user_ids)
+            invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{data['return_type']}/CMB/{unique_ids_str}/{serial_number}"
+        elif len(unique_user_ids) == 1:
+            # Single user export from package assignments
+            invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{data['return_type']}/{unique_user_ids[0]}/{serial_number}"
+        else:
+            # Use selected requester's unique ID, fallback to current user
+            if requester_user_id:
+                selected_user = User.query.get(requester_user_id)
+                user_unique_id = selected_user.unique_id if selected_user and selected_user.unique_id else 'XXXXXX'
+            else:
+                user_unique_id = current_user.unique_id if hasattr(current_user, 'unique_id') and current_user.unique_id else 'XXXXXX'
+            invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{data['return_type']}/{user_unique_id}/{serial_number}"
     else:
-        invoice_number = f"NCPOR/UNKNOWN/{year}/{month}/{last_name_upper}"
+        # Regular invoice generation for non-admin or non-export types
+        user_unique_id = current_user.unique_id if hasattr(current_user, 'unique_id') and current_user.unique_id else 'XXXXXX'
+        
+        if data['shipment_type'] == 'export':
+            invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{data['return_type']}/{user_unique_id}/{serial_number}"
+        elif data['shipment_type'] == 'import':
+            invoice_number = f"NCPOR/IMP/{year}/{month}/{data['return_type']}/{user_unique_id}/{serial_number}"
+        elif data['shipment_type'] == 'reimport':
+            invoice_number = f"NCPOR/REIMP/{year}/{month}/{data['return_type']}/{user_unique_id}/{serial_number}"
+        elif data['shipment_type'] == 'cold':
+            invoice_number = f"NCPOR/COLD/{year}/{month}/{user_unique_id}/{serial_number}"
+        else:
+            invoice_number = f"NCPOR/UNKNOWN/{year}/{month}/{data['return_type']}/{user_unique_id}/{serial_number}"
     
     try:
         # Get form data
@@ -963,6 +965,7 @@ def submit_shipment():
         # Create shipment record in database
         shipment = Shipment(
             invoice_number=invoice_number,
+            serial_number=serial_number,
             shipment_type=data['shipment_type'],
             created_by=current_user.id,
             requester_name=form_data.get('requester_name', ''),
@@ -970,12 +973,6 @@ def submit_shipment():
             batch_number=form_data.get('batch_number', ''),
             destination_country=form_data.get('destination_country', 'NORWAY') if data['shipment_type'] == 'export' else 'INDIA',
             total_packages=int(form_data.get('total_packages', 0)),
-            # New shipping fields (only for admin users)
-            country_of_final_destination=form_data.get('country_of_final_destination', '') if current_user.is_admin() else None,
-            mode_of_transport=form_data.get('mode_of_transport', '') if current_user.is_admin() else None,
-            port_of_discharge=form_data.get('port_of_discharge', '') if current_user.is_admin() else None,
-            final_destination=form_data.get('final_destination', '') if current_user.is_admin() else None,
-            country_of_origin=form_data.get('country_of_origin', 'India') if current_user.is_admin() else 'India',
             form_data=json.dumps(form_data),
             status='Submitted'
         )
@@ -1244,31 +1241,13 @@ def admin_create_user():
     """Admin endpoint to create new users"""
     email = request.form.get('email')
     password = request.form.get('password')
-    
-    # Get name fields
-    title = request.form.get('title', '')
-    if title == 'Other':
-        title = request.form.get('custom_title', '')
     first_name = request.form.get('first_name')
     last_name = request.form.get('last_name')
-    
-    # Validate name fields (only letters, periods, and spaces)
-    import re
-    name_pattern = re.compile(r'^[A-Za-z\.\s]+$')
-    
-    if first_name and not name_pattern.match(first_name):
-        flash('Error: Given name can only contain letters, periods (.) and spaces.', 'error')
-        return redirect(url_for('main.admin_users'))
-        
-    if last_name and not name_pattern.match(last_name):
-        flash('Error: Last name can only contain letters, periods (.) and spaces.', 'error')
-        return redirect(url_for('main.admin_users'))
-    
     phone = request.form.get('phone')
     organization = request.form.get('organization')
     role_ids = request.form.getlist('roles')
 
-    if not all([email, password, title, first_name, last_name, phone, organization]):
+    if not all([email, password, first_name, last_name, phone, organization]):
         flash('All fields are required', 'error')
         return redirect(url_for('main.admin_users'))
 
@@ -1276,15 +1255,15 @@ def admin_create_user():
         flash('Email already registered', 'error')
         return redirect(url_for('main.admin_users'))
 
-    # Create new user with full name combining title and names
-    display_name = f"{title} {first_name} {last_name}".strip()
+    # Create new user
     new_user = User(
         email=email,
         password=generate_password_hash(password),
         first_name=first_name,
         last_name=last_name,
         phone=phone,
-        organization=organization
+        organization=organization,
+        unique_id=User.generate_unique_id()
     )
 
     # Assign roles (prevent duplicates and enforce role separation)
@@ -1365,18 +1344,6 @@ def admin_update_user(user_id):
     organization = request.form.get('organization')
     new_password = request.form.get('new_password')
     role_ids = request.form.getlist('roles')
-
-    # Validate name fields (only letters, periods, and spaces)
-    import re
-    name_pattern = re.compile(r'^[A-Za-z\.\s]+$')
-    
-    if first_name and not name_pattern.match(first_name):
-        flash('Error: Given name can only contain letters, periods (.) and spaces.', 'error')
-        return redirect(url_for('main.admin_edit_user', user_id=user_id))
-        
-    if last_name and not name_pattern.match(last_name):
-        flash('Error: Last name can only contain letters, periods (.) and spaces.', 'error')
-        return redirect(url_for('main.admin_edit_user', user_id=user_id))
 
     # Validate required fields
     if not all([email, first_name, last_name, phone, organization]):
@@ -2303,24 +2270,28 @@ def update_shipment(shipment_id):
         destination_country = form_data.get('destination_country', '')
         total_packages = int(form_data.get('total_packages', 0))  # Use the form field directly
         
-        # Generate new invoice number
-        first_name = form_data.get('requester_name', '').strip().split()[1] if len(form_data.get('requester_name', '').strip().split()) > 1 else form_data.get('requester_name', '').strip().split()[0] if form_data.get('requester_name', '') else 'COMBINED'
-        first_name = first_name.upper()
+        # Generate new invoice number with user's unique ID and serial number
         year = form_data.get('expedition_year', '')
         month = form_data.get('expedition_month', '')
+        user_unique_id = current_user.unique_id if hasattr(current_user, 'unique_id') and current_user.unique_id else 'XXXXXX'
         
-        combined_invoice_number = f"NCPOR/COMBINED/{year}/{month}/{first_name}/{counter.current_number:03d}"
+        # Keep existing serial number if it exists, otherwise generate a new one
+        serial_number = shipment.serial_number if hasattr(shipment, 'serial_number') and shipment.serial_number else None
+        if not serial_number:
+            from compass.models import ShipmentSerialCounter
+            serial_number = ShipmentSerialCounter.get_next_serial()
+            shipment.serial_number = serial_number
         
         if shipment.shipment_type == 'export':
-            new_invoice_number = f"NCPOR/ARC/{year}/{month}/{form_data.get('return_type', '')}/{first_name}"
+            new_invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{form_data.get('return_type', '')}/{user_unique_id}/{serial_number}"
         elif shipment.shipment_type == 'import':
-            new_invoice_number = f"NCPOR/IMP/{year}/{month}/{form_data.get('return_type', '')}/{first_name}"
+            new_invoice_number = f"NCPOR/IMP/{year}/{month}/{form_data.get('return_type', '')}/{user_unique_id}/{serial_number}"
         elif shipment.shipment_type == 'reimport':
-            new_invoice_number = f"NCPOR/REIMP/{year}/{month}/{form_data.get('return_type', '')}/{first_name}"
+            new_invoice_number = f"NCPOR/REIMP/{year}/{month}/{form_data.get('return_type', '')}/{user_unique_id}/{serial_number}"
         elif shipment.shipment_type == 'cold':
-            new_invoice_number = f"NCPOR/COLD/{year}/{month}/{first_name}"
+            new_invoice_number = f"NCPOR/COLD/{year}/{month}/{user_unique_id}/{serial_number}"
         else:
-            new_invoice_number = f"NCPOR/UNKNOWN/{year}/{month}/{first_name}"
+            new_invoice_number = f"NCPOR/UNKNOWN/{year}/{month}/{form_data.get('return_type', '')}/{user_unique_id}/{serial_number}"
         
         # Update shipment
         shipment.invoice_number = new_invoice_number
@@ -2469,3 +2440,102 @@ def admin_update_status(shipment_id, new_status):
     
     flash(f'Shipment {shipment.invoice_number} status updated from "{status_names.get(old_status, old_status)}" to "{status_names.get(new_status, new_status)}"!', 'success')
     return redirect(url_for('main.dashboard'))
+
+@main.route('/api/generate-invoice-preview', methods=['POST'])
+@login_required
+def generate_invoice_preview():
+    """API endpoint to generate invoice number preview with unique ID and serial number"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'})
+        
+        shipment_type = data.get('shipment_type', 'export')
+        year = data.get('year', '')
+        month = data.get('month', '')
+        return_type = data.get('return_type', '')
+        package_user_assignments = data.get('package_user_assignments', {})  # Dict of package_num: user_id
+        selected_requester_id = data.get('selected_requester_id')  # Selected user ID from dropdown
+        
+        if not all([year, month, return_type]):
+            return jsonify({'success': False, 'error': 'Missing required fields'})
+        
+        # Get next serial number - this is a preview, so we show the next available number
+        from compass.models import ShipmentSerialCounter, User
+        current_counter = ShipmentSerialCounter.query.first()
+        next_serial = f"{(current_counter.counter + 1) if current_counter else 1:04d}"
+        
+        # Handle combined export for admin users
+        if current_user.is_admin() and shipment_type == 'export' and package_user_assignments:
+            # Extract unique user IDs in order of first package assignment
+            unique_user_ids = []
+            seen_users = set()
+            
+            # Sort by package number to maintain order of first assignment
+            for package_num in sorted(package_user_assignments.keys(), key=int):
+                user_id = package_user_assignments[package_num]
+                if user_id and user_id not in seen_users:
+                    user = User.query.get(user_id)
+                    if user and user.unique_id:
+                        unique_user_ids.append(user.unique_id)
+                        seen_users.add(user_id)
+            
+            # If multiple users detected, create combined export
+            if len(unique_user_ids) > 1:
+                unique_ids_str = "/".join(unique_user_ids)
+                invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{return_type}/CMB/{unique_ids_str}/{next_serial}"
+                
+                return jsonify({
+                    'success': True,
+                    'invoice_number': invoice_number,
+                    'export_type': 'COMBINED',
+                    'unique_ids': unique_user_ids,
+                    'serial_number': next_serial,
+                    'selected_users': len(unique_user_ids)
+                })
+            elif len(unique_user_ids) == 1:
+                # Single user from package assignments
+                user_unique_id = unique_user_ids[0]
+                invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{return_type}/{user_unique_id}/{next_serial}"
+                
+                return jsonify({
+                    'success': True,
+                    'invoice_number': invoice_number,
+                    'export_type': 'SINGLE',
+                    'unique_id': user_unique_id,
+                    'serial_number': next_serial
+                })
+        
+        # Regular export or other shipment types (fallback)
+        # Use selected requester's unique ID if provided, otherwise use current user
+        if selected_requester_id:
+            selected_user = User.query.get(selected_requester_id)
+            user_unique_id = selected_user.unique_id if selected_user and selected_user.unique_id else 'XXXXXX'
+            user_name = f"{selected_user.first_name} {selected_user.last_name}" if selected_user else 'Selected User'
+        else:
+            user_unique_id = current_user.unique_id if hasattr(current_user, 'unique_id') and current_user.unique_id else 'XXXXXX'
+            user_name = f"{current_user.first_name} {current_user.last_name}"
+        
+        # Generate invoice number based on shipment type with serial number
+        if shipment_type == 'export':
+            invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{return_type}/{user_unique_id}/{next_serial}"
+        elif shipment_type == 'import':
+            invoice_number = f"NCPOR/IMP/{year}/{month}/{return_type}/{user_unique_id}/{next_serial}"
+        elif shipment_type == 'reimport':
+            invoice_number = f"NCPOR/REIMP/{year}/{month}/{return_type}/{user_unique_id}/{next_serial}"
+        elif shipment_type == 'cold':
+            invoice_number = f"NCPOR/COLD/{year}/{month}/{user_unique_id}/{next_serial}"
+        else:
+            invoice_number = f"NCPOR/UNKNOWN/{year}/{month}/{return_type}/{user_unique_id}/{next_serial}"
+        
+        return jsonify({
+            'success': True,
+            'invoice_number': invoice_number,
+            'unique_id': user_unique_id,
+            'serial_number': next_serial,
+            'user_name': user_name
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
