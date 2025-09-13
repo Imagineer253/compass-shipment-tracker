@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["sqlite"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.build]
+cmds = ["echo 'Build phase'"]
+
+[start]
+cmd = "python -m flask db upgrade && gunicorn app:app --bind 0.0.0.0:$PORT"
