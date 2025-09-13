@@ -76,12 +76,12 @@ class QRCodeService:
             Relative path to saved QR code image
         """
         try:
-            # Create QR code instance with optimal settings
+            # Create QR code instance with PRINT-QUALITY settings
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_H,  # High error correction for logo embedding
-                box_size=10,
-                border=4,
+                box_size=20,  # Increased from 10 to 20 for higher resolution
+                border=6,     # Slightly larger border for print clarity
             )
             
             qr.add_data(tracking_url)
@@ -102,10 +102,15 @@ class QRCodeService:
             # Add tracking code text below QR code
             final_image = self._add_tracking_text(qr_with_logo, unique_code)
             
-            # Save image
+            # Save image with PRINT-QUALITY settings
             filename = f"package_{unique_code}.png"
             file_path = os.path.join(self.qr_storage_dir, filename)
-            final_image.save(file_path, 'PNG', quality=95)
+            
+            # Save at high resolution with optimal settings for printing
+            final_image.save(file_path, 'PNG', 
+                           optimize=False,  # Don't compress for print quality
+                           dpi=(300, 300),  # High DPI for printing
+                           quality=100)     # Maximum quality
             
             # Return relative path for web access
             return f"static/qr_codes/{filename}"
@@ -220,9 +225,9 @@ class QRCodeService:
             PIL Image with tracking text added
         """
         try:
-            # Calculate new image size with space for text
+            # Calculate new image size with space for text (larger for print)
             qr_width, qr_height = qr_image.size
-            text_height = 40
+            text_height = 80  # Increased height for better print visibility
             new_height = qr_height + text_height
             
             # Create new image with extra space
@@ -231,25 +236,43 @@ class QRCodeService:
             # Paste QR code at the top
             final_image.paste(qr_image, (0, 0))
             
-            # Add tracking code text
+            # Add tracking code text with print-optimized settings
             draw = ImageDraw.Draw(final_image)
             
+            # Use larger font for print clarity
             try:
-                font = ImageFont.truetype("arial.ttf", 12)
+                # Try multiple font sizes for optimal print visibility
+                font_large = ImageFont.truetype("arial.ttf", 24)  # Larger font for print
+                font_small = ImageFont.truetype("arial.ttf", 16)
             except:
-                font = ImageFont.load_default()
+                try:
+                    font_large = ImageFont.load_default()
+                    font_small = ImageFont.load_default()
+                except:
+                    font_large = None
+                    font_small = None
             
-            # Format tracking code for display
-            display_text = f"Track: {unique_code}"
+            # Main tracking code (larger)
+            display_text = f"{unique_code}"
             
-            # Calculate text position (centered)
-            bbox = draw.textbbox((0, 0), display_text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_x = (qr_width - text_width) // 2
-            text_y = qr_height + 10
-            
-            # Draw text
-            draw.text((text_x, text_y), display_text, fill=(30, 63, 102), font=font)
+            if font_large:
+                # Calculate text position (centered)
+                bbox = draw.textbbox((0, 0), display_text, font=font_large)
+                text_width = bbox[2] - bbox[0]
+                text_x = (qr_width - text_width) // 2
+                text_y = qr_height + 15
+                
+                # Draw main tracking code with thick text for print clarity
+                draw.text((text_x, text_y), display_text, fill=(30, 63, 102), font=font_large)
+                
+                # Add "COMPASS NCPOR" subtitle
+                subtitle = "COMPASS NCPOR"
+                if font_small:
+                    bbox_sub = draw.textbbox((0, 0), subtitle, font=font_small)
+                    sub_width = bbox_sub[2] - bbox_sub[0]
+                    sub_x = (qr_width - sub_width) // 2
+                    sub_y = text_y + 35
+                    draw.text((sub_x, sub_y), subtitle, fill=(100, 100, 100), font=font_small)
             
             return final_image
             
@@ -336,3 +359,107 @@ class QRCodeService:
         except Exception as e:
             current_app.logger.error(f"Error during QR cleanup: {str(e)}")
             return 0
+    
+    def create_print_sheet(self, package_qr_codes, sheet_layout=(2, 1)):
+        """
+        Create a printable A4 sheet with multiple QR codes
+        
+        Args:
+            package_qr_codes: List of PackageQRCode instances
+            sheet_layout: Tuple (cols, rows) for QR code arrangement
+            
+        Returns:
+            PIL Image of printable sheet
+        """
+        try:
+            # A4 dimensions at 300 DPI (print quality)
+            a4_width = int(8.27 * 300)   # 2481 pixels
+            a4_height = int(11.69 * 300)  # 3507 pixels
+            
+            # Create white A4 sheet
+            sheet = Image.new('RGB', (a4_width, a4_height), (255, 255, 255))
+            
+            cols, rows = sheet_layout
+            max_qr_codes = cols * rows
+            
+            # Calculate QR code size and spacing
+            margin = 150  # 0.5 inch margins
+            available_width = a4_width - (2 * margin)
+            available_height = a4_height - (2 * margin)
+            
+            qr_width = available_width // cols
+            qr_height = available_height // rows
+            
+            # Process QR codes
+            for i, package_qr in enumerate(package_qr_codes[:max_qr_codes]):
+                if package_qr.qr_image_path:
+                    try:
+                        # Load QR code image
+                        qr_image_path = os.path.join(current_app.static_folder, 
+                                                   package_qr.qr_image_path.replace('static/', ''))
+                        qr_image = Image.open(qr_image_path)
+                        
+                        # Resize QR code to fit in allocated space (with padding)
+                        max_qr_size = min(qr_width - 100, qr_height - 200)  # Leave space for info
+                        qr_image.thumbnail((max_qr_size, max_qr_size), Image.Resampling.LANCZOS)
+                        
+                        # Calculate position
+                        row = i // cols
+                        col = i % cols
+                        
+                        x = margin + (col * qr_width) + (qr_width - qr_image.width) // 2
+                        y = margin + (row * qr_height) + 50  # 50px from top of cell
+                        
+                        # Paste QR code
+                        sheet.paste(qr_image, (x, y))
+                        
+                        # Add package information below QR code
+                        self._add_package_info_to_sheet(sheet, package_qr, x, y + qr_image.height + 20, qr_width)
+                        
+                    except Exception as e:
+                        current_app.logger.error(f"Error adding QR code {i} to sheet: {str(e)}")
+                        continue
+            
+            return sheet
+            
+        except Exception as e:
+            current_app.logger.error(f"Error creating print sheet: {str(e)}")
+            return None
+    
+    def _add_package_info_to_sheet(self, sheet, package_qr, x, y, width):
+        """Add package information text to print sheet"""
+        try:
+            draw = ImageDraw.Draw(sheet)
+            
+            # Load fonts
+            try:
+                font_title = ImageFont.truetype("arial.ttf", 20)
+                font_info = ImageFont.truetype("arial.ttf", 14)
+            except:
+                font_title = ImageFont.load_default()
+                font_info = ImageFont.load_default()
+            
+            # Package info lines
+            lines = [
+                f"Shipment ID: {package_qr.shipment.id}",
+                f"Package: {package_qr.package_number}",
+                f"Type: {package_qr.package_type or 'N/A'}",
+                f"Weight: {package_qr.package_weight or 'N/A'}",
+                f"Track: {package_qr.unique_code}"
+            ]
+            
+            line_height = 25
+            for i, line in enumerate(lines):
+                font = font_title if i == 0 else font_info
+                color = (30, 63, 102) if i == 0 else (50, 50, 50)
+                
+                # Center text in the allocated width
+                bbox = draw.textbbox((0, 0), line, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_x = x + (width - text_width) // 2
+                text_y = y + (i * line_height)
+                
+                draw.text((text_x, text_y), line, fill=color, font=font)
+                
+        except Exception as e:
+            current_app.logger.error(f"Error adding package info to sheet: {str(e)}")

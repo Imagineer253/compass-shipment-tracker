@@ -1843,6 +1843,46 @@ def download_qr_code(package_id):
     
     return redirect(url_for('main.qr_codes_management'))
 
+@main.route('/admin/print-qr-sheet/<int:shipment_id>')
+@login_required
+@admin_required
+def print_qr_sheet(shipment_id):
+    """Generate printable A4 sheet with QR codes for a shipment"""
+    try:
+        shipment = Shipment.query.get_or_404(shipment_id)
+        package_qr_codes = PackageQRCode.query.filter_by(shipment_id=shipment_id).all()
+        
+        if not package_qr_codes:
+            flash('No QR codes found for this shipment.', 'error')
+            return redirect(url_for('main.qr_codes_management'))
+        
+        # Create QR service and generate print sheet
+        qr_service = QRCodeService()
+        print_sheet = qr_service.create_print_sheet(package_qr_codes, sheet_layout=(2, 1))
+        
+        if print_sheet:
+            # Save print sheet temporarily
+            temp_filename = f"print_sheet_shipment_{shipment_id}.png"
+            temp_path = os.path.join(current_app.static_folder, 'temp', temp_filename)
+            
+            # Ensure temp directory exists
+            os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+            
+            # Save with print quality
+            print_sheet.save(temp_path, 'PNG', dpi=(300, 300), quality=100)
+            
+            # Send file for download
+            return send_file(temp_path, as_attachment=True, 
+                           download_name=f"QR_Sheet_Shipment_{shipment.invoice_number.replace('/', '_')}.png")
+        else:
+            flash('Error generating print sheet.', 'error')
+            
+    except Exception as e:
+        current_app.logger.error(f"Error generating print sheet for shipment {shipment_id}: {str(e)}")
+        flash('Error occurred while generating print sheet.', 'error')
+    
+    return redirect(url_for('main.qr_codes_management'))
+
 @main.route('/admin/qr-bulk-actions', methods=['POST'])
 @login_required
 @admin_required
