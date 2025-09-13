@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center py-12">
+    <div class="container mx-auto px-4">
+        <div class="max-w-2xl mx-auto">
+            <!-- Hero Section -->
+            <div class="text-center mb-8">
+                <i class="fas fa-shield-check text-blue-600 text-6xl mb-6"></i>
+                <h1 class="text-3xl font-bold text-gray-900 mt-6 mb-2">
+                    Two-Factor Authentication
+                </h1>
+                <p class="text-gray-600 mb-1">Logging in as</p>
+                <p class="text-xl font-semibold text-blue-600">{{ email }}</p>
+            </div>
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <!-- TOTP Verification Form -->
+                    <div id="totp-form">
+                        <form method="POST">
+                            <div class="mb-4">
+                                <label for="token" class="form-label">
+                                    <i class="fas fa-mobile-alt"></i> Authenticator Code
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg text-center" 
+                                       id="token" 
+                                       name="token" 
+                                       required 
+                                       maxlength="6" 
+                                       pattern="\d{6}"
+                                       placeholder="000000"
+                                       autocomplete="one-time-code"
+                                       style="letter-spacing: 0.3em; font-size: 1.5rem;">
+                                <div class="form-text text-center">
+                                    <i class="fas fa-info-circle"></i> Enter the 6-digit code from your authenticator app
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" name="use_backup_code" value="false">
+                            
+                            <!-- Remember this device checkbox -->
+                            <div class="mb-4">
+                                <div class="form-check d-flex align-items-start">
+                                    <input class="form-check-input me-3 mt-1" type="checkbox" id="trust_device" name="trust_device" style="transform: scale(1.2);">
+                                    <label class="form-check-label" for="trust_device">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-shield-check text-success me-2"></i>
+                                            <strong>Remember this device for 30 days</strong>
+                                        </div>
+                                        <small class="text-muted">Skip 2FA on this device for the next 30 days</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100 btn-lg mb-3">
+                                <i class="fas fa-check-circle"></i> Verify & Login
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Backup Code Form (initially hidden) -->
+                    <div id="backup-form" style="display: none;">
+                        <form method="POST">
+                            <div class="mb-4">
+                                <label for="backup_token" class="form-label">
+                                    <i class="fas fa-key"></i> Backup Code
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg text-center" 
+                                       id="backup_token" 
+                                       name="token" 
+                                       maxlength="8" 
+                                       placeholder="XXXXXXXX"
+                                       style="letter-spacing: 0.2em; font-size: 1.2rem;">
+                                <div class="form-text text-center">
+                                    <i class="fas fa-exclamation-triangle text-warning"></i> 
+                                    Backup codes can only be used once
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" name="use_backup_code" value="true">
+                            
+                            <!-- Remember this device checkbox for backup form -->
+                            <div class="mb-4">
+                                <div class="form-check d-flex align-items-start">
+                                    <input class="form-check-input me-3 mt-1" type="checkbox" id="trust_device_backup" name="trust_device" style="transform: scale(1.2);">
+                                    <label class="form-check-label" for="trust_device_backup">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-shield-check text-success me-2"></i>
+                                            <strong>Remember this device for 30 days</strong>
+                                        </div>
+                                        <small class="text-muted">Skip 2FA on this device for the next 30 days</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-warning w-100 btn-lg mb-3">
+                                <i class="fas fa-unlock"></i> Use Backup Code
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="text-center">
+                        <div class="mb-3">
+                            <button id="toggle-backup" class="btn btn-link p-0">
+                                <i class="fas fa-key"></i> <span id="toggle-text">Use backup code instead</span>
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <button id="send-email-otp" class="btn btn-link p-0">
+                                <i class="fas fa-envelope"></i> Send code to email
+                            </button>
+                        </div>
+                        
+                        <!-- Email OTP section (initially hidden) -->
+                        <div id="email-otp-section" style="display: none;" class="mt-4 p-3 bg-light rounded">
+                            <h6><i class="fas fa-envelope"></i> Email Verification</h6>
+                            <p class="small text-muted">We've sent a verification code to your email</p>
+                            <input type="text" 
+                                   id="email-otp-input" 
+                                   class="form-control text-center mb-3" 
+                                   placeholder="Enter email code"
+                                   maxlength="6"
+                                   style="letter-spacing: 0.2em;">
+                            <button id="verify-email-otp" class="btn btn-info btn-sm w-100">
+                                Verify Email Code
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt"></i> 
+                            This is an additional security step to protect your NCPOR account
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const totpForm = document.getElementById('totp-form');
+    const backupForm = document.getElementById('backup-form');
+    const toggleButton = document.getElementById('toggle-backup');
+    const toggleText = document.getElementById('toggle-text');
+    const sendEmailButton = document.getElementById('send-email-otp');
+    const emailOtpSection = document.getElementById('email-otp-section');
+    
+    // Toggle between TOTP and backup code forms
+    toggleButton.addEventListener('click', function() {
+        if (totpForm.style.display === 'none') {
+            totpForm.style.display = 'block';
+            backupForm.style.display = 'none';
+            toggleText.textContent = 'Use backup code instead';
+        } else {
+            totpForm.style.display = 'none';
+            backupForm.style.display = 'block';
+            toggleText.textContent = 'Use authenticator app';
+        }
+    });
+    
+    // Send email OTP
+    sendEmailButton.addEventListener('click', function() {
+        sendEmailButton.disabled = true;
+        sendEmailButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        
+        fetch('{{ url_for("two_fa.verify_email") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                emailOtpSection.style.display = 'block';
+                sendEmailButton.innerHTML = '<i class="fas fa-check"></i> Code sent!';
+                setTimeout(() => {
+                    sendEmailButton.disabled = false;
+                    sendEmailButton.innerHTML = '<i class="fas fa-envelope"></i> Resend code';
+                }, 30000); // Re-enable after 30 seconds
+            } else {
+                alert('Failed to send email: ' + data.message);
+                sendEmailButton.disabled = false;
+                sendEmailButton.innerHTML = '<i class="fas fa-envelope"></i> Send code to email';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while sending the email');
+            sendEmailButton.disabled = false;
+            sendEmailButton.innerHTML = '<i class="fas fa-envelope"></i> Send code to email';
+        });
+    });
+    
+    // Verify email OTP
+    document.getElementById('verify-email-otp').addEventListener('click', function() {
+        const emailOtp = document.getElementById('email-otp-input').value;
+        
+        if (!emailOtp || emailOtp.length !== 6) {
+            alert('Please enter a valid 6-digit code');
+            return;
+        }
+        
+        fetch('{{ url_for("two_fa.verify_email_code") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                otp_code: emailOtp,
+                trust_device: document.getElementById('trust_device').checked
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                alert('Verification failed: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred during verification');
+        });
+    });
+});
+</script>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 15px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #0b5394, #1c7ed6);
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(11, 83, 148, 0.3);
+    }
+    
+    .btn-warning {
+        background: linear-gradient(135deg, #ffc107, #e0a800);
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        color: #000;
+    }
+    
+    .form-control:focus {
+        border-color: #0b5394;
+        box-shadow: 0 0 0 0.2rem rgba(11, 83, 148, 0.25);
+    }
+    
+    .text-primary {
+        color: #0b5394 !important;
+    }
+    
+    .btn-link {
+        color: #0b5394;
+        text-decoration: none;
+    }
+    
+    .btn-link:hover {
+        color: #1c7ed6;
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}

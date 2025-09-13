@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code Management - Admin{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-6 py-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">📱 QR Code Management</h1>
+            <p class="text-gray-600 mt-2">Manage QR codes for all package tracking</p>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="bulkAction('cleanup')" 
+                    class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                Cleanup Orphaned Files
+            </button>
+            <a href="{{ url_for('main.dashboard') }}" 
+               class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl shadow-lg mb-8">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">Filters</h2>
+        </div>
+        <div class="p-6">
+            <form method="GET" class="grid md:grid-cols-3 gap-4">
+                <div>
+                    <label for="shipment_id" class="block text-sm font-medium text-gray-700 mb-2">Shipment</label>
+                    <select name="shipment_id" id="shipment_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Shipments</option>
+                        {% for shipment in all_shipments %}
+                        <option value="{{ shipment.id }}" {% if current_shipment_filter == shipment.id %}selected{% endif %}>
+                            {{ shipment.invoice_number }} ({{ shipment.total_packages }} packages)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <select name="status" id="status" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">All Statuses</option>
+                        {% for status in status_options %}
+                        <option value="{{ status }}" {% if current_status_filter == status %}selected{% endif %}>
+                            {{ status.replace('_', ' ').title() }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="flex items-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z"></path>
+                        </svg>
+                        Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Form -->
+    <form id="bulkForm" method="POST" action="{{ url_for('main.qr_bulk_actions') }}">
+        <input type="hidden" name="action" id="bulkAction">
+        
+        <!-- Bulk Actions Bar -->
+        <div id="bulkActionsBar" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 hidden">
+            <div class="flex items-center justify-between">
+                <span class="text-blue-800 font-medium">
+                    <span id="selectedCount">0</span> package(s) selected
+                </span>
+                <div class="flex space-x-3">
+                    <button type="button" onclick="bulkAction('regenerate')" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Regenerate Selected
+                    </button>
+                    <button type="button" onclick="clearSelection()" 
+                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm">
+                        Clear Selection
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Codes Table -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-gray-900">Package QR Codes</h2>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" 
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2">
+                        <label for="selectAll" class="text-sm text-gray-700">Select All</label>
+                    </div>
+                </div>
+            </div>
+            
+            {% if packages.items %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Select
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Package
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Shipment
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tracking Code
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for package in packages.items %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="checkbox" name="package_ids" value="{{ package.id }}" 
+                                       class="package-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                       onchange="updateBulkActions()">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="text-2xl mr-3">{{ package.get_package_type_display().split()[0] }}</div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            Package #{{ package.package_number }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ package.get_package_type_display()[2:] }}
+                                        </div>
+                                        {% if package.package_description %}
+                                        <div class="text-xs text-gray-400 max-w-32 truncate">
+                                            {{ package.package_description }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900 font-mono text-xs">
+                                    {{ package.shipment.invoice_number }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {{ package.shipment.shipment_type.title() }}
+                                </div>
+                                <div class="text-xs text-gray-400">
+                                    {{ package.shipment.created_at.strftime('%Y-%m-%d') }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-mono font-bold text-blue-600">
+                                    {{ package.unique_code }}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Created: {{ package.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% set status = package.shipment.status %}
+                                {% if status == 'Submitted' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    📝 {{ status }}
+                                </span>
+                                {% elif status == 'Acknowledged' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    ✅ {{ status }}
+                                </span>
+                                {% elif status == 'Document_Generated' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    📄 Documents Generated
+                                </span>
+                                {% elif status == 'Delivered' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    🚚 {{ status }}
+                                </span>
+                                {% elif status == 'Failed' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    ❌ {{ status }}
+                                </span>
+                                {% elif status == 'Combined' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    🔄 {{ status }}
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    📦 {{ status.replace('_', ' ').title() }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                <a href="/track/{{ package.unique_code }}" target="_blank"
+                                   class="text-green-600 hover:text-green-900 inline-flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                    </svg>
+                                    View
+                                </a>
+                                
+                                <a href="{{ url_for('main.regenerate_qr_code', package_id=package.id) }}"
+                                   class="text-blue-600 hover:text-blue-900 inline-flex items-center"
+                                   onclick="return confirm('Regenerate QR code for this package?')">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Regenerate
+                                </a>
+                                
+                                {% if package.qr_image_path %}
+                                <a href="{{ url_for('main.download_qr_code', package_id=package.id) }}"
+                                   class="text-purple-600 hover:text-purple-900 inline-flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Download
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if packages.pages > 1 %}
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if packages.has_prev %}
+                    <a href="{{ url_for('main.qr_codes_management', page=packages.prev_num, shipment_id=current_shipment_filter, status=current_status_filter) }}" 
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if packages.has_next %}
+                    <a href="{{ url_for('main.qr_codes_management', page=packages.next_num, shipment_id=current_shipment_filter, status=current_status_filter) }}" 
+                       class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">{{ (packages.page - 1) * packages.per_page + 1 }}</span>
+                            to <span class="font-medium">{{ packages.page * packages.per_page if packages.page * packages.per_page < packages.total else packages.total }}</span>
+                            of <span class="font-medium">{{ packages.total }}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if packages.has_prev %}
+                            <a href="{{ url_for('main.qr_codes_management', page=packages.prev_num, shipment_id=current_shipment_filter, status=current_status_filter) }}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </a>
+                            {% endif %}
+                            
+                            {% for page_num in packages.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != packages.page %}
+                                    <a href="{{ url_for('main.qr_codes_management', page=page_num, shipment_id=current_shipment_filter, status=current_status_filter) }}" 
+                                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        {{ page_num }}
+                                    </a>
+                                    {% else %}
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                                        {{ page_num }}
+                                    </span>
+                                    {% endif %}
+                                {% else %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if packages.has_next %}
+                            <a href="{{ url_for('main.qr_codes_management', page=packages.next_num, shipment_id=current_shipment_filter, status=current_status_filter) }}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M12 12h-4.01M12 12V9.02"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No QR codes found</h3>
+                <p class="mt-1 text-sm text-gray-500">No packages with QR codes match your current filters.</p>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<script>
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.package-checkbox:checked');
+    const bulkActionsBar = document.getElementById('bulkActionsBar');
+    const selectedCount = document.getElementById('selectedCount');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    
+    selectedCount.textContent = checkboxes.length;
+    
+    if (checkboxes.length > 0) {
+        bulkActionsBar.classList.remove('hidden');
+    } else {
+        bulkActionsBar.classList.add('hidden');
+        selectAllCheckbox.checked = false;
+    }
+}
+
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const packageCheckboxes = document.querySelectorAll('.package-checkbox');
+    
+    packageCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    
+    updateBulkActions();
+}
+
+function clearSelection() {
+    const checkboxes = document.querySelectorAll('.package-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    selectAllCheckbox.checked = false;
+    
+    updateBulkActions();
+}
+
+function bulkAction(action) {
+    if (action === 'cleanup') {
+        if (confirm('This will remove orphaned QR code files from the server. Continue?')) {
+            document.getElementById('bulkAction').value = action;
+            document.getElementById('bulkForm').submit();
+        }
+    } else {
+        const checkedBoxes = document.querySelectorAll('.package-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            alert('Please select at least one package.');
+            return;
+        }
+        
+        if (action === 'regenerate') {
+            if (confirm(`Regenerate QR codes for ${checkedBoxes.length} selected package(s)?`)) {
+                document.getElementById('bulkAction').value = action;
+                document.getElementById('bulkForm').submit();
+            }
+        }
+    }
+}
+
+// Initialize bulk actions visibility
+document.addEventListener('DOMContentLoaded', function() {
+    updateBulkActions();
+});
+</script>
+{% endblock %}

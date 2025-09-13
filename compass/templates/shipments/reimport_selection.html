@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Select Shipment for Reimport{% endblock %}
+
+{% block content %}
+<style>
+    .shipment-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .shipment-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-delivered {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-document-generated {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+
+    .shipment-type-badge {
+        background-color: #fef3c7;
+        color: #92400e;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .info-label {
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .info-value {
+        color: #6b7280;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    }
+</style>
+
+<div class="min-h-[80vh] p-4">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="arctic-card p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-3">📥</span>
+                    <div>
+                        <h1 class="text-2xl font-bold text-deep-arctic">Select Shipment for Reimport</h1>
+                        <p class="text-gray-600 mt-1">Choose an exported shipment to create a reimport request</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">
+                        {% if current_user.is_admin() %}
+                            Showing all exported shipments
+                        {% else %}
+                            Showing your exported shipments
+                        {% endif %}
+                    </div>
+                    <div class="text-lg font-semibold text-deep-arctic">
+                        {{ exported_shipments|length }} shipment(s) available
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="arctic-card p-4 mb-6">
+            <div class="flex flex-wrap gap-4 items-center">
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-700">Filter by Status:</label>
+                    <select id="statusFilter" class="px-3 py-1 border border-gray-300 rounded-md text-sm">
+                        <option value="all">All Statuses</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Document_Generated">Document Generated</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-700">Search:</label>
+                    <input type="text" id="searchInput" placeholder="Invoice number, requester name..." 
+                           class="px-3 py-1 border border-gray-300 rounded-md text-sm w-64">
+                </div>
+            </div>
+        </div>
+
+        <!-- Shipments Grid -->
+        {% if exported_shipments %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="shipmentsGrid">
+                {% for shipment in exported_shipments %}
+                <div class="shipment-card arctic-card p-6 hover:shadow-lg" 
+                     data-status="{{ shipment.status }}"
+                     data-search="{{ shipment.invoice_number|lower }} {{ shipment.requester_name|lower }} {{ shipment.created_by_user.first_name|lower }} {{ shipment.created_by_user.last_name|lower }}"
+                     onclick="selectShipment({{ shipment.id }})">
+                    
+                    <!-- Header -->
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold text-deep-arctic font-mono">
+                                {{ shipment.invoice_number }}
+                            </h3>
+                            <p class="text-sm text-gray-600 mt-1">
+                                Created {{ shipment.created_at.strftime('%B %d, %Y') }}
+                            </p>
+                        </div>
+                        <div class="flex flex-col items-end space-y-2">
+                            <span class="shipment-type-badge">Export</span>
+                            <span class="status-badge status-{{ shipment.status.lower().replace('_', '-') }}">
+                                {{ shipment.status.replace('_', ' ').title() }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Shipment Details -->
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Requester:</span>
+                            <span class="info-value">{{ shipment.requester_name }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Created By:</span>
+                            <span class="info-value">
+                                {{ shipment.created_by_user.first_name }} {{ shipment.created_by_user.last_name }}
+                                {% if shipment.created_by_user.unique_id %}
+                                    ({{ shipment.created_by_user.unique_id }})
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Packages:</span>
+                            <span class="info-value">{{ shipment.total_packages }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Destination:</span>
+                            <span class="info-value">{{ shipment.destination_country }}</span>
+                        </div>
+                        {% if shipment.expedition_year %}
+                        <div class="info-item">
+                            <span class="info-label">Expedition Year:</span>
+                            <span class="info-value">{{ shipment.expedition_year }}</span>
+                        </div>
+                        {% endif %}
+                        {% if shipment.batch_number %}
+                        <div class="info-item">
+                            <span class="info-label">Batch Number:</span>
+                            <span class="info-value">{{ shipment.batch_number }}</span>
+                        </div>
+                        {% endif %}
+                        {% if shipment.acknowledged_at %}
+                        <div class="info-item">
+                            <span class="info-label">Processed:</span>
+                            <span class="info-value">{{ shipment.acknowledged_at.strftime('%B %d, %Y') }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Action Hint -->
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm text-gray-500">Click to create reimport request</p>
+                            <span class="text-deep-arctic">→</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="arctic-card p-12">
+                <div class="empty-state">
+                    <span class="text-6xl mb-4 block">📦</span>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">No Exported Shipments Available</h3>
+                    <p class="text-gray-500 mb-6">
+                        {% if current_user.is_admin() %}
+                            There are no exported shipments that are ready for reimport.
+                        {% else %}
+                            You don't have any exported shipments that are ready for reimport.
+                        {% endif %}
+                    </p>
+                    <p class="text-sm text-gray-400">
+                        Only shipments with status "Delivered" or "Document Generated" can be reimported.
+                    </p>
+                    <div class="mt-6">
+                        <a href="{{ url_for('main.dashboard') }}" 
+                           class="inline-flex items-center px-4 py-2 bg-deep-arctic text-white rounded-md hover:bg-opacity-90 transition-colors">
+                            <span class="mr-2">←</span>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Back Button -->
+        {% if exported_shipments %}
+        <div class="mt-8 text-center">
+            <a href="{{ url_for('main.dashboard') }}" 
+               class="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">
+                <span class="mr-2">←</span>
+                Back to Dashboard
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function selectShipment(shipmentId) {
+    // Navigate to the reimport form with the selected shipment
+    window.location.href = `/reimport-shipment/${shipmentId}`;
+}
+
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const statusFilter = document.getElementById('statusFilter');
+    const searchInput = document.getElementById('searchInput');
+    const shipmentsGrid = document.getElementById('shipmentsGrid');
+    
+    function filterShipments() {
+        const statusValue = statusFilter.value.toLowerCase();
+        const searchValue = searchInput.value.toLowerCase();
+        
+        const shipmentCards = shipmentsGrid.querySelectorAll('.shipment-card');
+        let visibleCount = 0;
+        
+        shipmentCards.forEach(card => {
+            const cardStatus = card.getAttribute('data-status').toLowerCase();
+            const cardSearch = card.getAttribute('data-search');
+            
+            const statusMatch = statusValue === 'all' || cardStatus === statusValue;
+            const searchMatch = searchValue === '' || cardSearch.includes(searchValue);
+            
+            if (statusMatch && searchMatch) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Update count display
+        const countElement = document.querySelector('.text-lg.font-semibold.text-deep-arctic');
+        if (countElement) {
+            countElement.textContent = `${visibleCount} shipment(s) available`;
+        }
+    }
+    
+    if (statusFilter) statusFilter.addEventListener('change', filterShipments);
+    if (searchInput) searchInput.addEventListener('input', filterShipments);
+});
+</script>
+{% endblock %} 

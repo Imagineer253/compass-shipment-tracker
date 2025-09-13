@@ -141,11 +141,23 @@
 
         <!-- Invoice Number Preview -->
         <div class="arctic-card p-4 mb-6 invoice-preview">
-            <h3 class="text-lg font-semibold text-deep-arctic mb-2">Generated Invoice Number</h3>
+            <h3 class="text-lg font-semibold text-deep-arctic mb-2">
+                {% if edit_mode %}Original Invoice Number{% else %}Generated Invoice Number{% endif %}
+            </h3>
             <div class="text-xl font-mono tracking-wide" id="invoiceNumberPreview">
+                {% if edit_mode %}
+                    {{ shipment.invoice_number }}
+                {% else %}
                 NCPOR/ARC/YYYY/MMM/EXP/TYPE/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000
+                {% endif %}
             </div>
-            <p class="text-sm text-gray-600 mt-2">This number will be used in your export documentation</p>
+            <p class="text-sm text-gray-600 mt-2">
+                {% if edit_mode %}
+                    This invoice number is preserved and will not change when editing
+                {% else %}
+                    This number will be used in your export documentation
+                {% endif %}
+            </p>
         </div>
 
         <!-- Main Form -->
@@ -170,12 +182,16 @@
                             <option value="">Select User</option>
                             {% for user in all_users %}
                             <option value="{{ user.id }}" data-unique-id="{{ user.unique_id }}" data-full-name="{{ user.first_name }} {{ user.last_name }}"
-                                    {% if not edit_mode and user.id == current_user.id %}selected{% endif %}>
+                                    {% if edit_mode and form_data.get('requester_user_id') == user.id|string %}selected{% elif not edit_mode and user.id == current_user.id %}selected{% endif %}>
                                 {{ user.first_name }} {{ user.last_name }} ({{ user.unique_id }})
                             </option>
                             {% endfor %}
                         </select>
+                        {% if edit_mode %}
+                            <p class="text-sm text-blue-600 mt-1">⚠️ Note: Changing the requester will NOT affect the invoice number. The original invoice number is preserved.</p>
+                        {% else %}
                         <p class="text-sm text-gray-500 mt-1">Select the user this shipment is for (affects invoice unique ID)</p>
+                        {% endif %}
                         
                         <!-- Hidden field to store the selected user's full name for backend -->
                         <input type="hidden" 
@@ -328,8 +344,8 @@
                                 Headland Sada, Vasco da Gama, Goa - 403804<br>
                                 India<br>
                                 Phone: +91 832 2525501<br>
-                                GST: 30AAAAN4327G1ZJ<br>
-                                IEC No.: 1196000125
+                                GST: 30AACFN4991P1ZN<br>
+                                LUT No.: AD300618000016R
                             </div>
                         </div>
                         
@@ -386,11 +402,11 @@
                                            placeholder="Enter GST number">
                                 </div>
                                 <div>
-                                    <label class="input-label">IEC Number</label>
+                                    <label class="input-label">LUT Number</label>
                                     <input type="text" 
-                                           name="other_exporter_iec" 
+                                           name="other_exporter_lut" 
                                            class="input-field"
-                                           placeholder="Enter IEC number">
+                                           placeholder="Enter LUT number">
                                 </div>
                             </div>
                         </div>
@@ -683,8 +699,7 @@
                                         <input type="text" 
                                                name="{prefix}_hsn_code" 
                                                class="input-field"
-                                               placeholder="e.g., 9015.80.90"
-                                               required>
+                                               placeholder="e.g., 9015.80.90">
                                     </div>
                                     <div>
                                         <label class="input-label">Quantity</label>
@@ -708,7 +723,7 @@
                                                data-prefix="{prefix}">
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label class="input-label">Net Weight (kg)</label>
                                         <input type="number" 
@@ -727,6 +742,17 @@
                                                class="input-field"
                                                placeholder="e.g., India"
                                                required>
+                                    </div>
+                                    <div>
+                                        <label class="input-label">Attention (Requester)</label>
+                                        <select name="{prefix}_attn" class="input-field" required>
+                                            <option value="">Select User</option>
+                                            {% for user in all_users %}
+                                            <option value="{{ user.first_name }} {{ user.last_name }}">
+                                                {{ user.first_name }} {{ user.last_name }} ({{ user.unique_id }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="bg-blue-50 p-4 rounded-lg">
@@ -784,6 +810,11 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Export shipment form loaded');
+    
+    // Check if this is edit mode
+    const isEditMode = {% if edit_mode %}true{% else %}false{% endif %};
+    
     // Elements for invoice number generation
     const requesterUserSelect = document.getElementById('requesterUserSelect');
     const requesterNameHidden = document.getElementById('requesterNameHidden');
@@ -796,19 +827,57 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('invoiceDateHidden').value = today;
     
+    // Elements for package handling
+    const totalPackagesInput = document.getElementById('totalPackagesInput');
+    const packageDetailsContainer = document.getElementById('packageDetailsContainer');
+    const packageDetailsTemplate = document.getElementById('packageDetailsTemplate');
+    const itemDetailsTemplate = document.getElementById('itemDetailsTemplate');
+    const packageSummary = document.getElementById('packageSummary');
+    
+    // Debug: Check if all elements exist
+    console.log('Elements check:', {
+        totalPackagesInput: !!totalPackagesInput,
+        packageDetailsContainer: !!packageDetailsContainer,
+        packageDetailsTemplate: !!packageDetailsTemplate,
+        itemDetailsTemplate: !!itemDetailsTemplate,
+        packageSummary: !!packageSummary,
+        expeditionYear: !!expeditionYear,
+        expeditionMonth: !!expeditionMonth,
+        invoicePreview: !!invoicePreview
+    });
+    
     // Function to handle requester user selection
     function handleRequesterUserChange() {
+        if (requesterUserSelect) {
         const selectedOption = requesterUserSelect.options[requesterUserSelect.selectedIndex];
         if (selectedOption && selectedOption.value) {
             const fullName = selectedOption.getAttribute('data-full-name');
+                if (requesterNameHidden) {
             requesterNameHidden.value = fullName;
+                }
         } else {
+                if (requesterNameHidden) {
             requesterNameHidden.value = '';
         }
+            }
+        }
+        // Only update invoice number in create mode, not edit mode
+        if (!isEditMode) {
         updateInvoiceNumber();
+        }
+    }
+
+    // Initialize requester name hidden field
+    if (requesterUserSelect && requesterUserSelect.value) {
+        const selectedOption = requesterUserSelect.options[requesterUserSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const fullName = selectedOption.getAttribute('data-full-name');
+            if (requesterNameHidden) {
+                requesterNameHidden.value = fullName;
+            }
+        }
     }
     // Auto-fill current year and month if not in edit mode
-    const isEditMode = {% if edit_mode %}true{% else %}false{% endif %};
     if (!isEditMode) {
         const currentDate = new Date();
         const currentYear = currentDate.getFullYear();
@@ -816,24 +885,38 @@ document.addEventListener('DOMContentLoaded', function() {
                            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
         const currentMonth = monthNames[currentDate.getMonth()];
         
-        // Set current year and month
-        expeditionYear.value = currentYear;
-        expeditionMonth.value = currentMonth;
+        // Set current year and month only if fields are empty
+        if (expeditionYear && !expeditionYear.value) {
+            expeditionYear.value = currentYear;
+        }
+        if (expeditionMonth && !expeditionMonth.value) {
+            expeditionMonth.value = currentMonth;
+        }
         
         // Update invoice preview
         updateInvoiceNumber();
     }
 
     // Set max year as current year + 1
-    const maxYear = new Date().getFullYear() + 1;
-    expeditionYear.setAttribute('max', maxYear);
-    expeditionYear.setAttribute('min', '2000');
+    if (expeditionYear) {
+        const maxYear = new Date().getFullYear() + 1;
+        expeditionYear.setAttribute('max', maxYear);
+        expeditionYear.setAttribute('min', '2000');
+    }
 
     // Function to generate invoice number with API call
     async function updateInvoiceNumber() {
+        console.log('updateInvoiceNumber called');
+        if (!expeditionYear || !expeditionMonth) {
+            console.log('Missing required elements for invoice generation');
+            return;
+        }
+        
         const year = expeditionYear.value || 'YYYY';
         const month = expeditionMonth.value || 'MMM';
         let returnType = 'TYPE';
+        
+        console.log('Invoice params:', { year, month });
         
         for (const input of returnTypeInputs) {
             if (input.checked) {
@@ -841,12 +924,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             }
         }
+        
+        console.log('Return type:', returnType);
 
         // Try to get real-time invoice number from API
         if (year && month && returnType !== 'TYPE') {
             try {
                 // Get selected requester ID
-                const selectedRequesterId = requesterUserSelect.value;
+                const selectedRequesterId = requesterUserSelect ? requesterUserSelect.value : null;
 
                 const response = await fetch('/api/generate-invoice-preview', {
                     method: 'POST',
@@ -892,7 +977,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 invoicePreview.textContent = `NCPOR/ARC/${year}/${month}/EXP/${returnType}/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000`;
             }
         } else {
-            invoicePreview.textContent = `NCPOR/ARC/${year || 'YYYY'}/${month || 'MMM'}/EXP/${returnType}/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000`;
+            console.log('Using fallback invoice generation');
+            if (invoicePreview) {
+                invoicePreview.textContent = `NCPOR/ARC/${year || 'YYYY'}/${month || 'MMM'}/EXP/${returnType}/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000`;
+                console.log('Updated invoice preview to:', invoicePreview.textContent);
+            } else {
+                console.log('Invoice preview element not found');
+            }
             const infoElement = document.getElementById('invoiceInfo');
             if (infoElement) {
                 infoElement.innerHTML = '';
@@ -901,19 +992,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add event listeners for invoice number generation
-    requesterUserSelect.addEventListener('change', handleRequesterUserChange);
-    expeditionYear.addEventListener('input', updateInvoiceNumber);
-    expeditionMonth.addEventListener('change', updateInvoiceNumber);
-    returnTypeInputs.forEach(input => {
-        input.addEventListener('change', updateInvoiceNumber);
-    });
-
-    // Elements for package handling
-    const totalPackagesInput = document.getElementById('totalPackagesInput');
-    const packageDetailsContainer = document.getElementById('packageDetailsContainer');
-    const packageDetailsTemplate = document.getElementById('packageDetailsTemplate');
-    const itemDetailsTemplate = document.getElementById('itemDetailsTemplate');
-    const packageSummary = document.getElementById('packageSummary');
+    if (requesterUserSelect) {
+        requesterUserSelect.addEventListener('change', handleRequesterUserChange);
+    }
+    if (expeditionYear) {
+        expeditionYear.addEventListener('input', updateInvoiceNumber);
+    }
+    if (expeditionMonth) {
+        expeditionMonth.addEventListener('change', updateInvoiceNumber);
+    }
+    if (returnTypeInputs) {
+        returnTypeInputs.forEach(input => {
+            input.addEventListener('change', updateInvoiceNumber);
+        });
+    }
 
     // Function to handle package type selection
     function initializePackageTypeHandlers(packageElement) {
@@ -1017,22 +1109,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Handle total packages input
-    totalPackagesInput.addEventListener('change', function() {
-        const totalPackages = parseInt(this.value) || 0;
-        if (totalPackages > 10) {
-            alert('Maximum 10 packages allowed. Please enter a value between 1 and 10.');
-            this.value = 10;
-            return;
-        }
-        if (totalPackages > 0) {
-            packageDetailsContainer.classList.remove('hidden');
-            packageSummary.classList.remove('hidden');
-            generatePackageDetails(totalPackages);
-        } else {
-            packageDetailsContainer.classList.add('hidden');
-            packageSummary.classList.add('hidden');
-        }
-    });
+    if (totalPackagesInput) {
+        totalPackagesInput.addEventListener('change', function() {
+            console.log('Total packages changed to:', this.value);
+            const totalPackages = parseInt(this.value) || 0;
+            if (totalPackages > 10) {
+                alert('Maximum 10 packages allowed. Please enter a value between 1 and 10.');
+                this.value = 10;
+                return;
+            }
+            if (totalPackages > 0) {
+                console.log('Showing package details container');
+                packageDetailsContainer.classList.remove('hidden');
+                packageSummary.classList.remove('hidden');
+                generatePackageDetails(totalPackages);
+            } else {
+                console.log('Hiding package details container');
+                packageDetailsContainer.classList.add('hidden');
+                packageSummary.classList.add('hidden');
+            }
+        });
+        
+        // Also listen for 'input' event for real-time updates
+        totalPackagesInput.addEventListener('input', function() {
+            console.log('Total packages input changed to:', this.value);
+            const totalPackages = parseInt(this.value) || 0;
+            if (totalPackages > 0 && totalPackages <= 10) {
+                packageDetailsContainer.classList.remove('hidden');
+                packageSummary.classList.remove('hidden');
+                generatePackageDetails(totalPackages);
+            } else if (totalPackages === 0) {
+                packageDetailsContainer.classList.add('hidden');
+                packageSummary.classList.add('hidden');
+            }
+        });
+    } else {
+        console.error('totalPackagesInput element not found!');
+    }
 
     // Initialize exporters and consignees sections
     const exporterNcporRadio = document.getElementById('exporterNcporRadio');
@@ -1172,7 +1285,7 @@ window.addEventListener('load', function() {
                     setTimeout(() => {
                         for (let itemNum = 1; itemNum <= itemsCount; itemNum++) {
                             const prefix = 'package_' + packageNum + '_item_' + itemNum;
-                            ['description', 'hsn_code', 'quantity', 'unit_value', 'net_weight', 'origin'].forEach(function(field) {
+                            ['description', 'hsn_code', 'quantity', 'unit_value', 'net_weight', 'origin', 'attn'].forEach(function(field) {
                                 const value = formData[prefix + '_' + field];
                                 if (value) {
                                     const input = document.querySelector('[name="' + prefix + '_' + field + '"]');

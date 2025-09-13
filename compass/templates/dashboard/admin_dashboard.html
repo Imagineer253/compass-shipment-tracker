@@ -15,10 +15,19 @@
                    class="arctic-button bg-deep-arctic text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300">
                    👥 Manage Users
                 </a>
+                <a href="{{ url_for('main.qr_codes_management') }}" 
+                   class="arctic-button bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all duration-300">
+                   📱 QR Codes
+                </a>
                 <button id="combineShipmentsBtn" 
                         class="arctic-button bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-all duration-300 hidden">
                    🔄 Combine Selected
                 </button>
+                <!-- TEMPORARY DEBUG LINK - REMOVE LATER -->
+                <a href="{{ url_for('main.admin_combine_form') }}" 
+                   class="arctic-button bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all duration-300 border-2 border-red-800">
+                   🧪 DEBUG: Test Combine Form
+                </a>
                 <a href="{{ url_for('main.shipment_type_selection') }}" 
                    class="arctic-button bg-northern-lights text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-300">
                    📦 New Shipment
@@ -132,6 +141,11 @@
                             <div><strong>Requester:</strong> {{ shipment.requester_name or 'N/A' }}</div>
                             <div><strong>Year:</strong> {{ shipment.expedition_year or 'N/A' }}</div>
                             <div><strong>Packages:</strong> {{ shipment.total_packages or 'N/A' }}</div>
+                            {% if shipment.file_reference_number %}
+                                <div class="text-xs text-green-600 mt-1">
+                                    <strong>File Ref:</strong> {{ shipment.file_reference_number }}
+                                </div>
+                            {% endif %}
                             {% if shipment.is_combined and shipment.parent_shipment_ids %}
                                 <div class="text-xs text-orange-600 mt-1">
                                     <strong>Combined from:</strong> 

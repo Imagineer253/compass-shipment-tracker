@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12">
+    <div class="container mx-auto px-4">
+        <div class="max-w-4xl mx-auto">
+            <!-- Hero Section -->
+            <div class="text-center mb-12">
+                <i class="fas fa-key text-orange-600 text-6xl mb-6"></i>
+                <h1 class="text-4xl font-bold text-gray-900 mt-6 mb-4">
+                    Backup Codes
+                </h1>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Your emergency access codes for two-factor authentication. Save these in a secure location.
+                </p>
+            </div>
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Important Instructions</h5>
+                        <ul class="mb-0">
+                            <li>Each backup code can only be used <strong>once</strong></li>
+                            <li>Use these codes if you lose access to your authenticator app</li>
+                            <li>Store them in a secure location (password manager, safe, etc.)</li>
+                            <li>Don't share these codes with anyone</li>
+                            <li>You can generate new codes anytime (this will invalidate old ones)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card bg-dark text-light">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Your Backup Codes</h5>
+                            <button class="btn btn-outline-light btn-sm" onclick="copyToClipboard()">
+                                <i class="fas fa-copy"></i> Copy All
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="backup-codes-content">
+                                <div class="row">
+                                    {% for code in backup_codes %}
+                                    <div class="col-md-6">
+                                        <div class="code-item p-3 mb-2 bg-secondary rounded text-center">
+                                            <code class="fs-4">{{ code }}</code>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-primary w-100" onclick="printCodes()">
+                                    <i class="fas fa-print"></i> Print Codes
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-info w-100" onclick="downloadCodes()">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <a href="{{ url_for('two_fa.backup_codes') }}" class="btn btn-outline-warning w-100">
+                                    <i class="fas fa-sync"></i> Generate New
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="savedCodes" required>
+                            <label class="form-check-label" for="savedCodes">
+                                I have saved these backup codes in a secure location
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('two_fa.manage') }}" class="btn btn-success" id="continueBtn" disabled>
+                            <i class="fas fa-check-circle"></i> Continue
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkbox = document.getElementById('savedCodes');
+    const continueBtn = document.getElementById('continueBtn');
+    
+    checkbox.addEventListener('change', function() {
+        if (this.checked) {
+            continueBtn.classList.remove('disabled');
+            continueBtn.removeAttribute('disabled');
+        } else {
+            continueBtn.classList.add('disabled');
+            continueBtn.setAttribute('disabled', '');
+        }
+    });
+});
+
+function copyToClipboard() {
+    const codes = [
+        {% for code in backup_codes %}
+        "{{ code }}"{{ "," if not loop.last }}
+        {% endfor %}
+    ];
+    
+    const textToCopy = "COMPASS 2FA Backup Codes\n" + 
+                      "Generated: " + new Date().toLocaleDateString() + "\n\n" +
+                      codes.join('\n') + 
+                      "\n\nIMPORTANT: Each code can only be used once. Store these securely.";
+    
+    navigator.clipboard.writeText(textToCopy).then(function() {
+        alert('Backup codes copied to clipboard!');
+    }).catch(function(err) {
+        console.error('Failed to copy: ', err);
+        alert('Failed to copy codes. Please select and copy manually.');
+    });
+}
+
+function printCodes() {
+    const codes = [
+        {% for code in backup_codes %}
+        "{{ code }}"{{ "," if not loop.last }}
+        {% endfor %}
+    ];
+    
+    const printWindow = window.open('', '_blank');
+    const printContent = `
+        <html>
+        <head>
+            <title>COMPASS 2FA Backup Codes</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .codes { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+                .code { padding: 10px; border: 1px solid #ddd; text-align: center; font-family: monospace; font-size: 18px; }
+                .warning { background: #fff3cd; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>COMPASS 2FA Backup Codes</h1>
+                <p>Generated: ${new Date().toLocaleDateString()}</p>
+                <p>User: {{ current_user.email }}</p>
+            </div>
+            <div class="warning">
+                <strong>IMPORTANT:</strong> Each code can only be used once. Store these codes in a secure location.
+            </div>
+            <div class="codes">
+                ${codes.map(code => `<div class="code">${code}</div>`).join('')}
+            </div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function downloadCodes() {
+    const codes = [
+        {% for code in backup_codes %}
+        "{{ code }}"{{ "," if not loop.last }}
+        {% endfor %}
+    ];
+    
+    const content = "COMPASS 2FA Backup Codes\n" + 
+                   "Generated: " + new Date().toLocaleDateString() + "\n" +
+                   "User: {{ current_user.email }}\n\n" +
+                   "IMPORTANT: Each code can only be used once. Store these securely.\n\n" +
+                   codes.join('\n');
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'compass_2fa_backup_codes.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    window.URL.revokeObjectURL(url);
+}
+</script>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 15px;
+    }
+    
+    .card-body {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-success:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+    
+    .btn-success:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .code-item {
+        transition: all 0.2s ease;
+    }
+    
+    .code-item:hover {
+        background-color: #495057 !important;
+        transform: scale(1.05);
+    }
+    
+    .text-warning {
+        color: #856404 !important;
+    }
+</style>
+{% endblock %}

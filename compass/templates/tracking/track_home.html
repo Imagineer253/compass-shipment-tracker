@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Package Tracking - COMPASS{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header Section -->
+        <div class="text-center mb-8">
+            <div class="flex justify-center mb-4">
+                <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-full p-4">
+                    <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">Track Your Package</h1>
+            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                Enter your 12-character tracking code to view detailed information about your NCPOR shipment package.
+            </p>
+        </div>
+
+        <!-- Tracking Form -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+                <h2 class="text-xl font-semibold text-white flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Enter Tracking Code
+                </h2>
+            </div>
+            
+            <div class="p-8">
+                {% if error %}
+                <div class="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-red-700">{{ error }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('tracking.track_search') }}" class="space-y-6">
+                    <div>
+                        <label for="tracking_code" class="block text-sm font-medium text-gray-700 mb-2">
+                            Tracking Code
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                id="tracking_code" 
+                                name="tracking_code" 
+                                placeholder="Enter 12-character tracking code (e.g., ABC123DEF456)"
+                                class="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg font-mono tracking-wider uppercase"
+                                maxlength="12"
+                                pattern="[A-Za-z0-9]{12}"
+                                required
+                            >
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M12 12h-4.01M12 12V9.02"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">
+                            Find your tracking code on the QR code label attached to your package.
+                        </p>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform transition-all duration-200 hover:scale-105 flex items-center justify-center"
+                    >
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        Track Package
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Information Cards -->
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center mb-4">
+                    <div class="bg-blue-100 rounded-lg p-3">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 ml-3">What You'll See</h3>
+                </div>
+                <ul class="space-y-2 text-gray-600">
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        Package details and contents
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        Shipment status and progress
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        Origin and destination information
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                        Contact information
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center mb-4">
+                    <div class="bg-purple-100 rounded-lg p-3">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-gray-900 ml-3">Need Help?</h3>
+                </div>
+                <div class="space-y-3 text-gray-600">
+                    <p>
+                        Can't find your tracking code? Look for the QR code label on your package.
+                    </p>
+                    <p>
+                        For technical support, contact the NCPOR system administrator.
+                    </p>
+                    <div class="bg-gray-50 rounded-lg p-3 mt-4">
+                        <p class="text-sm font-medium text-gray-700">Note:</p>
+                        <p class="text-sm text-gray-600">
+                            This tracking system is for NCPOR expedition packages only.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NCPOR Footer -->
+        <div class="text-center">
+            <div class="flex justify-center items-center mb-4">
+                <img src="{{ url_for('static', filename='images/ncpor_logo.png') }}" 
+                     alt="NCPOR Logo" 
+                     class="h-12 w-auto">
+            </div>
+            <p class="text-gray-600">
+                National Centre for Polar and Ocean Research
+            </p>
+            <p class="text-sm text-gray-500">
+                Ministry of Earth Sciences, Government of India
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-format tracking code input
+document.getElementById('tracking_code').addEventListener('input', function(e) {
+    // Convert to uppercase and remove non-alphanumeric characters
+    let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    e.target.value = value;
+});
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const trackingCode = document.getElementById('tracking_code').value;
+    if (trackingCode.length !== 12) {
+        e.preventDefault();
+        alert('Please enter a valid 12-character tracking code.');
+    }
+});
+</script>
+{% endblock %}

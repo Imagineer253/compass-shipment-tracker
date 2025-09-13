@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, send_file, flash, redirec
 from docxtpl import DocxTemplate
 from docx import Document
 from docx.shared import Cm, Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.table import WD_ROW_HEIGHT
 from docx.table import _Cell
@@ -13,9 +13,55 @@ from num2words import num2words
 import os
 import io
 from flask_login import login_required, current_user
+from .utils.helpers import get_package_type_display_name
 
 # Initialize the Blueprint for our main routes
 main_bp = Blueprint('main', __name__)
+
+def prevent_table_page_break(table):
+    """
+    Prevent table from being split across pages by setting table properties
+    """
+    try:
+        # Get table properties
+        tblPr = table._element.xpath("./w:tblPr")[0]
+        
+        # Add table positioning properties to keep table together
+        tblpPr = OxmlElement('w:tblpPr')
+        
+        # Set table to keep together on one page
+        cantSplit = OxmlElement('w:cantSplit')
+        cantSplit.set(qn('w:val'), '1')
+        tblPr.append(cantSplit)
+        
+        # Set all rows to not break across pages
+        for row in table.rows:
+            trPr = row._element.get_or_add_trPr()
+            cantSplit = OxmlElement('w:cantSplit')
+            cantSplit.set(qn('w:val'), '1')
+            trPr.append(cantSplit)
+            
+    except Exception as e:
+        print(f"Warning: Could not set page break prevention: {e}")
+
+def add_page_break_before_element(doc, target_element):
+    """
+    Add a page break before the target element if there might not be enough space
+    """
+    try:
+        # Create a new paragraph before the target element
+        new_paragraph = doc.add_paragraph()
+        
+        # Add a page break to the paragraph
+        run = new_paragraph.add_run()
+        run.add_break(WD_BREAK.PAGE)
+        
+        # Insert the new paragraph before the target element
+        parent = target_element.getparent()
+        parent.insert(list(parent).index(target_element), new_paragraph._element)
+        
+    except Exception as e:
+        print(f"Warning: Could not add page break: {e}")
 
 def load_large_template():
     """
@@ -119,7 +165,7 @@ def handle_table_placement(doc, form_data):
             
             # Apply bold formatting to header text
             run = paragraph.runs[0]
-                run.bold = True
+            run.bold = True
             run.font.size = Pt(11)  # Set font size
             
             # Set vertical alignment to center
@@ -128,6 +174,9 @@ def handle_table_placement(doc, form_data):
             tcVAlign = OxmlElement('w:vAlign')
             tcVAlign.set(qn('w:val'), "center")
             tcPr.append(tcVAlign)
+
+        # Add page break prevention to the table
+        prevent_table_page_break(table)
 
         # Insert the table after the placeholder and remove the placeholder
         table._element = target_paragraph._element.addnext(table._element)
@@ -181,8 +230,57 @@ def populate_table_data(table, form_data):
                 
                 # Box details
                 package_type = form_data.get(f'package_{package_num}_type', '')
-                row_cells[1].text = f"Box-{package_num}\n({package_type})"
-                row_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+                package_type_display = get_package_type_display_name(package_type, form_data, package_num)
+                
+                # Get package owner information
+                box_text = f"Box-{package_num} ({package_type_display})"
+                
+                # Check if this is a combined shipment with package ownership info
+                package_belongs_to_id = form_data.get(f'package_{package_num}_belongs_to')
+                attn_field_name = f'package_{package_num}_attn'
+                
+                # Collect ownership info to add compactly
+                ownership_info = []
+                
+                if package_belongs_to_id:
+                    # Combined shipment - get user by ID for package ownership
+                    try:
+                        from compass.models import User
+                        owner_user = User.query.get(int(package_belongs_to_id))
+                        if owner_user:
+                            owner_name = f"{owner_user.first_name} {owner_user.last_name}"
+                            owner_unique_id = owner_user.unique_id
+                            ownership_info.append(f"Owner: {owner_name} ({owner_unique_id})")
+                    except (ValueError, TypeError, ImportError):
+                        pass
+                        
+                # Check if there's attention field (requester) for items
+                if attn_field_name in form_data and form_data[attn_field_name]:
+                    # Get requester unique ID if available
+                    requester_name = form_data[attn_field_name]
+                    try:
+                        from compass.models import User
+                        # Try to find user by full name to get their unique ID
+                        name_parts = requester_name.split()
+                        if len(name_parts) >= 2:
+                            first_name = name_parts[0]
+                            last_name = ' '.join(name_parts[1:])  # Handle multi-word last names
+                            requester_user = User.query.filter_by(first_name=first_name, last_name=last_name).first()
+                            if requester_user and requester_user.unique_id:
+                                ownership_info.append(f"Req: {requester_name} ({requester_user.unique_id})")
+                            else:
+                                ownership_info.append(f"Req: {requester_name}")
+                        else:
+                            ownership_info.append(f"Req: {requester_name}")
+                    except (ImportError, Exception):
+                        ownership_info.append(f"Req: {requester_name}")
+                
+                # Format the final box text more compactly
+                if ownership_info:
+                    # Put ownership info on new line but in a more compact format
+                    box_text += f"\n{' | '.join(ownership_info)}"
+                
+                row_cells[1].text = box_text
                 
                 # Description of goods with HSN Code
                 description = form_data.get(f'{prefix}_description', '')
@@ -304,13 +402,13 @@ def populate_table_data(table, form_data):
         total_label_paragraph = total_label_cell.paragraphs[0]
         total_label_paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
         run = total_label_paragraph.add_run("TOTAL")
-        run.font.bold = True
+        run.bold = True
         
         # Format amount
         amount_paragraph = total_amount_cell.paragraphs[0]
         amount_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         run = amount_paragraph.add_run(f"{total_amount:.0f}")
-        run.font.bold = True
+        run.bold = True
 
         # Set up Signature row
         sig_cell = right_table.rows[1].cells[0]
@@ -452,6 +550,9 @@ def handle_pl_table_placement(doc, form_data):
             tcVAlign.set(qn('w:val'), "center")
             tcPr.append(tcVAlign)
 
+        # Add page break prevention to the table
+        prevent_table_page_break(table)
+
         # Insert the table after the placeholder and remove the placeholder
         table._element = target_paragraph._element.addnext(table._element)
         target_paragraph._element.getparent().remove(target_paragraph._element)
@@ -500,8 +601,57 @@ def populate_pl_table_data(table, form_data):
                 
                 # Box details
                 package_type = form_data.get(f'package_{package_num}_type', '')
-                row_cells[1].text = f"Box-{package_num}\n({package_type})"
-                row_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+                package_type_display = get_package_type_display_name(package_type, form_data, package_num)
+                
+                # Get package owner information for packing list
+                box_text = f"Box-{package_num} ({package_type_display})"
+                
+                # Check if this is a combined shipment with package ownership info
+                package_belongs_to_id = form_data.get(f'package_{package_num}_belongs_to')
+                attn_field_name = f'package_{package_num}_attn'
+                
+                # Collect ownership info to add compactly
+                ownership_info = []
+                
+                if package_belongs_to_id:
+                    # Combined shipment - get user by ID for package ownership
+                    try:
+                        from compass.models import User
+                        owner_user = User.query.get(int(package_belongs_to_id))
+                        if owner_user:
+                            owner_name = f"{owner_user.first_name} {owner_user.last_name}"
+                            owner_unique_id = owner_user.unique_id
+                            ownership_info.append(f"Owner: {owner_name} ({owner_unique_id})")
+                    except (ValueError, TypeError, ImportError):
+                        pass
+                        
+                # Check if there's attention field (requester) for items
+                if attn_field_name in form_data and form_data[attn_field_name]:
+                    # Get requester unique ID if available
+                    requester_name = form_data[attn_field_name]
+                    try:
+                        from compass.models import User
+                        # Try to find user by full name to get their unique ID
+                        name_parts = requester_name.split()
+                        if len(name_parts) >= 2:
+                            first_name = name_parts[0]
+                            last_name = ' '.join(name_parts[1:])  # Handle multi-word last names
+                            requester_user = User.query.filter_by(first_name=first_name, last_name=last_name).first()
+                            if requester_user and requester_user.unique_id:
+                                ownership_info.append(f"Req: {requester_name} ({requester_user.unique_id})")
+                            else:
+                                ownership_info.append(f"Req: {requester_name}")
+                        else:
+                            ownership_info.append(f"Req: {requester_name}")
+                    except (ImportError, Exception):
+                        ownership_info.append(f"Req: {requester_name}")
+                
+                # Format the final box text more compactly
+                if ownership_info:
+                    # Put ownership info on new line but in a more compact format
+                    box_text += f"\n{' | '.join(ownership_info)}"
+                
+                row_cells[1].text = box_text
                 
                 # Description of goods with HSN Code
                 description = form_data.get(f'{prefix}_description', '')
@@ -601,7 +751,7 @@ def submit_shipment():
         # Prepare context for template rendering
         context = {
             # Invoice Number Generation
-            'invoice_no': f"NCPOR/ARC/{form_data.get('expedition_year', '')}/{form_data.get('return_type', '')}/{form_data.get('batch_number', '')}/{form_data.get('requester_name', '').split()[1].upper() if len(form_data.get('requester_name', '').split()) > 1 else form_data.get('requester_name', '').split()[0].upper() if form_data.get('requester_name', '') else 'FIRSTNAME'}",
+            'invoice_no': f"NCPOR/ARC/{form_data.get('expedition_year', '')}/{month}/EXP/{form_data.get('return_type', 'RET')}/{get_first_name(form_data.get('requester_name', ''))}/{datetime.now().strftime('%H%M%S')}",
             
             # Current Date
             'invoice_date': datetime.now().strftime('%d-%m-%Y'),
@@ -612,18 +762,24 @@ def submit_shipment():
             'exporter_address': "Headland Sada, Vasco da Gama, Goa - 403804",
             'exporter_country': "India",
             'exporter_phone': "+91 832 2525501",
-            'exporter_gst': "30AACFN4991PlZN",
-            'exporter_iec': "1196000125",
+            'exporter_gst': "30AACFN4991P1ZN",
+            'exporter_lut': "AD300618000016R",
             
-            # Consignee Details
-            'consignee_name': "Himadri - Indian Arctic Research Station C/O Kingsbay AS",
-            'consignee_address': "N-9173 Ny-Alesund, Norway",
-            'consignee_contact': "Kingsbay AS, Longyearbyen",
-            'consignee_phone': "+47 79 027200",
+            # Consignee Details - Check if "other" consignee was selected
+            'consignee_name': form_data.get('other_consignee_org', 'Himadri - Indian Arctic Research Station C/O Kingsbay AS') if form_data.get('consignee') == 'other' else "Himadri - Indian Arctic Research Station C/O Kingsbay AS",
+            'consignee_address': form_data.get('other_consignee_address', 'N-9173 Ny-Alesund, Norway') if form_data.get('consignee') == 'other' else "N-9173 Ny-Alesund, Norway",
+            'consignee_contact': form_data.get('other_consignee_contact', 'Kingsbay AS, Longyearbyen') if form_data.get('consignee') == 'other' else "Kingsbay AS, Longyearbyen",
+            'consignee_phone': form_data.get('other_consignee_phone', '+47 79 027200') if form_data.get('consignee') == 'other' else "+47 79 027200",
             
             # Shipment Details
             'destination_country': form_data.get('destination_country', 'NORWAY'),
+            'country_of_origin_goods': form_data.get('country_of_origin', 'India'),
+            'country_of_final_destination': form_data.get('country_of_final_destination', 'Norway'),
             'airport_of_loading': form_data.get('airport_loading', 'MUMBAI'),
+            'mode_of_transport': form_data.get('mode_of_transport', 'Air'),
+            'transport_facility_type': 'Air Port' if form_data.get('mode_of_transport', 'Air') == 'Air' else 'Port',
+            'port_of_loading': form_data.get('port_of_loading', ''),
+            'port_of_discharge': form_data.get('port_of_discharge', ''),
             'requester_name': form_data.get('requester_name', ''),
             'expedition_year': form_data.get('expedition_year', ''),
             'batch_number': form_data.get('batch_number', ''),
@@ -655,10 +811,12 @@ def submit_shipment():
         # Compute amount in words
         amount_in_words = f"USD {num2words(int(total_amount))} Only"
 
-        # Update amount in words
+        # Update amount in words and total amount
         for paragraph in doc.paragraphs:
             if '[AMOUNT_IN_WORDS]' in paragraph.text:
                 paragraph.text = paragraph.text.replace('[AMOUNT_IN_WORDS]', amount_in_words)
+            if '[TOTAL_AMOUNT]' in paragraph.text:
+                paragraph.text = paragraph.text.replace('[TOTAL_AMOUNT]', f"{total_amount:.0f}")
 
         # Save to a buffer
         docx_buffer = io.BytesIO()
@@ -723,14 +881,14 @@ def submit_import_shipment():
             'exporter_location': "N-9173, Ny-Alesund, Norway",
             'exporter_phone': "+47 79 02 72 00",
             
-            # Consignee Details (NCPOR for imports)
-            'consignee_name': "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]",
-            'consignee_ministry': "Ministry of Earth Sciences (Govt. of India)",
-            'consignee_address': "Headland Sada, Vasco da Gama, Goa - 403804",
-            'consignee_location': "India",
-            'consignee_phone': "+91 832 2525501",
-            'consignee_gst': "30AACFN4991PlZN",
-            'consignee_iec': "1196000125",
+            # Consignee Details (NCPOR for imports) - Check if "other" consignee was selected
+            'consignee_name': form_data.get('other_consignee_org', 'National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]') if form_data.get('consignee') == 'other' else "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]",
+            'consignee_ministry': form_data.get('other_consignee_ministry', 'Ministry of Earth Sciences (Govt. of India)') if form_data.get('consignee') == 'other' else "Ministry of Earth Sciences (Govt. of India)",
+            'consignee_address': form_data.get('other_consignee_address', 'Headland Sada, Vasco da Gama, Goa - 403804') if form_data.get('consignee') == 'other' else "Headland Sada, Vasco da Gama, Goa - 403804",
+            'consignee_location': form_data.get('other_consignee_country', 'India') if form_data.get('consignee') == 'other' else "India",
+            'consignee_phone': form_data.get('other_consignee_phone', '+91 832 2525501') if form_data.get('consignee') == 'other' else "+91 832 2525501",
+            'consignee_gst': form_data.get('other_consignee_gst', '30AACFN4991P1ZN') if form_data.get('consignee') == 'other' else "30AACFN4991P1ZN",
+            'consignee_lut': form_data.get('other_consignee_lut', 'AD300618000016R') if form_data.get('consignee') == 'other' else "AD300618000016R",
             
             # Consigner Details (Himadri Station for imports)
             'consigner_name': "Himadri - Indian Arctic Research Station C/O Kingsbay AS",
@@ -740,7 +898,13 @@ def submit_import_shipment():
             
             # Import Details
             'destination_country': 'INDIA',
+            'country_of_origin_goods': form_data.get('country_of_origin', 'Norway'),
+            'country_of_final_destination': form_data.get('country_of_final_destination', 'India'),
             'airport_of_loading': form_data.get('import_mode', 'AIR').upper(),
+            'mode_of_transport': form_data.get('mode_of_transport', 'Air'),
+            'transport_facility_type': 'Air Port' if form_data.get('mode_of_transport', 'Air') == 'Air' else 'Port',
+            'port_of_loading': form_data.get('port_of_loading', ''),
+            'port_of_discharge': form_data.get('port_of_discharge', ''),
             'requester_name': form_data.get('requester_name', ''),
             'expedition_year': form_data.get('expedition_year', ''),
             'batch_number': form_data.get('batch_number', ''),
@@ -768,10 +932,12 @@ def submit_import_shipment():
         # Compute amount in words
         amount_in_words = f"USD {num2words(int(total_amount))} Only"
 
-        # Update amount in words
+        # Update amount in words and total amount
         for paragraph in doc.paragraphs:
             if '[AMOUNT_IN_WORDS]' in paragraph.text:
                 paragraph.text = paragraph.text.replace('[AMOUNT_IN_WORDS]', amount_in_words)
+            if '[TOTAL_AMOUNT]' in paragraph.text:
+                paragraph.text = paragraph.text.replace('[TOTAL_AMOUNT]', f"{total_amount:.0f}")
 
         # Save to a buffer
         docx_buffer = io.BytesIO()

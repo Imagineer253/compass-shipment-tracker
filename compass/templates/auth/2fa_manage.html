@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12">
+    <div class="container mx-auto px-4">
+        <div class="max-w-5xl mx-auto">
+            <!-- Hero Section -->
+            <div class="text-center mb-12">
+                {% if current_user.two_fa_enabled %}
+                    <i class="fas fa-shield-check text-green-600 text-6xl mb-6"></i>
+                {% else %}
+                    <i class="fas fa-shield-alt text-orange-600 text-6xl mb-6"></i>
+                {% endif %}
+                <h1 class="text-4xl font-bold text-gray-900 mt-6 mb-4">
+                    Security Dashboard
+                </h1>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    {% if current_user.two_fa_enabled %}
+                        Your account is protected with two-factor authentication. Manage your security settings below.
+                    {% else %}
+                        Protect your COMPASS account with two-factor authentication for enhanced security.
+                    {% endif %}
+                </p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="max-w-4xl mx-auto mb-8">
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show rounded-xl shadow-lg border-0" role="alert">
+                                <div class="flex items-center">
+                                    <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' if category == 'success' else 'info-circle' }} mr-3 text-xl"></i>
+                                    {{ message }}
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if current_user.two_fa_enabled %}
+                <!-- 2FA is enabled -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    <!-- Status Card -->
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-3xl p-8 border border-green-200 shadow-xl">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-shield-check text-green-600 text-4xl mr-6"></i>
+                                    <div>
+                                        <h3 class="text-2xl font-bold text-green-800 mb-1">Two-Factor Authentication Enabled</h3>
+                                        <p class="text-green-600">Your account is protected with military-grade security</p>
+                                    </div>
+                                </div>
+                                <div class="hidden md:block">
+                                    <div class="text-right">
+                                        <div class="text-3xl font-bold text-green-700">✓</div>
+                                        <div class="text-sm text-green-600">Secured</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Backup Codes Card -->
+                    <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+                        <div class="text-center">
+                            <i class="fas fa-key text-blue-600 text-4xl mb-6"></i>
+                            <h3 class="text-xl font-bold text-gray-900 mb-3">Backup Codes</h3>
+                            <p class="text-gray-600 mb-6">
+                                You have <span class="font-bold text-blue-600">{{ backup_codes_count }}</span> backup codes remaining
+                            </p>
+                            <a href="{{ url_for('two_fa.backup_codes') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                                <i class="fas fa-download mr-2"></i>
+                                Manage Codes
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- App Status Card -->
+                    <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+                        <div class="text-center">
+                            <i class="fas fa-mobile-alt text-purple-600 text-4xl mb-6"></i>
+                            <h3 class="text-xl font-bold text-gray-900 mb-3">Authenticator App</h3>
+                            <p class="text-gray-600 mb-6">
+                                Your app is linked and working
+                            </p>
+                            <div class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 font-medium rounded-lg">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Active
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trusted Devices Card -->
+                    <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+                        <div class="text-center">
+                            <i class="fas fa-devices text-indigo-600 text-4xl mb-6"></i>
+                            <h3 class="text-xl font-bold text-gray-900 mb-3">Trusted Devices</h3>
+                            <p class="text-gray-600 mb-6">
+                                Manage devices that can skip 2FA
+                            </p>
+                            <a href="{{ url_for('two_fa.trusted_devices') }}" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                                <i class="fas fa-desktop mr-2"></i>
+                                Manage Devices
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Disable 2FA Card -->
+                    <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-300">
+                        <div class="text-center">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-4xl mb-6"></i>
+                            <h3 class="text-xl font-bold text-gray-900 mb-3">Disable 2FA</h3>
+                            <p class="text-gray-600 mb-6">
+                                Remove two-factor authentication protection
+                            </p>
+                            <button type="button" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 shadow-lg" data-bs-toggle="modal" data-bs-target="#disable2faModal">
+                                <i class="fas fa-times-circle mr-2"></i>
+                                Disable 2FA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                                
+                <!-- Modern Disable 2FA Modal -->
+                <div class="modal fade" id="disable2faModal" tabindex="-1" aria-labelledby="disable2faModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content rounded-3xl border-0 shadow-2xl">
+                            <div class="modal-header border-0 pb-0">
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body text-center p-8">
+                                <i class="fas fa-exclamation-triangle text-red-600 text-5xl mb-6"></i>
+                                <h3 class="text-2xl font-bold text-gray-900 mb-4">Disable Two-Factor Authentication?</h3>
+                                <p class="text-gray-600 mb-6">
+                                    This will make your account less secure. You'll only need your password to log in.
+                                </p>
+                                
+                                <form method="POST" action="{{ url_for('two_fa.disable') }}" class="space-y-6">
+                                    <div class="bg-gradient-to-r from-orange-50 to-red-50 p-4 rounded-xl border border-orange-200">
+                                        <h4 class="font-semibold text-orange-800 mb-2">Security Risks</h4>
+                                        <ul class="text-sm text-orange-700 text-left">
+                                            <li>• Vulnerable to password breaches</li>
+                                            <li>• No protection against stolen credentials</li>
+                                            <li>• Reduced security for sensitive data</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="text-left">
+                                        <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">Confirm your password</label>
+                                        <input type="password" 
+                                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none transition-colors" 
+                                               id="password" 
+                                               name="password" 
+                                               required
+                                               placeholder="Enter your password">
+                                    </div>
+                                    
+                                    <div class="flex space-x-4">
+                                        <button type="button" class="flex-1 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors" data-bs-dismiss="modal">
+                                            Cancel
+                                        </button>
+                                        <button type="submit" class="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-red-700 transition-all duration-200">
+                                            <i class="fas fa-times-circle mr-2"></i>
+                                            Disable 2FA
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                                
+            {% else %}
+                <!-- 2FA is disabled -->
+                <div class="max-w-4xl mx-auto">
+                    <!-- Warning Card -->
+                    <div class="bg-gradient-to-r from-orange-50 to-red-50 rounded-3xl p-8 border border-orange-200 shadow-xl mb-12">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-4xl mr-6"></i>
+                            <div>
+                                <h3 class="text-2xl font-bold text-orange-800 mb-1">Two-Factor Authentication is Disabled</h3>
+                                <p class="text-orange-600">Your account is vulnerable to password attacks. Enable 2FA for enhanced security.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Setup Card -->
+                    <div class="bg-white rounded-3xl shadow-2xl p-12 border border-gray-100">
+                        <div class="text-center mb-12">
+                            <i class="fas fa-shield-plus text-blue-600 text-6xl mb-6"></i>
+                            <h2 class="text-3xl font-bold text-gray-900 mb-4">Secure Your COMPASS Account</h2>
+                            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                                Two-factor authentication adds an extra layer of security to your account. 
+                                Even if someone knows your password, they won't be able to access your account without the second factor.
+                            </p>
+                        </div>
+                        
+                        <!-- Feature Grid -->
+                        <div class="grid md:grid-cols-3 gap-8 mb-12">
+                            <div class="text-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                                <i class="fas fa-mobile-alt text-blue-600 text-3xl mb-4"></i>
+                                <h4 class="text-lg font-bold text-gray-900 mb-2">Authenticator App</h4>
+                                <p class="text-gray-600 text-sm">Use Google Authenticator, Microsoft Authenticator, Authy, or any TOTP-compatible app</p>
+                            </div>
+                            
+                            <div class="text-center p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
+                                <i class="fas fa-envelope text-purple-600 text-3xl mb-4"></i>
+                                <h4 class="text-lg font-bold text-gray-900 mb-2">Email Backup</h4>
+                                <p class="text-gray-600 text-sm">Receive verification codes via email when your authenticator app isn't available</p>
+                            </div>
+                            
+                            <div class="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100">
+                                <i class="fas fa-key text-green-600 text-3xl mb-4"></i>
+                                <h4 class="text-lg font-bold text-gray-900 mb-2">Backup Codes</h4>
+                                <p class="text-gray-600 text-sm">Emergency access codes you can use if you lose access to your primary devices</p>
+                            </div>
+                        </div>
+                        
+                        <!-- CTA Button -->
+                        <div class="text-center">
+                            <a href="{{ url_for('two_fa.setup') }}" class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg rounded-2xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-xl hover:shadow-2xl">
+                                <i class="fas fa-shield-plus mr-3 text-xl"></i>
+                                Enable Two-Factor Authentication
+                            </a>
+                            <p class="text-sm text-gray-500 mt-4">Setup takes less than 2 minutes</p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            <!-- Bottom Navigation -->
+            <div class="text-center mt-12">
+                <a href="{{ url_for('auth.profile') if current_user.is_authenticated else url_for('main.dashboard') }}" class="inline-flex items-center px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Profile
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

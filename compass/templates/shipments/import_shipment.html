@@ -162,15 +162,29 @@
                 <div class="space-y-4">
                     <h3 class="section-title">Personal Details</h3>
                     <div>
-                        <label class="input-label">Full Name with Title</label>
-                        <input type="text" 
-                               name="requester_name" 
-                               id="requesterName"
+                        <label class="input-label">Requester (User)</label>
+                        <select name="requester_user_id" 
+                                id="requesterUserSelect"
                                class="input-field"
-                               placeholder="e.g., Dr. John Smith"
-                               value="{% if edit_mode %}{{ form_data.get('requester_name', '') }}{% endif %}"
                                required>
-                        <p class="text-sm text-gray-500 mt-1">Please include appropriate title (Dr./Mr./Ms./etc.)</p>
+                            <option value="">Select User</option>
+                            {% for user in all_users %}
+                            <option value="{{ user.id }}" data-unique-id="{{ user.unique_id }}" data-full-name="{{ user.first_name }} {{ user.last_name }}"
+                                    {% if edit_mode and form_data.get('requester_user_id') == user.id|string %}selected{% elif not edit_mode and user.id == current_user.id %}selected{% endif %}>
+                                {{ user.first_name }} {{ user.last_name }} ({{ user.unique_id }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% if edit_mode %}
+                            <p class="text-sm text-blue-600 mt-1">⚠️ Note: Changing the requester will NOT affect the invoice number. The original invoice number is preserved.</p>
+                        {% else %}
+                        <p class="text-sm text-gray-500 mt-1">Select the user this shipment is for (affects invoice unique ID)</p>
+                        {% endif %}
+                        
+                        <!-- Hidden field to store the selected user's full name for backend -->
+                        <input type="hidden" 
+                               name="requester_name" 
+                               id="requesterNameHidden">
                     </div>
                 </div>
 
@@ -178,55 +192,13 @@
                 <div class="space-y-4">
                     <h3 class="section-title">Shipment Characteristics</h3>
                     
-                    <!-- Returnable/Non-Returnable Selection -->
-                    <div>
-                        <label class="input-label">Shipment Type</label>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <label class="cursor-pointer">
-                                <input type="radio" 
-                                       name="return_type" 
-                                       value="RET" 
-                                       class="sr-only" 
-                                       {% if edit_mode and form_data.get('return_type') == 'RET' %}checked{% endif %}
-                                       required>
-                                <div class="radio-card arctic-card p-4">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                            <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
-                                        </div>
-                                        <div>
-                                            <p class="font-semibold text-deep-arctic">Returnable</p>
-                                            <p class="text-sm text-gray-600">Items will be returned after use</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </label>
-                            <label class="cursor-pointer">
-                                <input type="radio" 
-                                       name="return_type" 
-                                       value="NONRET" 
-                                       class="sr-only" 
-                                       {% if edit_mode and form_data.get('return_type') == 'NONRET' %}checked{% endif %}
-                                       required>
-                                <div class="radio-card arctic-card p-4">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                            <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
-                                        </div>
-                                        <div>
-                                            <p class="font-semibold text-deep-arctic">Non-Returnable</p>
-                                            <p class="text-sm text-gray-600">Items will not be returned</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
+                    <!-- Hidden field for return type - defaults to RESEARCH for imports -->
+                    <input type="hidden" name="return_type" value="RESEARCH">
 
-                    <!-- Expedition Details -->
-                    <div class="grid grid-cols-1 gap-4">
-                        <div>
-                            <label class="input-label">Year of Expedition</label>
+                    <!-- Date Details -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                            <label class="input-label">Year</label>
                             <input type="number" 
                                    name="expedition_year" 
                                    id="expeditionYear"
@@ -237,6 +209,27 @@
                                    value="{% if edit_mode %}{{ form_data.get('expedition_year', '') }}{% endif %}"
                                    required>
                         </div>
+                        <div>
+                            <label class="input-label">Month</label>
+                            <select name="expedition_month" 
+                                    id="expeditionMonth"
+                                    class="input-field"
+                                    required>
+                                <option value="">Select Month</option>
+                                <option value="JAN" {% if edit_mode and form_data.get('expedition_month') == 'JAN' %}selected{% endif %}>January</option>
+                                <option value="FEB" {% if edit_mode and form_data.get('expedition_month') == 'FEB' %}selected{% endif %}>February</option>
+                                <option value="MAR" {% if edit_mode and form_data.get('expedition_month') == 'MAR' %}selected{% endif %}>March</option>
+                                <option value="APR" {% if edit_mode and form_data.get('expedition_month') == 'APR' %}selected{% endif %}>April</option>
+                                <option value="MAY" {% if edit_mode and form_data.get('expedition_month') == 'MAY' %}selected{% endif %}>May</option>
+                                <option value="JUN" {% if edit_mode and form_data.get('expedition_month') == 'JUN' %}selected{% endif %}>June</option>
+                                <option value="JUL" {% if edit_mode and form_data.get('expedition_month') == 'JUL' %}selected{% endif %}>July</option>
+                                <option value="AUG" {% if edit_mode and form_data.get('expedition_month') == 'AUG' %}selected{% endif %}>August</option>
+                                <option value="SEP" {% if edit_mode and form_data.get('expedition_month') == 'SEP' %}selected{% endif %}>September</option>
+                                <option value="OCT" {% if edit_mode and form_data.get('expedition_month') == 'OCT' %}selected{% endif %}>October</option>
+                                <option value="NOV" {% if edit_mode and form_data.get('expedition_month') == 'NOV' %}selected{% endif %}>November</option>
+                                <option value="DEC" {% if edit_mode and form_data.get('expedition_month') == 'DEC' %}selected{% endif %}>December</option>
+                            </select>
+                        </div>
                         </div>
                     </div>
 
@@ -244,13 +237,13 @@
                 <div class="space-y-4">
                     <h3 class="section-title">Exporter Details</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- NCPOR Option -->
+                        <!-- Himadri Option (Default) -->
                         <label class="cursor-pointer">
                             <input type="radio" 
                                    name="exporter" 
-                                   value="ncpor" 
+                                   value="himadri" 
                                    class="sr-only" 
-                                   id="exporterNcporRadio"
+                                   id="exporterHimadriRadio"
                                    checked
                                    required>
                             <div class="radio-card arctic-card p-4 h-full">
@@ -259,8 +252,8 @@
                                         <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
                         </div>
                         <div>
-                                        <p class="font-semibold text-deep-arctic">NCPOR</p>
-                                        <p class="text-sm text-gray-600">National Centre for Polar and Ocean Research</p>
+                                        <p class="font-semibold text-deep-arctic">Himadri</p>
+                                        <p class="text-sm text-gray-600">Himadri Station</p>
                         </div>
                     </div>
                 </div>
@@ -289,18 +282,19 @@
 
                     <!-- Dynamic Exporter Details -->
                     <div id="exporterDetailsSection" class="mt-4">
-                        <!-- NCPOR Details (Read-only) -->
-                        <div id="ncporExporterDetails">
+                        <!-- Himadri Details (Default - Read-only) -->
+                        <div id="himadriExporterDetails">
                     <div class="readonly-field">
-                                National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]<br>
-                                Ministry of Earth Sciences (Govt. of India)<br>
-                                Headland Sada, Vasco da Gama, Goa - 403804<br>
-                                India<br>
-                        Phone: +91 832 2525501<br>
-                        GST: 30AAAAN4327G1ZJ<br>
-                        IEC No.: 1196000125
+                                <strong>Himadri Station</strong><br>
+                                Indian Research Base<br>
+                                Ny-Ålesund, Svalbard<br>
+                                Norway<br>
+                                Phone: [Contact Information]<br>
+                                Research Station ID: HIMADRI
                     </div>
                 </div>
+
+
 
                         <!-- Other Exporter Details -->
                         <div id="otherExporterDetails" class="hidden space-y-4">
@@ -355,11 +349,11 @@
                                            placeholder="Enter GST number">
                                 </div>
                                 <div>
-                                    <label class="input-label">IEC Number</label>
+                                    <label class="input-label">LUT Number</label>
                                     <input type="text" 
-                                           name="other_exporter_iec" 
+                                           name="other_exporter_lut" 
                                            class="input-field"
-                                           placeholder="Enter IEC number">
+                                           placeholder="Enter LUT number">
                                 </div>
                             </div>
                         </div>
@@ -370,13 +364,13 @@
                 <div class="space-y-4">
                     <h3 class="section-title">Consignee Details</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Himadri Option -->
+                        <!-- NCPOR Option -->
                         <label class="cursor-pointer">
                             <input type="radio" 
                                    name="consignee" 
-                                   value="himadri" 
+                                   value="ncpor" 
                                    class="sr-only" 
-                                   id="consigneeHimadriRadio"
+                                   id="consigneeNcporRadio"
                                    checked
                                    required>
                             <div class="radio-card arctic-card p-4 h-full">
@@ -385,8 +379,8 @@
                                         <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
                                     </div>
                                     <div>
-                                        <p class="font-semibold text-deep-arctic">Himadri</p>
-                                        <p class="text-sm text-gray-600">Indian Arctic Research Station</p>
+                                        <p class="font-semibold text-deep-arctic">NCPOR</p>
+                                        <p class="text-sm text-gray-600">National Center for Polar and Ocean Research</p>
                                     </div>
                                 </div>
                             </div>
@@ -415,13 +409,14 @@
 
                     <!-- Dynamic Consignee Details -->
                     <div id="consigneeDetailsSection" class="mt-4">
-                        <!-- Himadri Details (Read-only) -->
-                        <div id="himadriConsigneeDetails">
-                    <div class="readonly-field">
-                                <strong>Himadri - Indian Arctic Research Station C/O Kingsbay AS</strong><br>
-                                N-9173 Ny-Alesund, Norway<br>
-                                Point of Contact: Kingsbay AS, Longyearbyen<br>
-                                Phone: +47 79 027200
+                        <!-- NCPOR Details (Read-only) -->
+                        <div id="ncporConsigneeDetails">
+                            <div class="readonly-field">
+                                <strong>National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]</strong><br>
+                                Ministry of Earth Sciences (Govt. of India)<br>
+                                Headland Sada, Vasco da Gama, Goa - 403804<br>
+                                Phone: +91 832 2525501<br>
+                                GST: 30AACFN4991P1ZN | LUT: AD300618000016R
                             </div>
                         </div>
                         
@@ -636,7 +631,7 @@
             Item {itemNumber} Details
         </h5>
         <div class="space-y-4">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="input-label">Description of Goods</label>
                     <textarea name="{prefix}_description" 
@@ -645,15 +640,30 @@
                             placeholder="Detailed description of item (include model/serial numbers if applicable)"
                             required></textarea>
                 </div>
+                <div>
+                    <label class="input-label">Sample Type</label>
+                    <select name="{prefix}_sample_type" 
+                            class="input-field sample-type-select"
+                            required>
+                        <option value="">Select Sample Type</option>
+                        <option value="water">Water Samples</option>
+                        <option value="sediment">Sediment Samples</option>
+                        <option value="glass_fiber">Glass Fiber Samples</option>
+                        <option value="other">Others</option>
+                    </select>
+                    <input type="text" 
+                           name="{prefix}_other_sample_type" 
+                           class="input-field mt-2 other-sample-type hidden"
+                           placeholder="Specify sample type">
+                </div>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
-                                        <label class="input-label">HSN</label>
+                    <label class="input-label">HSN</label>
                     <input type="text" 
-                                               name="{prefix}_hsn_code" 
-                            class="input-field"
-                            placeholder="e.g., 9015.80.90"
-                            required>
+                           name="{prefix}_hsn_code" 
+                           class="input-field"
+                           placeholder="e.g., 9015.80.90">
                 </div>
                 <div>
                     <label class="input-label">Quantity</label>
@@ -754,16 +764,48 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Elements for invoice number generation
-    const requesterName = document.getElementById('requesterName');
+    const requesterUserSelect = document.getElementById('requesterUserSelect');
+    const requesterNameHidden = document.getElementById('requesterNameHidden');
     const expeditionYear = document.getElementById('expeditionYear');
     const expeditionMonth = document.getElementById('expeditionMonth');
-    
-    const returnTypeInputs = document.getElementsByName('return_type');
     const invoicePreview = document.getElementById('invoiceNumberPreview');
 
     // Set current date in hidden field
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('invoiceDateHidden').value = today;
+
+    // Function to handle requester user selection
+    function handleRequesterUserChange() {
+        if (requesterUserSelect) {
+            const selectedOption = requesterUserSelect.options[requesterUserSelect.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const fullName = selectedOption.getAttribute('data-full-name');
+                if (requesterNameHidden) {
+                    requesterNameHidden.value = fullName;
+                }
+            } else {
+                if (requesterNameHidden) {
+                    requesterNameHidden.value = '';
+                }
+            }
+        }
+        // Only update invoice number in create mode, not edit mode
+        if (!isEditMode) {
+            updateInvoiceNumber();
+        }
+    }
+
+    // Initialize requester name hidden field
+    if (requesterUserSelect && requesterUserSelect.value) {
+        const selectedOption = requesterUserSelect.options[requesterUserSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const fullName = selectedOption.getAttribute('data-full-name');
+            if (requesterNameHidden) {
+                requesterNameHidden.value = fullName;
+            }
+        }
+    }
+
     // Auto-fill current year and month if not in edit mode
     const isEditMode = {% if edit_mode %}true{% else %}false{% endif %};
     if (!isEditMode) {
@@ -773,9 +815,13 @@ document.addEventListener('DOMContentLoaded', function() {
                            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
         const currentMonth = monthNames[currentDate.getMonth()];
         
-        // Set current year and month
+        // Set current year and month only if fields are empty
+        if (!expeditionYear.value) {
         expeditionYear.value = currentYear;
+        }
+        if (!expeditionMonth.value) {
         expeditionMonth.value = currentMonth;
+        }
         
         // Update invoice preview
         updateInvoiceNumber();
@@ -786,43 +832,75 @@ document.addEventListener('DOMContentLoaded', function() {
     expeditionYear.setAttribute('max', maxYear);
     expeditionYear.setAttribute('min', '2000');
 
-    // Function to generate invoice number
-    function updateInvoiceNumber() {
-        let firstName = 'FIRSTNAME';
-        if (requesterName.value) {
-            const nameParts = requesterName.value.trim().split(' ');
-            // If we have title + first name (or more)
-            if (nameParts.length > 1) {
-                firstName = nameParts[1].toUpperCase(); // Take second word as first name
-                } else {
-                firstName = nameParts[0].toUpperCase(); // If only one word, use that
-            }
-        }
-
+    // Function to generate invoice number with API call
+    async function updateInvoiceNumber() {
         const year = expeditionYear.value || 'YYYY';
         const month = expeditionMonth.value || 'MMM';
-        
-        let returnType = 'TYPE';
-        
-        for (const input of returnTypeInputs) {
-            if (input.checked) {
-                returnType = input.value;
-                break;
+        const returnType = 'RESEARCH'; // Fixed for import shipments
+
+        // Try to get real-time invoice number from API
+        if (year && month) {
+            try {
+                // Get selected requester ID
+                const selectedRequesterId = requesterUserSelect ? requesterUserSelect.value : null;
+
+                const response = await fetch('/api/generate-invoice-preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        shipment_type: 'import',
+                        year: year,
+                        month: month,
+                        return_type: returnType,
+                        selected_requester_id: selectedRequesterId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    invoicePreview.textContent = data.invoice_number;
+                    
+                    // Show additional info below the invoice number
+                    let infoElement = document.getElementById('invoiceInfo');
+                    if (!infoElement) {
+                        infoElement = document.createElement('div');
+                        infoElement.id = 'invoiceInfo';
+                        infoElement.className = 'text-sm text-gray-600 mt-1';
+                        invoicePreview.parentNode.appendChild(infoElement);
+                    }
+                    
+                    infoElement.innerHTML = `
+                        <div class="text-xs space-y-1">
+                            <div><strong>Unique ID:</strong> ${data.unique_id}</div>
+                            <div><strong>Serial Number:</strong> ${data.serial_number}</div>
+                            <div><strong>User:</strong> ${data.user_name || 'Current User'}</div>
+                        </div>
+                    `;
+                } else {
+                    invoicePreview.textContent = `Error: ${data.error}`;
+                }
+            } catch (error) {
+                console.error('Error generating invoice preview:', error);
+                invoicePreview.textContent = `NCPOR/IMP/${year}/${month}/${returnType}/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000`;
+            }
+        } else {
+            invoicePreview.textContent = `NCPOR/IMP/${year || 'YYYY'}/${month || 'MMM'}/${returnType}/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000`;
+            const infoElement = document.getElementById('invoiceInfo');
+            if (infoElement) {
+                infoElement.innerHTML = '';
             }
         }
-
-                    const invoiceNumber = `NCPOR/IMP/${year}/${month}/${returnType}/${firstName}/0000`;
-        invoicePreview.textContent = invoiceNumber;
     }
 
     // Add event listeners for invoice number generation
-    requesterName.addEventListener('input', updateInvoiceNumber);
+    if (requesterUserSelect) {
+        requesterUserSelect.addEventListener('change', handleRequesterUserChange);
+    }
     expeditionYear.addEventListener('input', updateInvoiceNumber);
     expeditionMonth.addEventListener('change', updateInvoiceNumber);
-    
-    returnTypeInputs.forEach(input => {
-        input.addEventListener('change', updateInvoiceNumber);
-    });
 
     // Elements for package handling
     const totalPackagesInput = document.getElementById('totalPackagesInput');
@@ -879,24 +957,81 @@ document.addEventListener('DOMContentLoaded', function() {
         updateTotals();
     }
     
-    // Function to generate item details
-    function generateItemDetails(packageNum, itemCount, container) {
-        container.innerHTML = '';
-        for (let itemNum = 1; itemNum <= itemCount; itemNum++) {
-            const prefix = `package_${packageNum}_item_${itemNum}`;
-            const itemHtml = itemDetailsTemplate.innerHTML
-                .replaceAll('{itemNumber}', itemNum)
-                .replaceAll('{prefix}', prefix);
+    // Function to set up item handlers
+    function setupItemHandlers(itemElement) {
+        // Set up quantity and value change handlers
+        const quantityInput = itemElement.querySelector('.item-quantity');
+        const valueInput = itemElement.querySelector('.item-value');
+        if (quantityInput && valueInput) {
+            const prefix = quantityInput.dataset.prefix;
+            const totalElement = document.getElementById(prefix + '_total');
             
-            const itemElement = document.createElement('div');
-            itemElement.innerHTML = itemHtml;
-            container.appendChild(itemElement);
+            function updateTotal() {
+                const quantity = parseFloat(quantityInput.value) || 0;
+                const value = parseFloat(valueInput.value) || 0;
+                const total = quantity * value;
+                if (totalElement) {
+                    totalElement.textContent = total.toFixed(2) + ' USD';
+                }
+                updatePackageTotal();
+            }
             
-            // Add event listeners for calculations
-            const inputs = container.querySelectorAll(`[data-prefix="${prefix}"]`);
-            inputs.forEach(input => {
-                input.addEventListener('input', () => calculateItemTotal(prefix));
+            quantityInput.addEventListener('input', updateTotal);
+            valueInput.addEventListener('input', updateTotal);
+        }
+
+        // Set up sample type handlers
+        const sampleTypeSelect = itemElement.querySelector('.sample-type-select');
+        const otherSampleInput = itemElement.querySelector('.other-sample-type');
+        
+        if (sampleTypeSelect && otherSampleInput) {
+            sampleTypeSelect.addEventListener('change', function() {
+                if (this.value === 'other') {
+                    otherSampleInput.classList.remove('hidden');
+                    otherSampleInput.required = true;
+                } else {
+                    otherSampleInput.classList.add('hidden');
+                    otherSampleInput.required = false;
+                    otherSampleInput.value = '';
+                }
             });
+        }
+    }
+    
+    // Function to generate item details
+    function generateItemDetails(packageNum, count, container) {
+        container.innerHTML = '';
+        const template = document.getElementById('itemDetailsTemplate');
+        
+        for (let i = 1; i <= count; i++) {
+            const clone = template.content.cloneNode(true);
+            const prefix = `package_${packageNum}_item_${i}`;
+            
+            // Replace all placeholders
+            clone.querySelectorAll('[name]').forEach(element => {
+                element.name = element.name.replace('{prefix}', prefix);
+            });
+            clone.querySelectorAll('[data-prefix]').forEach(element => {
+                element.dataset.prefix = prefix;
+            });
+            clone.querySelectorAll('[id]').forEach(element => {
+                if (element.id.includes('{prefix}')) {
+                    element.id = element.id.replace('{prefix}', prefix);
+                }
+            });
+            
+            // Replace item number in title
+            const title = clone.querySelector('h5');
+            if (title) {
+                title.textContent = title.textContent.replace('{itemNumber}', i);
+            }
+            
+            // Add to container
+            container.appendChild(clone);
+            
+            // Set up handlers for the new item
+            const newItem = container.lastElementChild;
+            setupItemHandlers(newItem);
         }
     }
     
@@ -951,14 +1086,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Initialize exporters and consignees sections
-    const exporterNcporRadio = document.getElementById('exporterNcporRadio');
+    const exporterHimadriRadio = document.getElementById('exporterHimadriRadio');
     const exporterOtherRadio = document.getElementById('exporterOtherRadio');
-    const ncporExporterDetails = document.getElementById('ncporExporterDetails');
+    const himadriExporterDetails = document.getElementById('himadriExporterDetails');
     const otherExporterDetails = document.getElementById('otherExporterDetails');
 
-    const consigneeHimadriRadio = document.getElementById('consigneeHimadriRadio');
+    const consigneeNcporRadio = document.getElementById('consigneeNcporRadio');
     const consigneeOtherRadio = document.getElementById('consigneeOtherRadio');
-    const himadriConsigneeDetails = document.getElementById('himadriConsigneeDetails');
+    const ncporConsigneeDetails = document.getElementById('ncporConsigneeDetails');
     const otherConsigneeDetails = document.getElementById('otherConsigneeDetails');
 
     // Function to toggle required fields
@@ -971,12 +1106,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to handle exporter selection
     function handleExporterSelection() {
-        if (exporterNcporRadio.checked) {
-            ncporExporterDetails.classList.remove('hidden');
+        if (exporterHimadriRadio.checked) {
+            himadriExporterDetails.classList.remove('hidden');
             otherExporterDetails.classList.add('hidden');
             toggleRequiredFields(otherExporterDetails, false);
         } else {
-            ncporExporterDetails.classList.add('hidden');
+            himadriExporterDetails.classList.add('hidden');
             otherExporterDetails.classList.remove('hidden');
             toggleRequiredFields(otherExporterDetails, true);
         }
@@ -984,21 +1119,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to handle consignee selection
     function handleConsigneeSelection() {
-        if (consigneeHimadriRadio.checked) {
-            himadriConsigneeDetails.classList.remove('hidden');
+        if (consigneeNcporRadio.checked) {
+            ncporConsigneeDetails.classList.remove('hidden');
             otherConsigneeDetails.classList.add('hidden');
             toggleRequiredFields(otherConsigneeDetails, false);
         } else {
-            himadriConsigneeDetails.classList.add('hidden');
+            ncporConsigneeDetails.classList.add('hidden');
             otherConsigneeDetails.classList.remove('hidden');
             toggleRequiredFields(otherConsigneeDetails, true);
         }
     }
 
     // Add event listeners
-    exporterNcporRadio.addEventListener('change', handleExporterSelection);
+    exporterHimadriRadio.addEventListener('change', handleExporterSelection);
     exporterOtherRadio.addEventListener('change', handleExporterSelection);
-    consigneeHimadriRadio.addEventListener('change', handleConsigneeSelection);
+    consigneeNcporRadio.addEventListener('change', handleConsigneeSelection);
     consigneeOtherRadio.addEventListener('change', handleConsigneeSelection);
 
     // Initial setup
@@ -1032,6 +1167,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // All validations passed - let form submit naturally
         return true;
     });
+
+    // Initialize handlers for any existing items
+    document.querySelectorAll('.arctic-card').forEach(setupItemHandlers);
 });
 </script>
 

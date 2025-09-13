@@ -4,14 +4,19 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h2 class="text-center mb-4">Verify OTP</h2>
+            <div class="card shadow-lg">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-shield-alt fa-3x text-primary mb-3"></i>
+                        <h2 class="card-title">Email Verification</h2>
+                        <p class="text-muted">We've sent a verification code to</p>
+                        <strong>{{ email }}</strong>
+                    </div>
                     
                     {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
                             {% for category, message in messages %}
-                                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
                                     {{ message }}
                                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                                 </div>
@@ -20,25 +25,78 @@
                     {% endwith %}
 
                     <form method="POST">
-                        <div class="mb-3">
-                            <label for="email_otp" class="form-label">Email OTP</label>
-                            <input type="text" class="form-control" id="email_otp" name="email_otp" required maxlength="6" pattern="\d{6}">
-                            <div class="form-text">Enter the 6-digit OTP sent to your email.</div>
+                        <div class="mb-4">
+                            <label for="otp_code" class="form-label">Verification Code</label>
+                            <input type="text" 
+                                   class="form-control form-control-lg text-center" 
+                                   id="otp_code" 
+                                   name="otp_code" 
+                                   required 
+                                   maxlength="6" 
+                                   pattern="\d{6}"
+                                   placeholder="Enter 6-digit code"
+                                   autocomplete="one-time-code"
+                                   style="letter-spacing: 0.2em; font-size: 1.5rem;">
+                            <div class="form-text text-center">
+                                <i class="fas fa-clock"></i> Code expires in 15 minutes
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="phone_otp" class="form-label">Phone OTP</label>
-                            <input type="text" class="form-control" id="phone_otp" name="phone_otp" required maxlength="6" pattern="\d{6}">
-                            <div class="form-text">Enter the 6-digit OTP sent to your phone.</div>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 mb-3">Verify OTP</button>
+                        
+                        <button type="submit" class="btn btn-primary w-100 btn-lg mb-3">
+                            <i class="fas fa-check-circle"></i> Verify Email
+                        </button>
                     </form>
 
-                    <form method="POST" action="{{ url_for('auth.resend_otp') }}" class="text-center">
-                        <button type="submit" class="btn btn-link">Resend OTP</button>
-                    </form>
+                    <div class="text-center">
+                        <p class="mb-2">Didn't receive the code?</p>
+                        <form method="POST" action="{{ url_for('auth.resend_verification') }}" class="d-inline">
+                            <button type="submit" class="btn btn-link p-0">
+                                <i class="fas fa-redo"></i> Resend Code
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            Having trouble? Contact NCPOR support
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 15px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #0b5394, #1c7ed6);
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(11, 83, 148, 0.3);
+    }
+    
+    .form-control:focus {
+        border-color: #0b5394;
+        box-shadow: 0 0 0 0.2rem rgba(11, 83, 148, 0.25);
+    }
+    
+    .text-primary {
+        color: #0b5394 !important;
+    }
+</style>
 {% endblock %} 

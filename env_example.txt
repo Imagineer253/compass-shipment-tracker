@@ -1,0 +1,28 @@
+# COMPASS Environment Configuration
+# Copy this content to a .env file and update with your actual values
+
+# Flask Configuration
+FLASK_CONFIG=development
+SECRET_KEY=your-super-secret-key-change-in-production
+
+# Database Configuration
+DEV_DATABASE_URL=sqlite:///instance/compass.db
+DATABASE_URL=sqlite:///instance/compass.db
+
+# Email Configuration (SMTP)
+MAIL_SERVER=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USE_TLS=true
+MAIL_USERNAME=arctic.ncpor@gmail.com
+MAIL_PASSWORD=your-gmail-app-password-here
+MAIL_DEFAULT_SENDER=arctic.ncpor@gmail.com
+
+# Application Settings
+TWO_FA_APP_NAME=COMPASS-NCPOR
+OTP_EXPIRY_MINUTES=15
+
+# Security Note:
+# For Gmail, you need to:
+# 1. Enable 2-factor authentication on the Gmail account
+# 2. Generate an "App Password" for this application
+# 3. Use the app password in MAIL_PASSWORD (not your regular password)

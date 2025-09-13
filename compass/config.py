@@ -11,9 +11,17 @@ class Config:
     MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'smtp.gmail.com'
     MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
     MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER')
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME') or 'arctic.ncpor@gmail.com'
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')  # App password for arctic.ncpor@gmail.com
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'arctic.ncpor@gmail.com'
+    
+    # OTP and 2FA configuration
+    OTP_EXPIRY_MINUTES = 15  # OTP expires in 15 minutes
+    TWO_FA_APP_NAME = 'COMPASS-NCPOR'  # App name for TOTP
+    
+    # Trusted device configuration
+    TRUSTED_DEVICE_DURATION_DAYS = 30  # How long to trust a device (default 30 days)
+    MAX_TRUSTED_DEVICES_PER_USER = 10  # Maximum trusted devices per user
     
     # Session configuration
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)

@@ -36,6 +36,15 @@ def create_app(config_name=None):
 
     from .main import main as main_blueprint
     app.register_blueprint(main_blueprint)
+    
+    from .two_fa import two_fa as two_fa_blueprint
+    app.register_blueprint(two_fa_blueprint)
+    
+    from .profile import profile as profile_blueprint
+    app.register_blueprint(profile_blueprint)
+    
+    from .tracking import tracking as tracking_blueprint
+    app.register_blueprint(tracking_blueprint)
 
     # User loader callback
     @login_manager.user_loader

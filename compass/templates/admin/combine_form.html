@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Combine Shipments - COMPASS{% endblock %}
+{% block title %}Admin Combined Shipment Details{% endblock %}
 
 {% block content %}
 <style>
-    /* Base styles from export form */
+    /* Base styles matching admin export form exactly */
     .form-section {
         transition: all 0.3s ease;
     }
@@ -24,6 +24,11 @@
         box-shadow: 0 0 0 2px rgba(30, 63, 102, 0.1);
     }
 
+    .input-field:invalid:not(:placeholder-shown) {
+        border-color: #EF4444;
+        background-color: #FEF2F2;
+    }
+
     .input-label {
         display: block;
         font-size: 0.875rem;
@@ -33,12 +38,27 @@
     }
 
     .invoice-preview {
-        background: linear-gradient(145deg, #FFE0B2, #FFF3E0);
+        background: linear-gradient(145deg, #E3F2FD, #F3E5F5);
         border-radius: 0.75rem;
         padding: 1.5rem;
-        border: 2px solid #FF9800;
+        border: 2px solid var(--deep-arctic);
         position: sticky;
         top: 1rem;
+    }
+
+    .radio-card {
+        transition: all 0.3s ease;
+    }
+
+    .radio-card:hover {
+        background-color: rgba(30, 63, 102, 0.1);
+        transform: translateY(-2px);
+    }
+
+    input:checked + .radio-card {
+        background: linear-gradient(145deg, #E3F2FD, #BBDEFB);
+        border: 2px solid var(--deep-arctic);
+        transform: translateY(-4px);
     }
 
     .readonly-field {
@@ -68,75 +88,100 @@
         box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
     }
 
-    .attn-field {
-        background: linear-gradient(145deg, #E8F5E8, #F0FFF0);
-        border: 2px solid #4CAF50;
+    .combined-badge {
+        background: linear-gradient(145deg, #E3F2FD, #F3E5F5);
+        border: 2px solid var(--deep-arctic);
+        color: var(--deep-arctic);
     }
 
-    .combined-badge {
-        background: linear-gradient(145deg, #FFE0B2, #FFF3E0);
-        border: 2px solid #FF9800;
-        color: #E65100;
+    /* Animation for new items */
+    @keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .items-container > div {
+        animation: fadeInScale 0.3s ease-out;
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 640px) {
+        .input-label {
+            font-size: 0.875rem;
+        }
+        
+        .arctic-card {
+            padding: 1rem;
+        }
+        
+        .grid-cols-3 {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
 <div class="min-h-[80vh] flex items-start justify-center pt-10">
-    <div class="w-full max-w-6xl">
+    <div class="w-full max-w-4xl">
         <!-- Progress Indicator -->
         <div class="arctic-card p-4 mb-6">
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
                     <span class="text-xl mr-2">🔄</span>
-                    <h2 class="text-lg font-semibold text-deep-arctic">Combine Shipments</h2>
+                    <h2 class="text-lg font-semibold text-deep-arctic">Admin Combined Shipment</h2>
                 </div>
                 <div class="text-sm text-gray-600">
                     Final Review & Generate
                 </div>
             </div>
             <div class="mt-3 h-2 bg-gray-200 rounded-full">
-                <div class="h-full w-full bg-orange-500 rounded-full"></div>
-            </div>
-        </div>
-
-        <!-- Combined Shipments Summary -->
-        <div class="arctic-card p-4 mb-6 combined-badge">
-            <h3 class="text-lg font-semibold mb-2">Combining {{ shipments|length }} Shipments</h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                {% for shipment in shipments %}
-                <div class="bg-white p-2 rounded">
-                    <div class="font-medium">{{ shipment.invoice_number }}</div>
-                    <div class="text-gray-600">{{ shipment.requester_name }}</div>
-                    <div class="text-gray-500">{{ shipment.total_packages }} packages</div>
-                </div>
-                {% endfor %}
+                <div class="h-full w-full bg-deep-arctic rounded-full"></div>
             </div>
         </div>
 
         <!-- Invoice Number Preview -->
         <div class="arctic-card p-4 mb-6 invoice-preview">
-            <h3 class="text-lg font-semibold text-orange-800 mb-2">🎯 Combined Invoice Number</h3>
-            <div class="text-xl font-mono tracking-wide text-orange-900">
+            <h3 class="text-lg font-semibold text-deep-arctic mb-2">🎯 Combined Invoice Number</h3>
+            <div class="text-xl font-mono tracking-wide text-deep-arctic">
                 {{ combined_invoice }}
             </div>
-            <p class="text-sm text-orange-700 mt-2">This unique combined shipment number will be used in documentation</p>
+            <p class="text-sm text-gray-700 mt-2">This unique combined shipment number will be used in documentation</p>
+        </div>
+
+        <!-- Combined Shipments Summary -->
+        <div class="arctic-card p-4 mb-6 combined-badge">
+            <h3 class="text-lg font-semibold mb-2">📦 Combining {{ shipments|length }} Shipments</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                {% for shipment in shipments %}
+                <div class="bg-white p-3 rounded-lg shadow-sm">
+                    <div class="font-medium text-deep-arctic">{{ shipment.invoice_number }}</div>
+                    <div class="text-gray-600">{{ shipment.requester_name }}</div>
+                    <div class="text-gray-500">{{ shipment.total_packages }} packages</div>
+                    <div class="text-xs text-deep-arctic mt-1">ID: {{ shipment.created_by_user.unique_id if shipment.created_by_user else 'N/A' }}</div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
 
         <!-- Main Form -->
         <div class="arctic-card p-8">
-            <h1 class="text-2xl font-bold text-deep-arctic mb-6">
-                {% if edit_mode %}Edit Combined Shipment{% else %}Combined Shipment Details{% endif %}
-            </h1>
+            <h1 class="text-2xl font-bold text-deep-arctic mb-6">Combined Shipment Details</h1>
             
-            <form method="POST" action="{% if edit_mode %}{{ url_for('main.update_shipment', shipment_id=shipment.id) }}{% else %}{{ url_for('main.admin_finalize_combine') }}{% endif %}" class="space-y-8">
+            <form method="POST" action="{{ url_for('main.admin_finalize_combine') }}" class="space-y-8">
                 <!-- Hidden fields for tracking -->
                 <input type="hidden" name="combined_number" value="{{ combined_number }}">
                 <input type="hidden" name="combined_invoice" value="{{ combined_invoice }}">
                 <input type="hidden" name="total_packages" value="{{ total_packages }}">
                 <input type="hidden" name="shipment_type" value="{{ first_shipment.shipment_type }}">
 
-                <!-- Combined Shipment Details -->
+                <!-- Combined Shipment Information -->
                 <div class="space-y-4">
-                    <h3 class="section-title">Combined Shipment Information</h3>
+                    <h3 class="section-title">📋 Combined Shipment Information</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label class="input-label">Requester Name</label>
@@ -149,7 +194,7 @@
                         </div>
                         <div>
                             <label class="input-label">Total Packages</label>
-                            <div class="readonly-field">{{ total_packages }} packages</div>
+                            <div class="readonly-field">{{ total_packages }} packages from {{ shipments|length }} shipments</div>
                         </div>
                         <div>
                             <label class="input-label">Expedition Year</label>
@@ -162,175 +207,445 @@
                         </div>
                         <div>
                             <label class="input-label">Shipment Type</label>
-                            <div class="readonly-field">{{ first_shipment.shipment_type.title() }}</div>
+                            <div class="readonly-field">{{ first_shipment.shipment_type.title() }} - Combined</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping & Transport Details -->
+                <div class="space-y-4">
+                    <h3 class="section-title">🚢 Shipping & Transport Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="input-label">Mode of Transport</label>
+                            <select name="mode_of_transport" 
+                                    id="modeOfTransport"
+                                    class="input-field"
+                                    onchange="updatePortPlaceholder()"
+                                    required>
+                                <option value="">Select Transport Mode</option>
+                                <option value="Air" {% if first_shipment.mode_of_transport == 'Air' %}selected{% endif %}>Air</option>
+                                <option value="Sea" {% if first_shipment.mode_of_transport == 'Sea' %}selected{% endif %}>Sea</option>
+                                <option value="Land" {% if first_shipment.mode_of_transport == 'Land' %}selected{% endif %}>Land</option>
+                            </select>
                         </div>
                         <div>
                             <label class="input-label">Destination Country</label>
                             <input type="text" 
                                    name="destination_country" 
-                                   value="{{ first_shipment.destination_country }}"
                                    class="input-field"
-                                   placeholder="Enter destination country"
+                                   placeholder="e.g., Norway"
+                                   value="{{ first_shipment.destination_country }}"
                                    required>
                         </div>
                         <div>
-                            <label class="input-label">Batch Number</label>
+                            <label class="input-label" id="portLabel">Port of Discharge</label>
                             <input type="text" 
-                                   name="batch_number" 
-                                   value="{{ first_shipment.batch_number }}"
+                                   name="port_of_discharge" 
+                                   id="portOfDischarge"
                                    class="input-field"
-                                   placeholder="Enter batch number"
+                                   placeholder="Port"
+                                   value="{{ first_shipment.port_of_discharge }}">
+                        </div>
+                        <div>
+                            <label class="input-label">Final Destination</label>
+                            <input type="text" 
+                                   name="final_destination" 
+                                   class="input-field"
+                                   placeholder="e.g., Ny-Ålesund"
+                                   value="{{ first_shipment.final_destination }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Exporter Details -->
+                <div class="space-y-4">
+                    <h3 class="section-title">🏢 Exporter Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label class="cursor-pointer">
+                            <input type="radio" 
+                                   name="exporter" 
+                                   value="ncpor" 
+                                   class="sr-only" 
+                                   id="exporterNcporRadio"
+                                   checked
                                    required>
+                            <div class="radio-card arctic-card p-4 h-full">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
+                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-deep-arctic">NCPOR</p>
+                                        <p class="text-sm text-gray-600">National Center for Polar and Ocean Research</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" 
+                                   name="exporter" 
+                                   value="other" 
+                                   class="sr-only" 
+                                   id="exporterOtherRadio"
+                                   required>
+                            <div class="radio-card arctic-card p-4 h-full">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
+                                        <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold text-deep-arctic">Other Exporter</p>
+                                        <p class="text-sm text-gray-600">Specify different exporter details</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- NCPOR Exporter Details -->
+                    <div id="ncporExporterDetails" class="space-y-4">
+                        <div class="readonly-field">
+                            <strong>National Center for Polar and Ocean Research (NCPOR)</strong><br>
+                            [erstwhile NCAOR]<br>
+                            Ministry of Earth Sciences (Govt. of India)<br>
+                            Headland Sada, Vasco da Gama, Goa - 403804<br>
+                            India<br>
+                            Phone: +91 832 2525501<br>
+                            GST: 30AACFN4991P1ZN<br>
+                            LUT No.: AD300618000016R
+                        </div>
+                    </div>
+
+                    <!-- Other Exporter Details -->
+                    <div id="otherExporterDetails" class="hidden space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="input-label">Exporter Name</label>
+                                <input type="text" 
+                                       name="exporter_name" 
+                                       class="input-field"
+                                       placeholder="Enter exporter name">
+                            </div>
+                            <div>
+                                <label class="input-label">Exporter Address</label>
+                                <textarea name="exporter_address" 
+                                          class="input-field"
+                                          rows="3"
+                                          placeholder="Enter complete address"></textarea>
+                            </div>
+                            <div>
+                                <label class="input-label">Exporter GST</label>
+                                <input type="text" 
+                                       name="exporter_gst" 
+                                       class="input-field"
+                                       placeholder="Enter GST number">
+                            </div>
+                            <div>
+                                <label class="input-label">Exporter LUT</label>
+                                <input type="text" 
+                                       name="exporter_lut" 
+                                       class="input-field"
+                                       placeholder="Enter LUT number">
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Package & Item Details -->
-                <div class="space-y-6">
+                <div class="space-y-4">
                     <h3 class="section-title">📦 Package & Item Details</h3>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <div class="flex items-center">
+                            <span class="text-blue-600 text-lg mr-2">ℹ️</span>
+                            <p class="text-blue-800 text-sm">
+                                <strong>Combined Shipment Limit:</strong> Up to 20 packages can be included in a combined shipment (compared to 10 packages for regular shipments).
+                            </p>
+                        </div>
+                    </div>
                     
+                    <!-- Package Details Container -->
+                    <div class="space-y-6">
                     {% for package in combined_packages %}
-                    <div class="arctic-card p-6 border-2 border-gray-200">
+                            <div class="arctic-card p-6" id="package_{{ package.package_number }}">
                         <div class="flex items-center justify-between mb-4">
-                            <h4 class="text-lg font-semibold text-deep-arctic">
-                                📦 Package {{ package.package_number }} ({{ package.type }})
-                            </h4>
-                            <span class="bg-deep-arctic text-white px-3 py-1 rounded-full text-sm">
-                                {{ package.length }} × {{ package.width }} × {{ package.height }} cm
-                            </span>
+                                    <h4 class="text-lg font-semibold text-deep-arctic">Package {{ package.package_number }} of {{ total_packages }} (Max: 20)</h4>
+                                    <span class="bg-deep-arctic text-white px-3 py-1 rounded-full text-sm">#{{ package.package_number }}</span>
+                                </div>
+                                
+                                <!-- Source Information -->
+                                <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+                                    <p class="text-sm text-gray-600">
+                                        <strong>Source:</strong> {{ package.source_shipment or 'Unknown' }} 
+                                        <span class="text-gray-500">({{ package.source_user or 'Unknown User' }})</span>
+                                    </p>
                         </div>
                         
-                        <!-- Package hidden fields -->
-                        <input type="hidden" name="package_{{ package.package_number }}_type" value="{{ package.type }}">
-                        <input type="hidden" name="package_{{ package.package_number }}_length" value="{{ package.length }}">
-                        <input type="hidden" name="package_{{ package.package_number }}_width" value="{{ package.width }}">
-                        <input type="hidden" name="package_{{ package.package_number }}_height" value="{{ package.height }}">
-                        <input type="hidden" name="package_{{ package.package_number }}_items_count" value="{{ package.items_count }}">
+                                <!-- Package Belongs To -->
+                                <div class="mb-4">
+                                    <label class="input-label">Package Belongs to</label>
+                                    <select name="package_{{ package.package_number }}_belongs_to" 
+                                            class="input-field package-belongs-to"
+                                            required>
+                                        <option value="">Select User</option>
+                                        {% for user in all_users %}
+                                        <option value="{{ user.id }}" 
+                                                {% if package.source_user and (package.source_user == (user.first_name + ' ' + user.last_name)) %}selected{% endif %}>
+                                            {{ user.first_name }} {{ user.last_name }} ({{ user.unique_id }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <p class="text-sm text-gray-500 mt-1">Select which user this package belongs to</p>
+                                </div>
+                                
+                                <!-- Package Type Selection -->
+                                <div class="space-y-4 mb-6">
+                                    <label class="input-label">Package Type</label>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {% set package_type_map = {
+                                            'Cardboard Box': 'cardboard_box',
+                                            'Plastic Crate': 'plastic_crate',
+                                            'Metal Trunk': 'metal_trunk',
+                                            'Zarges': 'zarges',
+                                            'Pelican Case': 'pelican_case'
+                                        } %}
+                                        <label class="cursor-pointer">
+                                            <input type="radio" 
+                                                   name="package_{{ package.package_number }}_type" 
+                                                   value="cardboard_box" 
+                                                   class="sr-only" 
+                                                   {% if package.type == 'Cardboard Box' %}checked{% endif %}>
+                                            <div class="radio-card arctic-card p-4 text-center">
+                                                <span class="text-2xl">📦</span>
+                                                <p class="mt-1">Cardboard Box</p>
+                                            </div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" 
+                                                   name="package_{{ package.package_number }}_type" 
+                                                   value="plastic_crate" 
+                                                   class="sr-only"
+                                                   {% if package.type == 'Plastic Crate' %}checked{% endif %}>
+                                            <div class="radio-card arctic-card p-4 text-center">
+                                                <span class="text-2xl">🗃️</span>
+                                                <p class="mt-1">Plastic Crate</p>
+                                            </div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" 
+                                                   name="package_{{ package.package_number }}_type" 
+                                                   value="metal_trunk" 
+                                                   class="sr-only"
+                                                   {% if package.type == 'Metal Trunk' %}checked{% endif %}>
+                                            <div class="radio-card arctic-card p-4 text-center">
+                                                <span class="text-2xl">🗳️</span>
+                                                <p class="mt-1">Metal Trunk</p>
+                                            </div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" 
+                                                   name="package_{{ package.package_number }}_type" 
+                                                   value="zarges" 
+                                                   class="sr-only"
+                                                   {% if package.type == 'Zarges' %}checked{% endif %}>
+                                            <div class="radio-card arctic-card p-4 text-center">
+                                                <span class="text-2xl">🧳</span>
+                                                <p class="mt-1">Zarges</p>
+                                            </div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" 
+                                                   name="package_{{ package.package_number }}_type" 
+                                                   value="pelican_case" 
+                                                   class="sr-only"
+                                                   {% if package.type == 'Pelican Case' %}checked{% endif %}>
+                                            <div class="radio-card arctic-card p-4 text-center">
+                                                <span class="text-2xl">💼</span>
+                                                <p class="mt-1">Pelican Case</p>
+                                            </div>
+                                        </label>
+                                        <label class="cursor-pointer">
+                                            <input type="radio" 
+                                                   name="package_{{ package.package_number }}_type" 
+                                                   value="other" 
+                                                   class="sr-only"
+                                                   {% if package.type not in package_type_map.keys() %}checked{% endif %}>
+                                            <div class="radio-card arctic-card p-4 text-center">
+                                                <span class="text-2xl">📝</span>
+                                                <p class="mt-1">Other</p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div class="other-type-input {% if package.type in package_type_map.keys() %}hidden{% endif %}">
+                                        <input type="text" 
+                                               name="package_{{ package.package_number }}_other_type" 
+                                               class="input-field mt-2"
+                                               placeholder="Specify package type"
+                                               value="{% if package.type not in package_type_map.keys() %}{{ package.type }}{% endif %}">
+                                    </div>
+                                </div>
 
-                        <!-- Items in this package -->
-                        <div class="space-y-4">
-                            {% if package.item_list %}
-                                {% for item in package.item_list %}
-                                <div class="arctic-card p-4 border border-gray-300">
-                                    <h5 class="font-semibold text-deep-arctic mb-4">
-                                        Item {{ loop.index }} Details
-                                    </h5>
-                                    <div class="space-y-4">
-                                        <!-- SPECIAL: Attn Field for Combined Shipments -->
+                                <!-- Package Dimensions -->
+                                <div class="space-y-2 mb-6">
+                                    <label class="input-label">Package Dimensions (in cm)</label>
+                                    <div class="grid grid-cols-3 gap-4">
                                         <div>
-                                            <label class="input-label">⭐ Attn: (Requester Name) - REQUIRED</label>
-                                            <input type="text" 
-                                                   name="package_{{ package.package_number }}_item_{{ loop.index }}_attn" 
-                                                   value="{{ item.requester }}"
-                                                   class="input-field attn-field"
-                                                   placeholder="Enter requester name for this item"
+                                            <input type="number" 
+                                                   name="package_{{ package.package_number }}_length" 
+                                                   class="input-field"
+                                                   placeholder="Length"
+                                                   min="1" 
+                                                   value="{{ package.length }}"
                                                    required>
-                                            <p class="text-sm text-green-700 mt-1">This name will appear in the document as "Box-{{ package.package_number }} ({{ package.type }}) [Name]"</p>
+                                        </div>
+                                        <div>
+                                            <input type="number" 
+                                                   name="package_{{ package.package_number }}_width" 
+                                                   class="input-field"
+                                                   placeholder="Width"
+                                                   min="1" 
+                                                   value="{{ package.width }}"
+                                                   required>
+                                        </div>
+                                        <div>
+                                            <input type="number" 
+                                                   name="package_{{ package.package_number }}_height" 
+                                                   class="input-field"
+                                                   placeholder="Height"
+                                                   min="1" 
+                                                   value="{{ package.height }}"
+                                                   required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Package Contents -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="input-label">Number of Items in Package</label>
+                                        <input type="number" 
+                                               name="package_{{ package.package_number }}_items_count" 
+                                               class="input-field package-items-count"
+                                               min="1"
+                                               value="{{ package.items_count }}"
+                                               placeholder="Enter number of items"
+                                               required>
                                         </div>
 
-                                        <!-- Item Details Grid -->
+                                    <!-- Items Container -->
+                                    <div class="items-container space-y-4">
+                                        {% for item in package.item_list %}
+                                            <div class="arctic-card p-4 border border-gray-200">
+                                                <h5 class="font-semibold text-deep-arctic mb-4">
+                                                    Item {{ loop.index }} Details
+                                                </h5>
+                                                <div class="space-y-4">
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div class="md:col-span-2">
+                                                        <div>
                                                 <label class="input-label">Description of Goods</label>
-                                                <input type="text" 
-                                                       name="package_{{ package.package_number }}_item_{{ loop.index }}_description" 
-                                                       value="{{ item.description }}"
+                                                            <textarea name="package_{{ package.package_number }}_item_{{ loop.index }}_description" 
+                                                                      class="input-field"
+                                                                      rows="2"
+                                                                      placeholder="Describe the item"
+                                                                      required>{{ item.description }}</textarea>
+                                                        </div>
+                                                        <div>
+                                                            <label class="input-label">Quantity</label>
+                                                            <input type="number" 
+                                                                   name="package_{{ package.package_number }}_item_{{ loop.index }}_quantity" 
                                                        class="input-field"
-                                                       placeholder="Enter description of goods"
+                                                                   min="1" 
+                                                                   value="{{ item.quantity }}"
+                                                                   placeholder="Enter quantity"
                                                        required>
                                             </div>
                                             <div>
                                                 <label class="input-label">HSN Code</label>
                                                 <input type="text" 
                                                        name="package_{{ package.package_number }}_item_{{ loop.index }}_hsn_code" 
+                                                                   class="input-field"
                                                        value="{{ item.hsn_code }}"
-                                                       class="input-field"
-                                                       placeholder="Enter HSN Code"
+                                                                   placeholder="Enter HSN code"
                                                        required>
                                             </div>
                                             <div>
-                                                <label class="input-label">Quantity</label>
-                                                <input type="number" 
-                                                       name="package_{{ package.package_number }}_item_{{ loop.index }}_quantity" 
-                                                       value="{{ item.quantity }}"
-                                                       class="input-field quantity-input"
-                                                       min="1"
-                                                       required>
-                                            </div>
-                                            <div>
-                                                <label class="input-label">Unit Value (USD)</label>
+                                                            <label class="input-label">Unit Value (₹)</label>
                                                 <input type="number" 
                                                        name="package_{{ package.package_number }}_item_{{ loop.index }}_unit_value" 
+                                                                   class="input-field"
+                                                                   min="0" 
+                                                                   step="0.01"
                                                        value="{{ item.unit_value }}"
-                                                       class="input-field unit-value-input"
-                                                       step="0.01"
-                                                       min="0"
+                                                                   placeholder="Enter unit value"
                                                        required>
                                             </div>
                                             <div>
                                                 <label class="input-label">Net Weight (kg)</label>
                                                 <input type="number" 
                                                        name="package_{{ package.package_number }}_item_{{ loop.index }}_net_weight" 
-                                                       value="{{ item.net_weight }}"
                                                        class="input-field"
+                                                                   min="0" 
                                                        step="0.01"
-                                                       min="0"
+                                                                   value="{{ item.net_weight }}"
+                                                                   placeholder="Enter net weight"
                                                        required>
                                             </div>
                                             <div>
-                                                <label class="input-label">Total Value</label>
-                                                <div class="readonly-field bg-blue-50 border-blue-200">
-                                                    $<span class="total-value">{{ "%.2f"|format(item.unit_value|float * item.quantity|int) }}</span>
+                                                            <label class="input-label">Attention (Requester)</label>
+                                                            <select name="package_{{ package.package_number }}_item_{{ loop.index }}_attn" 
+                                                                    class="input-field"
+                                                                    required>
+                                                                <option value="">Select User</option>
+                                                                {% for user in all_users %}
+                                                                <option value="{{ user.first_name }} {{ user.last_name }}" 
+                                                                        {% if item.requester == (user.first_name + ' ' + user.last_name) %}selected{% endif %}>
+                                                                    {{ user.first_name }} {{ user.last_name }} ({{ user.unique_id }})
+                                                                </option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        {% endfor %}
                                     </div>
-                                    
-                                    <!-- Hidden fields for this item (existing data) -->
-                                    <input type="hidden" name="package_{{ package.package_number }}_item_{{ loop.index }}_origin" value="India">
+                                </div>
                                 </div>
                                 {% endfor %}
-                            {% endif %}
-                        </div>
                     </div>
-                    {% endfor %}
                 </div>
 
                 <!-- Combined Shipment Summary -->
-                <div class="arctic-card p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200">
-                    <h4 class="text-xl font-semibold text-deep-arctic mb-4">📋 Combined Shipment Summary</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="space-y-4">
+                    <h3 class="section-title">📊 Combined Shipment Summary</h3>
+                    <div class="arctic-card p-6 bg-blue-50">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="text-center">
-                            <p class="text-gray-600">Total Packages</p>
-                            <p class="text-3xl font-bold text-deep-arctic">{{ total_packages }}</p>
+                                <div class="text-2xl font-bold text-deep-arctic">{{ shipments|length }}</div>
+                                <div class="text-sm text-gray-600">Original Shipments</div>
                         </div>
                         <div class="text-center">
-                            <p class="text-gray-600">Total Items</p>
-                            <p class="text-3xl font-bold text-deep-arctic">{{ total_items }}</p>
+                                <div class="text-2xl font-bold text-deep-arctic">{{ total_packages }}</div>
+                                <div class="text-sm text-gray-600">Total Packages</div>
                         </div>
                         <div class="text-center">
-                            <p class="text-gray-600">Original Shipments</p>
-                            <p class="text-3xl font-bold text-orange-600">{{ shipments|length }}</p>
+                                <div class="text-2xl font-bold text-deep-arctic">{{ unique_users|length if unique_users else shipments|map(attribute='created_by_user.unique_id')|unique|list|length }}</div>
+                                <div class="text-sm text-gray-600">Unique Users</div>
                         </div>
-                        <div class="text-center">
-                            <p class="text-gray-600">Combined Type</p>
-                            <p class="text-lg font-bold text-deep-arctic">{{ first_shipment.shipment_type.title() }}</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Navigation Buttons -->
-                <div class="flex justify-between pt-6" 
-                     data-shipments-count="{{ (shipments|length) if shipments else 0 }}"
-                     data-total-packages="{{ total_packages or 0 }}"
-                     data-combined-invoice="{{ combined_invoice or 'Unknown' }}">
+                <div class="flex justify-between pt-6">
                     <a href="{{ url_for('main.dashboard') }}" 
-                       class="arctic-button bg-gray-500 hover:bg-gray-600 px-8 py-3 text-white font-semibold rounded-lg transition-colors">
-                        ← Cancel & Return to Dashboard
+                       class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                        ← Back to Dashboard
                     </a>
                     <button type="submit" 
-                            class="arctic-button bg-orange-600 hover:bg-orange-700 px-8 py-3 text-white font-semibold rounded-lg transition-colors">
-                        {% if edit_mode %}💾 Update Combined Shipment{% else %}🚀 Generate Combined Document{% endif %}
+                            class="arctic-button px-8 py-3 text-white rounded-lg font-semibold"
+                            style="background: linear-gradient(135deg, var(--deep-arctic), #2C5282);">
+                        Generate Combined Shipment →
                     </button>
                 </div>
             </form>
@@ -338,105 +653,192 @@
     </div>
 </div>
 
+<!-- Item Template -->
+<template id="itemDetailsTemplate">
+    <div class="arctic-card p-4 border border-gray-200">
+        <h5 class="font-semibold text-deep-arctic mb-4">
+            Item {itemNumber} Details
+        </h5>
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="input-label">Description of Goods</label>
+                    <textarea name="{prefix}_description" 
+                              class="input-field"
+                              rows="2"
+                              placeholder="Describe the item"
+                              required></textarea>
+                </div>
+                <div>
+                    <label class="input-label">Quantity</label>
+                    <input type="number" 
+                           name="{prefix}_quantity" 
+                           class="input-field"
+                           min="1" 
+                           placeholder="Enter quantity"
+                           required>
+                </div>
+                <div>
+                    <label class="input-label">Unit</label>
+                    <select name="{prefix}_unit" 
+                            class="input-field"
+                            required>
+                        <option value="">Select Unit</option>
+                        <option value="pcs">Pieces</option>
+                        <option value="kg">Kilograms</option>
+                        <option value="ltr">Liters</option>
+                        <option value="mtr">Meters</option>
+                        <option value="set">Set</option>
+                        <option value="box">Box</option>
+                        <option value="bottle">Bottle</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="input-label">Unit Value (₹)</label>
+                    <input type="number" 
+                           name="{prefix}_unit_value" 
+                           class="input-field"
+                           min="0" 
+                           step="0.01"
+                           placeholder="Enter unit value"
+                           required>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Validation for Attn fields
-    const form = document.querySelector('form');
-    const attnFields = document.querySelectorAll('input[name*="_attn"]');
+    // Initialize exporter selection
+    const exporterNcporRadio = document.getElementById('exporterNcporRadio');
+    const exporterOtherRadio = document.getElementById('exporterOtherRadio');
+    const ncporExporterDetails = document.getElementById('ncporExporterDetails');
+    const otherExporterDetails = document.getElementById('otherExporterDetails');
     
-    // Real-time validation styling for attn fields
-    attnFields.forEach(field => {
-        field.addEventListener('input', function() {
-            if (this.value.trim()) {
-                this.style.borderColor = '#4CAF50';
-                this.style.backgroundColor = '#F0FFF0';
-            } else {
-                this.style.borderColor = '#FF5722';
-                this.style.backgroundColor = '#FFEBEE';
-            }
+    // Function to toggle required fields
+    function toggleRequiredFields(container, required) {
+        const inputs = container.querySelectorAll('input, textarea');
+        inputs.forEach(input => {
+            input.required = required;
         });
-        
-        // Initial validation
-        if (field.value.trim()) {
-            field.style.borderColor = '#4CAF50';
-            field.style.backgroundColor = '#F0FFF0';
-        }
-    });
-    
-    // Dynamic total value calculation
-    function updateTotalValue(quantityInput, unitValueInput, totalValueSpan) {
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const unitValue = parseFloat(unitValueInput.value) || 0;
-        const total = quantity * unitValue;
-        totalValueSpan.textContent = total.toFixed(2);
     }
+
+    // Function to handle exporter selection
+    function handleExporterSelection() {
+        if (exporterNcporRadio.checked) {
+            ncporExporterDetails.classList.remove('hidden');
+            otherExporterDetails.classList.add('hidden');
+            toggleRequiredFields(otherExporterDetails, false);
+            } else {
+            ncporExporterDetails.classList.add('hidden');
+            otherExporterDetails.classList.remove('hidden');
+            toggleRequiredFields(otherExporterDetails, true);
+            }
+    }
+
+    // Add event listeners
+    exporterNcporRadio.addEventListener('change', handleExporterSelection);
+    exporterOtherRadio.addEventListener('change', handleExporterSelection);
     
-    // Set up dynamic calculation for all items
-    const quantityInputs = document.querySelectorAll('.quantity-input');
-    const unitValueInputs = document.querySelectorAll('.unit-value-input');
+    // Initial setup
+    handleExporterSelection();
+
+    // Function to update port placeholder based on transport mode
+    function updatePortPlaceholder() {
+        const modeSelect = document.getElementById('modeOfTransport');
+        const portInput = document.getElementById('portOfDischarge');
+        const portLabel = document.getElementById('portLabel');
     
-    quantityInputs.forEach((quantityInput, index) => {
-        const unitValueInput = unitValueInputs[index];
-        const totalValueSpan = quantityInput.closest('.grid').querySelector('.total-value');
-        
-        if (unitValueInput && totalValueSpan) {
-            // Update on quantity change
-            quantityInput.addEventListener('input', function() {
-                updateTotalValue(quantityInput, unitValueInput, totalValueSpan);
-            });
-            
-            // Update on unit value change
-            unitValueInput.addEventListener('input', function() {
-                updateTotalValue(quantityInput, unitValueInput, totalValueSpan);
-            });
+        if (modeSelect && portInput && portLabel) {
+            const selectedMode = modeSelect.value;
+            if (selectedMode === 'Air') {
+                portLabel.textContent = 'Airport of Discharge';
+                portInput.placeholder = 'Airport';
+            } else {
+                portLabel.textContent = 'Port of Discharge';
+                portInput.placeholder = 'Port';
+            }
+        }
+    }
+
+    // Make function globally accessible
+    window.updatePortPlaceholder = updatePortPlaceholder;
+    
+    // Handle package type selection for "Other" option
+    document.addEventListener('change', function(e) {
+        if (e.target.name && e.target.name.includes('_type') && e.target.value === 'other') {
+            const packageContainer = e.target.closest('.arctic-card');
+            const otherInput = packageContainer.querySelector('.other-type-input');
+            if (otherInput) {
+                otherInput.classList.remove('hidden');
+                otherInput.querySelector('input').required = true;
+            }
+        } else if (e.target.name && e.target.name.includes('_type') && e.target.value !== 'other') {
+            const packageContainer = e.target.closest('.arctic-card');
+            const otherInput = packageContainer.querySelector('.other-type-input');
+            if (otherInput) {
+                otherInput.classList.add('hidden');
+                otherInput.querySelector('input').required = false;
+                otherInput.querySelector('input').value = '';
+            }
         }
     });
-    
-    // Form submission validation
+
+    // Handle items count changes
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('package-items-count')) {
+            const itemsCount = parseInt(e.target.value) || 0;
+            const packageContainer = e.target.closest('.arctic-card');
+            const itemsContainer = packageContainer.querySelector('.items-container');
+            const packageMatch = e.target.name.match(/package_(\d+)_items_count/);
+            
+            if (packageMatch && itemsContainer) {
+                const packageNumber = packageMatch[1];
+                generateItemDetails(itemsContainer, itemsCount, packageNumber);
+            }
+        }
+    });
+
+    // Function to generate item details
+    function generateItemDetails(container, itemsCount, packageNumber) {
+        container.innerHTML = '';
+        
+        for (let i = 1; i <= itemsCount; i++) {
+            const template = document.getElementById('itemDetailsTemplate');
+            const clone = template.content.cloneNode(true);
+            
+            // Replace placeholders
+            const html = clone.querySelector('div').outerHTML
+                .replace(/{itemNumber}/g, i)
+                .replace(/{prefix}/g, `package_${packageNumber}_item_${i}`);
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            container.appendChild(tempDiv.firstElementChild);
+        }
+    }
+
+    // Form validation
+    const form = document.querySelector('form');
     form.addEventListener('submit', function(e) {
-        let allValid = true;
-        const emptyFields = [];
-        
-        // Check attn fields
-        attnFields.forEach((field, index) => {
-            if (!field.value.trim()) {
-                allValid = false;
-                emptyFields.push(`Item ${index + 1} Attn`);
-                field.style.borderColor = '#FF5722';
-                field.style.backgroundColor = '#FFEBEE';
-                field.focus();
-            }
-        });
-        
-        // Check required fields
-        const requiredFields = document.querySelectorAll('input[required]');
-        requiredFields.forEach(field => {
-            if (!field.value.trim()) {
-                allValid = false;
-                field.style.borderColor = '#FF5722';
-                field.style.backgroundColor = '#FFEBEE';
-            } else {
-                field.style.borderColor = '#4CAF50';
-                field.style.backgroundColor = '#F0FFF0';
-            }
-        });
-        
-        if (!allValid) {
+        // Check form validity first
+        if (!form.checkValidity()) {
             e.preventDefault();
-            alert(`❌ Please fill in all required fields before generating the combined document.\n\nMissing fields: ${emptyFields.join(', ')}`);
-            return;
+            // Find the first invalid input
+            const firstInvalid = form.querySelector(':invalid');
+            if (firstInvalid) {
+                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstInvalid.focus();
+            }
+            return false;
         }
-        
-        // Get data from data attributes
-        const buttonContainer = document.querySelector('[data-shipments-count]');
-        const originalShipments = buttonContainer ? buttonContainer.dataset.shipmentsCount : '0';
-        const totalPackages = buttonContainer ? buttonContainer.dataset.totalPackages : '0';
-        const combinedInvoice = buttonContainer ? buttonContainer.dataset.combinedInvoice : 'Unknown';
-        
-        if (!confirm(`🔄 Generate Combined Shipment Document?\n\n📊 Summary:\n• Original Shipments: ${originalShipments}\n• Total Packages: ${totalPackages}\n• Invoice: ${combinedInvoice}\n\n⚠️ This action cannot be undone!\n\nProceed with generating the combined document?`)) {
-            e.preventDefault();
-        }
+
+        // All validations passed - let form submit naturally
+        return true;
     });
 });
 </script>
+
 {% endblock %} 

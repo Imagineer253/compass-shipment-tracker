@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Track Package {{ tracking_code }} - COMPASS{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header Section -->
+        <div class="text-center mb-8">
+            <div class="flex justify-center mb-4">
+                <div class="bg-gradient-to-r from-green-500 to-blue-600 rounded-full p-4">
+                    <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">Package Found!</h1>
+            <p class="text-xl text-gray-600">
+                Tracking Code: <span class="font-mono font-bold text-blue-600">{{ tracking_code }}</span>
+            </p>
+        </div>
+
+        <!-- Status Banner -->
+        <div class="mb-8">
+            <div class="bg-gradient-to-r from-{{ package.status_info.color }}-500 to-{{ package.status_info.color }}-600 rounded-xl shadow-lg p-6 text-white">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <span class="text-4xl mr-4">{{ package.status_info.icon }}</span>
+                        <div>
+                            <h2 class="text-2xl font-bold">{{ package.status_info.text }}</h2>
+                            <p class="text-blue-100">{{ package.status_info.description }}</p>
+                        </div>
+                    </div>
+                    {% if package.qr_code_url %}
+                    <div class="hidden md:block">
+                        <img src="{{ package.qr_code_url }}" alt="QR Code" class="w-24 h-24 bg-white rounded-lg p-2">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Package Information Grid -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-8">
+            
+            <!-- Package Details Card -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4">
+                    <h3 class="text-xl font-semibold text-white flex items-center">
+                        <span class="text-2xl mr-3">📦</span>
+                        Package Details
+                    </h3>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Package Number:</span>
+                        <span class="font-semibold text-right">#{{ package.package_number }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Package Type:</span>
+                        <span class="font-semibold text-right">{{ package.package_type }}</span>
+                    </div>
+                    
+                    {% if package.description %}
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Description:</span>
+                        <span class="font-semibold text-right max-w-48">{{ package.description }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if package.weight %}
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Weight:</span>
+                        <span class="font-semibold text-right">{{ package.weight }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if package.dimensions %}
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Dimensions:</span>
+                        <span class="font-semibold text-right">{{ package.dimensions }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if package.attention_person %}
+                    <div class="border-t pt-4">
+                        <div class="flex justify-between items-start">
+                            <span class="text-gray-600 font-medium">Attention:</span>
+                            <div class="text-right">
+                                <div class="font-semibold">{{ package.attention_person }}</div>
+                                {% if package.attention_email %}
+                                <div class="text-sm text-gray-500">{{ package.attention_email }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="border-t pt-4">
+                        <div class="flex justify-between items-start">
+                            <span class="text-gray-600 font-medium">Created:</span>
+                            <span class="font-semibold text-right">{{ package.created_at_formatted }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shipment Information Card -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="bg-gradient-to-r from-green-600 to-teal-600 px-6 py-4">
+                    <h3 class="text-xl font-semibold text-white flex items-center">
+                        <span class="text-2xl mr-3">🚚</span>
+                        Shipment Information
+                    </h3>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Invoice Number:</span>
+                        <span class="font-semibold text-right font-mono text-sm">{{ package.shipment.invoice_number }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Shipment Type:</span>
+                        <span class="font-semibold text-right">{{ package.shipment.type }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Created By:</span>
+                        <span class="font-semibold text-right">{{ package.shipment.created_by }}</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Created Date:</span>
+                        <span class="font-semibold text-right">{{ package.shipment.created_at_formatted }}</span>
+                    </div>
+                    
+                    {% if package.shipment.destination %}
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Destination:</span>
+                        <span class="font-semibold text-right">{{ package.shipment.destination }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if package.shipment.expedition_year %}
+                    <div class="flex justify-between items-start">
+                        <span class="text-gray-600 font-medium">Expedition Year:</span>
+                        <span class="font-semibold text-right">{{ package.shipment.expedition_year }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if package.shipment.acknowledged_by %}
+                    <div class="border-t pt-4">
+                        <div class="flex justify-between items-start">
+                            <span class="text-gray-600 font-medium">Acknowledged By:</span>
+                            <span class="font-semibold text-right">{{ package.shipment.acknowledged_by }}</span>
+                        </div>
+                        <div class="flex justify-between items-start mt-2">
+                            <span class="text-gray-600 font-medium">Acknowledged Date:</span>
+                            <span class="font-semibold text-right">{{ package.shipment.acknowledged_at_formatted }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Shipment Details -->
+        {% if package.shipment_details %}
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+            <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
+                <h3 class="text-xl font-semibold text-white flex items-center">
+                    <span class="text-2xl mr-3">🌍</span>
+                    Transport & Logistics
+                </h3>
+            </div>
+            
+            <div class="p-6 grid md:grid-cols-2 gap-4">
+                {% if package.shipment_details.requester_name %}
+                <div class="flex justify-between items-start">
+                    <span class="text-gray-600 font-medium">Requester:</span>
+                    <span class="font-semibold text-right">{{ package.shipment_details.requester_name }}</span>
+                </div>
+                {% endif %}
+                
+                {% if package.shipment_details.batch_number %}
+                <div class="flex justify-between items-start">
+                    <span class="text-gray-600 font-medium">Batch Number:</span>
+                    <span class="font-semibold text-right">{{ package.shipment_details.batch_number }}</span>
+                </div>
+                {% endif %}
+                
+                {% if package.shipment_details.mode_of_transport %}
+                <div class="flex justify-between items-start">
+                    <span class="text-gray-600 font-medium">Transport Mode:</span>
+                    <span class="font-semibold text-right">{{ package.shipment_details.mode_of_transport }}</span>
+                </div>
+                {% endif %}
+                
+                {% if package.shipment_details.port_of_loading %}
+                <div class="flex justify-between items-start">
+                    <span class="text-gray-600 font-medium">Loading Port:</span>
+                    <span class="font-semibold text-right">{{ package.shipment_details.port_of_loading }}</span>
+                </div>
+                {% endif %}
+                
+                {% if package.shipment_details.port_of_discharge %}
+                <div class="flex justify-between items-start">
+                    <span class="text-gray-600 font-medium">Discharge Port:</span>
+                    <span class="font-semibold text-right">{{ package.shipment_details.port_of_discharge }}</span>
+                </div>
+                {% endif %}
+                
+                {% if package.shipment_details.departure_date %}
+                <div class="flex justify-between items-start">
+                    <span class="text-gray-600 font-medium">Departure Date:</span>
+                    <span class="font-semibold text-right">{{ package.shipment_details.departure_date }}</span>
+                </div>
+                {% endif %}
+                
+                {% if package.shipment_details.arrival_date %}
+                <div class="flex justify-between items-start">
+                    <span class="text-gray-600 font-medium">Arrival Date:</span>
+                    <span class="font-semibold text-right">{{ package.shipment_details.arrival_date }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div class="text-center space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
+            <a href="{{ url_for('tracking.track_home') }}" 
+               class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                Track Another Package
+            </a>
+            
+            <button onclick="window.print()" 
+                    class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                </svg>
+                Print Details
+            </button>
+        </div>
+
+        <!-- NCPOR Footer -->
+        <div class="text-center mt-12 pt-8 border-t border-gray-200">
+            <div class="flex justify-center items-center mb-4">
+                <img src="{{ url_for('static', filename='images/ncpor_logo.png') }}" 
+                     alt="NCPOR Logo" 
+                     class="h-12 w-auto">
+            </div>
+            <p class="text-gray-600">
+                National Centre for Polar and Ocean Research
+            </p>
+            <p class="text-sm text-gray-500">
+                Ministry of Earth Sciences, Government of India
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Print Styles -->
+<style media="print">
+    @page {
+        margin: 1in;
+        size: auto;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .bg-gradient-to-br,
+    .bg-gradient-to-r {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .text-white {
+        color: black !important;
+    }
+    
+    .shadow-xl,
+    .shadow-lg {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+</style>
+
+<script>
+// Copy tracking code to clipboard
+function copyTrackingCode() {
+    const trackingCode = "{{ tracking_code }}";
+    navigator.clipboard.writeText(trackingCode).then(function() {
+        alert('Tracking code copied to clipboard!');
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+
+// Add keyboard shortcut for printing
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        window.print();
+    }
+});
+</script>
+{% endblock %}

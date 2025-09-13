@@ -16,16 +16,10 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
-
-# Virtual Environment
-venv/
-env/
-ENV/
 
 # Flask
 instance/
@@ -33,9 +27,12 @@ instance/
 
 # Environment variables
 .env
-.env.local
-.env.production
-.env.staging
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # Database
 *.db
@@ -51,61 +48,37 @@ instance/
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# User uploads (keep structure but ignore content)
+compass/static/uploads/*/*
+!compass/static/uploads/*/.gitkeep
+compass/instance/uploads/*/*
+!compass/instance/uploads/*/.gitkeep
+
+# QR Code images (regenerated on deployment)
+compass/static/qrcodes/*.png
+compass/static/qrcodes/*.jpg
+!compass/static/qrcodes/.gitkeep
 
 # Logs
 *.log
-logs/
-
-# Backup files
-*.bak
-*.backup
-*_backup.*
-*_old.*
-backup/
-old/
 
 # Temporary files
-tmp/
-temp/
-debug_*.html
-test_*.html
-simple_*.html
+*.tmp
+*.temp
 
-# Flask-Migrate
-migrations/versions/*.pyc
+# Backups
+backups/
+*.backup
+*.bak
 
-# Prevent duplicate folders
-*backup*/
-*old*/
-*copy*/
-*duplicate*/
-*latest*/
-*Latest*/
-*june*/
-*June*/
-
-# Template backups
-templates/backup/
-templates/old/
-templates/reference/
-
-# Generated documents
-generated_documents/
-output/
-
-# Test files
-test_*
-debug_*
-*_test.*
-
-# Node modules (if using any frontend tools)
-node_modules/
-
-# Coverage reports
-htmlcov/
-.coverage
-.coverage.*
-
-# pytest
-.pytest_cache/ 
+# Security
+*.pem
+*.key
+config.py

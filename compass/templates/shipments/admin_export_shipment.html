@@ -141,11 +141,23 @@
 
         <!-- Invoice Number Preview -->
         <div class="arctic-card p-4 mb-6 invoice-preview">
-            <h3 class="text-lg font-semibold text-deep-arctic mb-2">Generated Invoice Number</h3>
+            <h3 class="text-lg font-semibold text-deep-arctic mb-2">
+                {% if edit_mode %}Original Invoice Number{% else %}Generated Invoice Number{% endif %}
+            </h3>
             <div class="text-xl font-mono tracking-wide" id="invoiceNumberPreview">
+                {% if edit_mode %}
+                    {{ shipment.invoice_number }}
+                {% else %}
                 NCPOR/ARC/YYYY/MMM/EXP/TYPE/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000
+                {% endif %}
             </div>
-            <p class="text-sm text-gray-600 mt-2">This number will be used in your export documentation</p>
+            <p class="text-sm text-gray-600 mt-2">
+                {% if edit_mode %}
+                    This invoice number is preserved and will not change when editing
+                {% else %}
+                    This number will be used in your export documentation
+                {% endif %}
+            </p>
         </div>
 
         <!-- Main Form -->
@@ -169,12 +181,19 @@
                                 required>
                             <option value="">Select User</option>
                             {% for user in all_users %}
-                            <option value="{{ user.id }}" data-unique-id="{{ user.unique_id }}" data-full-name="{{ user.first_name }} {{ user.last_name }}">
+                            <option value="{{ user.id }}" 
+                                    data-unique-id="{{ user.unique_id }}" 
+                                    data-full-name="{{ user.first_name }} {{ user.last_name }}"
+                                    {% if edit_mode and form_data.get('requester_user_id') == user.id|string %}selected{% endif %}>
                                 {{ user.first_name }} {{ user.last_name }} ({{ user.unique_id }})
                             </option>
                             {% endfor %}
                         </select>
+                        {% if edit_mode %}
+                            <p class="text-sm text-blue-600 mt-1">⚠️ Note: Changing the requester will NOT affect the invoice number. The original invoice number is preserved.</p>
+                        {% else %}
                         <p class="text-sm text-gray-500 mt-1">Select the user this shipment is for (affects invoice unique ID)</p>
+                        {% endif %}
                         
                         <!-- Hidden field to store the selected user's full name for backend -->
                         <input type="hidden" 
@@ -331,7 +350,7 @@
                                    value="ncpor" 
                                    class="sr-only" 
                                    id="exporterNcporRadio"
-                                   checked
+                                   {% if not edit_mode or not form_data.get('exporter') or form_data.get('exporter') == 'ncpor' %}checked{% endif %}
                                    required>
                             <div class="radio-card arctic-card p-4 h-full">
                                 <div class="flex items-center space-x-3">
@@ -352,7 +371,8 @@
                                    name="exporter" 
                                    value="other" 
                                    class="sr-only" 
-                                   id="exporterOtherRadio">
+                                   id="exporterOtherRadio"
+                                   {% if edit_mode and form_data.get('exporter') == 'other' %}checked{% endif %}>
                             <div class="radio-card arctic-card p-4 h-full">
                                 <div class="flex items-center space-x-3">
                                     <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
@@ -377,8 +397,8 @@
                                 Headland Sada, Vasco da Gama, Goa - 403804<br>
                                 India<br>
                                 Phone: +91 832 2525501<br>
-                                GST: 30AAAAN4327G1ZJ<br>
-                                IEC No.: 1196000125
+                                GST: 30AACFN4991P1ZN<br>
+                                LUT No.: AD300618000016R
                             </div>
                         </div>
                         
@@ -389,14 +409,15 @@
                                 <input type="text" 
                                        name="other_exporter_org" 
                                        class="input-field"
-                                       placeholder="Enter organization name">
+                                       placeholder="Enter organization name"
+                                       value="{% if edit_mode %}{{ form_data.get('other_exporter_org', '') }}{% endif %}">
                             </div>
                             <div>
                                 <label class="input-label">Complete Address</label>
                                 <textarea name="other_exporter_address" 
                                          class="input-field"
                                          rows="4"
-                                         placeholder="Enter complete address"></textarea>
+                                         placeholder="Enter complete address">{% if edit_mode %}{{ form_data.get('other_exporter_address', '') }}{% endif %}</textarea>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -404,42 +425,48 @@
                                     <input type="text" 
                                            name="other_exporter_contact" 
                                            class="input-field"
-                                           placeholder="Enter contact person name">
+                                           placeholder="Enter contact person name"
+                                           value="{% if edit_mode %}{{ form_data.get('other_exporter_contact', '') }}{% endif %}">
                                 </div>
                                 <div>
                                     <label class="input-label">Designation</label>
                                     <input type="text" 
                                            name="other_exporter_designation" 
                                            class="input-field"
-                                           placeholder="Enter designation">
+                                           placeholder="Enter designation"
+                                           value="{% if edit_mode %}{{ form_data.get('other_exporter_designation', '') }}{% endif %}">
                                 </div>
                                 <div>
                                     <label class="input-label">Phone Number</label>
                                     <input type="tel" 
                                            name="other_exporter_phone" 
                                            class="input-field"
-                                           placeholder="Enter phone number">
+                                           placeholder="Enter phone number"
+                                           value="{% if edit_mode %}{{ form_data.get('other_exporter_phone', '') }}{% endif %}">
                                 </div>
                                 <div>
                                     <label class="input-label">Email</label>
                                     <input type="email" 
                                            name="other_exporter_email" 
                                            class="input-field"
-                                           placeholder="Enter email address">
+                                           placeholder="Enter email address"
+                                           value="{% if edit_mode %}{{ form_data.get('other_exporter_email', '') }}{% endif %}">
                                 </div>
                                 <div>
                                     <label class="input-label">GST Number</label>
                                     <input type="text" 
                                            name="other_exporter_gst" 
                                            class="input-field"
-                                           placeholder="Enter GST number">
+                                           placeholder="Enter GST number"
+                                           value="{% if edit_mode %}{{ form_data.get('other_exporter_gst', '') }}{% endif %}">
                                 </div>
                                 <div>
-                                    <label class="input-label">IEC Number</label>
+                                    <label class="input-label">LUT Number</label>
                                     <input type="text" 
-                                           name="other_exporter_iec" 
+                                           name="other_exporter_lut" 
                                            class="input-field"
-                                           placeholder="Enter IEC number">
+                                           placeholder="Enter LUT number"
+                                           value="{% if edit_mode %}{{ form_data.get('other_exporter_lut', '') }}{% endif %}">
                                 </div>
                             </div>
                         </div>
@@ -457,7 +484,7 @@
                                    value="himadri" 
                                    class="sr-only" 
                                    id="consigneeHimadriRadio"
-                                   checked
+                                   {% if not edit_mode or not form_data.get('consignee') or form_data.get('consignee') == 'himadri' %}checked{% endif %}
                                    required>
                             <div class="radio-card arctic-card p-4 h-full">
                                 <div class="flex items-center space-x-3">
@@ -478,7 +505,8 @@
                                    name="consignee" 
                                    value="other" 
                                    class="sr-only" 
-                                   id="consigneeOtherRadio">
+                                   id="consigneeOtherRadio"
+                                   {% if edit_mode and form_data.get('consignee') == 'other' %}checked{% endif %}>
                             <div class="radio-card arctic-card p-4 h-full">
                                 <div class="flex items-center space-x-3">
                                     <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
@@ -512,14 +540,15 @@
                                 <input type="text" 
                                        name="other_consignee_org" 
                                        class="input-field"
-                                       placeholder="Enter organization name">
+                                       placeholder="Enter organization name"
+                                       value="{% if edit_mode %}{{ form_data.get('other_consignee_org', '') }}{% endif %}">
                             </div>
                             <div>
                                 <label class="input-label">Complete Address</label>
                                 <textarea name="other_consignee_address" 
                                          class="input-field"
                                          rows="4"
-                                         placeholder="Enter complete address"></textarea>
+                                         placeholder="Enter complete address">{% if edit_mode %}{{ form_data.get('other_consignee_address', '') }}{% endif %}</textarea>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -527,28 +556,32 @@
                                     <input type="text" 
                                            name="other_consignee_contact" 
                                            class="input-field"
-                                           placeholder="Enter contact person name">
+                                           placeholder="Enter contact person name"
+                                           value="{% if edit_mode %}{{ form_data.get('other_consignee_contact', '') }}{% endif %}">
                                 </div>
                                 <div>
                                     <label class="input-label">Designation</label>
                                     <input type="text" 
                                            name="other_consignee_designation" 
                                            class="input-field"
-                                           placeholder="Enter designation">
+                                           placeholder="Enter designation"
+                                           value="{% if edit_mode %}{{ form_data.get('other_consignee_designation', '') }}{% endif %}">
                                 </div>
                                 <div>
                                     <label class="input-label">Phone Number</label>
                                     <input type="tel" 
                                            name="other_consignee_phone" 
                                            class="input-field"
-                                           placeholder="Enter phone number">
+                                           placeholder="Enter phone number"
+                                           value="{% if edit_mode %}{{ form_data.get('other_consignee_phone', '') }}{% endif %}">
                                 </div>
                                 <div>
                                     <label class="input-label">Email</label>
                                     <input type="email" 
                                            name="other_consignee_email" 
                                            class="input-field"
-                                           placeholder="Enter email address">
+                                           placeholder="Enter email address"
+                                           value="{% if edit_mode %}{{ form_data.get('other_consignee_email', '') }}{% endif %}">
                                 </div>
                             </div>
                         </div>
@@ -615,9 +648,14 @@
                                id="totalPackagesInput"
                                class="input-field"
                                min="1"
-                               max="10"
-                               placeholder="Enter number of packages (max 10)"
+                               max="20"
+                               placeholder="Enter number of packages (max 10 regular, 20 combined)"
+                               value="{% if edit_mode %}{{ form_data.get('total_packages', '') }}{% endif %}"
                                required>
+                        <div class="mt-2 text-sm text-gray-600">
+                            <span class="regular-export-limit">📦 Regular export: Maximum 10 packages</span>
+                            <span class="combined-export-limit hidden">📦 Combined export: Maximum 20 packages</span>
+                        </div>
                     </div>
 
                     <!-- Package Details Container -->
@@ -793,8 +831,7 @@
                                         <input type="text" 
                                                name="{prefix}_hsn_code" 
                                                class="input-field"
-                                               placeholder="e.g., 9015.80.90"
-                                               required>
+                                               placeholder="e.g., 9015.80.90">
                                     </div>
                                     <div>
                                         <label class="input-label">Quantity</label>
@@ -837,6 +874,19 @@
                                                class="input-field"
                                                placeholder="e.g., India"
                                                required>
+                                    </div>
+                                    <div>
+                                        <label class="input-label">Attention (Requester)</label>
+                                        <select name="{prefix}_attn" 
+                                                class="input-field"
+                                                required>
+                                            <option value="">Select User</option>
+                                            {% for user in all_users %}
+                                            <option value="{{ user.first_name }} {{ user.last_name }}">
+                                                {{ user.first_name }} {{ user.last_name }} ({{ user.unique_id }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="bg-blue-50 p-4 rounded-lg">
@@ -894,6 +944,11 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin export shipment form loaded');
+    
+    // Check if this is edit mode
+    const isEditMode = {% if edit_mode %}true{% else %}false{% endif %};
+    
     // Elements for invoice number generation
     const requesterUserSelect = document.getElementById('requesterUserSelect');
     const requesterNameHidden = document.getElementById('requesterNameHidden');
@@ -906,19 +961,58 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('invoiceDateHidden').value = today;
     
+    // Elements for package handling
+    const totalPackagesInput = document.getElementById('totalPackagesInput');
+    const packageDetailsContainer = document.getElementById('packageDetailsContainer');
+    const packageDetailsTemplate = document.getElementById('packageDetailsTemplate');
+    const itemDetailsTemplate = document.getElementById('itemDetailsTemplate');
+    const packageSummary = document.getElementById('packageSummary');
+    
+    // Debug: Check if all elements exist
+    console.log('Admin Elements check:', {
+        totalPackagesInput: !!totalPackagesInput,
+        packageDetailsContainer: !!packageDetailsContainer,
+        packageDetailsTemplate: !!packageDetailsTemplate,
+        itemDetailsTemplate: !!itemDetailsTemplate,
+        packageSummary: !!packageSummary,
+        expeditionYear: !!expeditionYear,
+        expeditionMonth: !!expeditionMonth,
+        invoicePreview: !!invoicePreview,
+        requesterUserSelect: !!requesterUserSelect
+    });
+    
     // Function to handle requester user selection
     function handleRequesterUserChange() {
+        if (!requesterUserSelect) return;
         const selectedOption = requesterUserSelect.options[requesterUserSelect.selectedIndex];
         if (selectedOption && selectedOption.value) {
             const fullName = selectedOption.getAttribute('data-full-name');
-            requesterNameHidden.value = fullName;
+            if (requesterNameHidden) {
+                requesterNameHidden.value = fullName;
+            }
         } else {
-            requesterNameHidden.value = '';
+            if (requesterNameHidden) {
+                requesterNameHidden.value = '';
+            }
         }
-        updateInvoiceNumber();
+        // Only update invoice number in create mode, not edit mode
+        if (!isEditMode) {
+            updateInvoiceNumber();
+        }
     }
+
+    // Initialize requester name hidden field in edit mode
+    if (isEditMode && requesterUserSelect && requesterUserSelect.value) {
+        const selectedOption = requesterUserSelect.options[requesterUserSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const fullName = selectedOption.getAttribute('data-full-name');
+            if (requesterNameHidden) {
+                requesterNameHidden.value = fullName;
+            }
+        }
+    }
+    
     // Auto-fill current year and month if not in edit mode
-    const isEditMode = {% if edit_mode %}true{% else %}false{% endif %};
     if (!isEditMode) {
         const currentDate = new Date();
         const currentYear = currentDate.getFullYear();
@@ -926,24 +1020,38 @@ document.addEventListener('DOMContentLoaded', function() {
                            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
         const currentMonth = monthNames[currentDate.getMonth()];
         
-        // Set current year and month
-        expeditionYear.value = currentYear;
-        expeditionMonth.value = currentMonth;
+        // Set current year and month only if fields are empty
+        if (expeditionYear && !expeditionYear.value) {
+            expeditionYear.value = currentYear;
+        }
+        if (expeditionMonth && !expeditionMonth.value) {
+            expeditionMonth.value = currentMonth;
+        }
         
         // Update invoice preview
         updateInvoiceNumber();
     }
 
     // Set max year as current year + 1
-    const maxYear = new Date().getFullYear() + 1;
-    expeditionYear.setAttribute('max', maxYear);
-    expeditionYear.setAttribute('min', '2000');
+    if (expeditionYear) {
+        const maxYear = new Date().getFullYear() + 1;
+        expeditionYear.setAttribute('max', maxYear);
+        expeditionYear.setAttribute('min', '2000');
+    }
 
     // Function to generate invoice number with API call
     async function updateInvoiceNumber() {
+        console.log('Admin updateInvoiceNumber called');
+        if (!expeditionYear || !expeditionMonth) {
+            console.log('Missing required elements for admin invoice generation');
+            return;
+        }
+        
         const year = expeditionYear.value || 'YYYY';
         const month = expeditionMonth.value || 'MMM';
         let returnType = 'TYPE';
+        
+        console.log('Admin Invoice params:', { year, month });
         
         for (const input of returnTypeInputs) {
             if (input.checked) {
@@ -951,6 +1059,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             }
         }
+        
+        console.log('Admin Return type:', returnType);
 
         // Try to get real-time invoice number from API
         if (year && month && returnType !== 'TYPE') {
@@ -964,8 +1074,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
 
-                // Get selected requester ID
-                const selectedRequesterId = requesterUserSelect.value;
+                // Get selected requester ID (only used in create mode)
+                const selectedRequesterId = isEditMode ? null : requesterUserSelect.value;
 
                 const response = await fetch('/api/generate-invoice-preview', {
                     method: 'POST',
@@ -1033,19 +1143,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add event listeners for invoice number generation
-    requesterUserSelect.addEventListener('change', handleRequesterUserChange);
-    expeditionYear.addEventListener('input', updateInvoiceNumber);
-    expeditionMonth.addEventListener('change', updateInvoiceNumber);
-    returnTypeInputs.forEach(input => {
-        input.addEventListener('change', updateInvoiceNumber);
-    });
-
-    // Elements for package handling
-    const totalPackagesInput = document.getElementById('totalPackagesInput');
-    const packageDetailsContainer = document.getElementById('packageDetailsContainer');
-    const packageDetailsTemplate = document.getElementById('packageDetailsTemplate');
-    const itemDetailsTemplate = document.getElementById('itemDetailsTemplate');
-    const packageSummary = document.getElementById('packageSummary');
+    if (requesterUserSelect) {
+        requesterUserSelect.addEventListener('change', handleRequesterUserChange);
+    }
+    if (expeditionYear) {
+        expeditionYear.addEventListener('input', updateInvoiceNumber);
+    }
+    if (expeditionMonth) {
+        expeditionMonth.addEventListener('change', updateInvoiceNumber);
+    }
+    if (returnTypeInputs) {
+        returnTypeInputs.forEach(input => {
+            input.addEventListener('change', updateInvoiceNumber);
+        });
+    }
 
     // Function to handle package type selection
     function initializePackageTypeHandlers(packageElement) {
@@ -1176,22 +1287,50 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Handle total packages input
-    totalPackagesInput.addEventListener('change', function() {
-        const totalPackages = parseInt(this.value) || 0;
-        if (totalPackages > 10) {
-            alert('Maximum 10 packages allowed. Please enter a value between 1 and 10.');
-            this.value = 10;
-            return;
-        }
-        if (totalPackages > 0) {
-            packageDetailsContainer.classList.remove('hidden');
-            packageSummary.classList.remove('hidden');
-            generatePackageDetails(totalPackages);
-        } else {
-            packageDetailsContainer.classList.add('hidden');
-            packageSummary.classList.add('hidden');
-        }
-    });
+    if (totalPackagesInput) {
+        totalPackagesInput.addEventListener('change', function() {
+            console.log('Admin total packages changed to:', this.value);
+            const totalPackages = parseInt(this.value) || 0;
+            const isCombined = exportTypeCombined && exportTypeCombined.checked;
+            const maxPackages = isCombined ? 20 : 10;
+            const exportTypeText = isCombined ? 'combined' : 'regular';
+            
+            if (totalPackages > maxPackages) {
+                alert(`Maximum ${maxPackages} packages allowed for ${exportTypeText} export. Please enter a value between 1 and ${maxPackages}.`);
+                this.value = maxPackages;
+                return;
+            }
+            if (totalPackages > 0) {
+                console.log('Admin showing package details container');
+                packageDetailsContainer.classList.remove('hidden');
+                packageSummary.classList.remove('hidden');
+                generatePackageDetails(totalPackages);
+            } else {
+                console.log('Admin hiding package details container');
+                packageDetailsContainer.classList.add('hidden');
+                packageSummary.classList.add('hidden');
+            }
+        });
+        
+        // Also listen for 'input' event for real-time updates
+        totalPackagesInput.addEventListener('input', function() {
+            console.log('Admin total packages input changed to:', this.value);
+            const totalPackages = parseInt(this.value) || 0;
+            const isCombined = exportTypeCombined && exportTypeCombined.checked;
+            const maxPackages = isCombined ? 20 : 10;
+            
+            if (totalPackages > 0 && totalPackages <= maxPackages) {
+                packageDetailsContainer.classList.remove('hidden');
+                packageSummary.classList.remove('hidden');
+                generatePackageDetails(totalPackages);
+            } else if (totalPackages === 0) {
+                packageDetailsContainer.classList.add('hidden');
+                packageSummary.classList.add('hidden');
+            }
+        });
+    } else {
+        console.error('Admin totalPackagesInput element not found!');
+    }
 
     // Initialize exporters and consignees sections
     const exporterNcporRadio = document.getElementById('exporterNcporRadio');
@@ -1212,6 +1351,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleCombinedExportFields() {
         const combinedFields = document.querySelectorAll('.combined-export-field');
         const isCombined = exportTypeCombined.checked;
+        
+        // Update package limit indicators
+        const regularLimitSpan = document.querySelector('.regular-export-limit');
+        const combinedLimitSpan = document.querySelector('.combined-export-limit');
+        
+        if (regularLimitSpan && combinedLimitSpan) {
+            if (isCombined) {
+                regularLimitSpan.classList.add('hidden');
+                combinedLimitSpan.classList.remove('hidden');
+                totalPackagesInput.setAttribute('max', '20');
+                totalPackagesInput.setAttribute('placeholder', 'Enter number of packages (max 20 for combined)');
+            } else {
+                regularLimitSpan.classList.remove('hidden');
+                combinedLimitSpan.classList.add('hidden');
+                totalPackagesInput.setAttribute('max', '10');
+                totalPackagesInput.setAttribute('placeholder', 'Enter number of packages (max 10 for regular)');
+            }
+        }
         
         combinedFields.forEach(field => {
             if (isCombined) {
@@ -1331,38 +1488,68 @@ document.addEventListener('DOMContentLoaded', function() {
         // All validations passed - let form submit naturally
         return true;
     });
-});
-</script>
 
+    // Edit mode initialization - moved inside DOMContentLoaded for function access
 {% if edit_mode %}
-<!-- Edit mode data -->
-<script type="application/json" id="editModeData">{{ form_data | tojson }}</script>
-<script>
-// Edit mode initialization - separate from main script to avoid conflicts
-window.addEventListener('load', function() {
+    console.log('🔧 Edit mode block detected');
+    // Check if we have edit mode data
     const editDataScript = document.getElementById('editModeData');
-    if (!editDataScript) return;
-    
+    console.log('📄 Edit data script element:', editDataScript);
+    if (editDataScript) {
     const formData = JSON.parse(editDataScript.textContent);
-    if (!formData || !formData.total_packages) return;
-    
+        console.log('📊 Form data parsed:', formData);
+        if (formData) {
+            // Set requester user if available
+            const requesterUserId = formData.requester_user_id;
+            if (requesterUserId) {
+                const requesterSelect = document.getElementById('requesterUserSelect');
+                if (requesterSelect) {
+                    requesterSelect.value = requesterUserId;
+                    // Trigger change event to update hidden field
+                    requesterSelect.dispatchEvent(new Event('change'));
+                }
+            }
+            
+            // Set exporter type if available
+            const exporterType = formData.exporter || 'ncpor';
+            const exporterRadio = document.querySelector('input[name="exporter"][value="' + exporterType + '"]');
+            if (exporterRadio) {
+                exporterRadio.checked = true;
+                // Trigger change event to show/hide sections
+                exporterRadio.dispatchEvent(new Event('change'));
+            }
+            
+            // Set consignee type if available
+            const consigneeType = formData.consignee || 'himadri';
+            const consigneeRadio = document.querySelector('input[name="consignee"][value="' + consigneeType + '"]');
+            if (consigneeRadio) {
+                consigneeRadio.checked = true;
+                // Trigger change event to show/hide sections
+                consigneeRadio.dispatchEvent(new Event('change'));
+            }
+            
+            if (formData.total_packages) {
     // Set export type if available
     const exportType = formData.export_type || 'regular';
     const exportTypeRadio = document.querySelector('input[name="export_type"][value="' + exportType + '"]');
     if (exportTypeRadio) {
         exportTypeRadio.checked = true;
         // Trigger the change event to update visibility
-        if (typeof toggleCombinedExportFields === 'function') {
             toggleCombinedExportFields();
-        }
     }
     
     const totalPackages = parseInt(formData.total_packages);
-    const totalPackagesInput = document.getElementById('totalPackagesInput');
     
-    // Trigger the total packages change event to generate package forms
+                // Set total packages and generate package forms
+                console.log('Edit mode: Setting total packages to', totalPackages);
     totalPackagesInput.value = totalPackages;
-    totalPackagesInput.dispatchEvent(new Event('change'));
+                packageDetailsContainer.classList.remove('hidden');
+                packageSummary.classList.remove('hidden');
+                console.log('Edit mode: Calling generatePackageDetails');
+                console.log('🔍 generatePackageDetails function exists:', typeof generatePackageDetails);
+                console.log('🔍 packageDetailsContainer:', packageDetailsContainer);
+                generatePackageDetails(totalPackages);
+                console.log('Edit mode: Package forms generated');
     
     // Wait for DOM updates, then populate data
     setTimeout(() => {
@@ -1377,15 +1564,6 @@ window.addEventListener('load', function() {
                 }
             }
             
-            // Set package attention field
-            const packageAttn = formData['package_' + packageNum + '_attn'];
-            if (packageAttn) {
-                const attnInput = document.querySelector('input[name="package_' + packageNum + '_attn"]');
-                if (attnInput) {
-                    attnInput.value = packageAttn;
-                }
-            }
-            
             // Set package dimensions
             ['length', 'width', 'height'].forEach(function(dim) {
                 const value = formData['package_' + packageNum + '_' + dim];
@@ -1395,19 +1573,27 @@ window.addEventListener('load', function() {
                 }
             });
             
-            // Set items count
+                        // Set items count and generate item forms
             const itemsCount = parseInt(formData['package_' + packageNum + '_items_count'] || 0);
+                        console.log('Edit mode: Package', packageNum, 'has', itemsCount, 'items');
             if (itemsCount > 0) {
                 const itemsCountInput = document.querySelector('input[name="package_' + packageNum + '_items_count"]');
                 if (itemsCountInput) {
                     itemsCountInput.value = itemsCount;
-                    itemsCountInput.dispatchEvent(new Event('change'));
+                                console.log('Edit mode: Set items count input for package', packageNum);
+                                
+                                // Generate item forms directly
+                                const itemsContainer = document.querySelector('#package_' + packageNum + ' .items-container');
+                                console.log('Edit mode: Items container for package', packageNum, ':', itemsContainer);
+                                if (itemsContainer) {
+                                    console.log('Edit mode: Generating item details for package', packageNum);
+                                    generateItemDetails(packageNum, itemsCount, itemsContainer);
                     
-                    // Wait for items to be generated
+                                    // Wait for items to be generated, then populate data
                     setTimeout(() => {
                         for (let itemNum = 1; itemNum <= itemsCount; itemNum++) {
                             const prefix = 'package_' + packageNum + '_item_' + itemNum;
-                            ['description', 'hsn_code', 'quantity', 'unit_value', 'net_weight', 'origin'].forEach(function(field) {
+                                            ['description', 'hsn_code', 'quantity', 'unit_value', 'net_weight', 'origin', 'attn'].forEach(function(field) {
                                 const value = formData[prefix + '_' + field];
                                 if (value) {
                                     const input = document.querySelector('[name="' + prefix + '_' + field + '"]');
@@ -1420,13 +1606,23 @@ window.addEventListener('load', function() {
                                 }
                             });
                         }
-                    }, 300);
+                                        updateTotals();
+                                    }, 100);
+                                }
                 }
             }
         }
-    }, 500);
+                }, 100);
+            }
+        }
+    }
+    {% endif %}
 });
 </script>
+
+{% if edit_mode %}
+<!-- Edit mode data -->
+<script type="application/json" id="editModeData">{{ form_data | tojson }}</script>
 {% endif %}
 
 {% endblock %}

@@ -139,11 +139,36 @@
             </div>
         </div>
 
+                <!-- Original Shipment Info (if available) -->
+        {% if original_shipment %}
+        <div class="arctic-card p-4 mb-6 bg-blue-50 border-blue-200">
+            <h3 class="text-lg font-semibold text-deep-arctic mb-3">📋 Original Export Shipment</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                    <p class="text-gray-600">Invoice Number:</p>
+                    <p class="font-mono font-semibold">{{ original_shipment.invoice_number }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Export Date:</p>
+                    <p class="font-semibold">{{ original_shipment.created_at.strftime('%B %d, %Y') }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Packages:</p>
+                    <p class="font-semibold">{{ original_shipment.total_packages }}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">Status:</p>
+                    <p class="font-semibold">{{ original_shipment.status.replace('_', ' ').title() }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Invoice Number Preview -->
         <div class="arctic-card p-4 mb-6 invoice-preview">
             <h3 class="text-lg font-semibold text-deep-arctic mb-2">Generated Invoice Number</h3>
             <div class="text-xl font-mono tracking-wide" id="invoiceNumberPreview">
-                NCPOR/REIMP/YYYY/MMM/TYPE/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000
+                NCPOR/REIMP/YYYY/MMM/REIMP/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000
             </div>
             <p class="text-sm text-gray-600 mt-2">This number will be used in your reimport documentation</p>
         </div>
@@ -157,71 +182,44 @@
                   class="space-y-8">
                 <input type="hidden" name="shipment_type" value="reimport">
                 <input type="hidden" name="invoice_date" id="invoiceDateHidden">
+                {% if original_shipment %}
+                <input type="hidden" name="original_shipment_id" value="{{ original_shipment.id }}">
+                {% endif %}
 
                 <!-- Personal Details -->
                 <div class="space-y-4">
                     <h3 class="section-title">Personal Details</h3>
                     <div>
                         <label class="input-label">Full Name with Title</label>
-                        <input type="text" 
-                               name="requester_name" 
-                               id="requesterName"
-                               class="input-field"
-                               placeholder="e.g., Dr. John Smith"
-                               value="{% if edit_mode %}{{ form_data.get('requester_name', '') }}{% endif %}"
-                               required>
-                        <p class="text-sm text-gray-500 mt-1">Please include appropriate title (Dr./Mr./Ms./etc.)</p>
+                        <select name="requester_name" 
+                                id="requesterName"
+                                class="input-field"
+                                required>
+                            <option value="">Select requester...</option>
+                            {% for user in all_users %}
+                                <option value="{{ user.first_name }} {{ user.last_name }}" 
+                                        data-unique-id="{{ user.unique_id }}"
+                                        {% if original_shipment and original_shipment.requester_name == user.first_name + ' ' + user.last_name %}selected{% endif %}
+                                        {% if not original_shipment and current_user.id == user.id %}selected{% endif %}>
+                                    {{ user.first_name }} {{ user.last_name }} ({{ user.unique_id }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" id="requesterFullName" name="requester_full_name" value="">
+                        {% if original_shipment %}
+                        <p class="text-sm text-blue-600 mt-1">
+                            📋 Original export requester: {{ original_shipment.requester_name }}
+                        </p>
+                        {% endif %}
                     </div>
                 </div>
 
                 <!-- Shipment Characteristics -->
                 <div class="space-y-4">
-                    <h3 class="section-title">Shipment Characteristics</h3>
+                    <h3 class="section-title">Expedition Details</h3>
                     
-                    <!-- Returnable/Non-Returnable Selection -->
-                    <div>
-                        <label class="input-label">Shipment Type</label>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <label class="cursor-pointer">
-                                <input type="radio" 
-                                       name="return_type" 
-                                       value="RET" 
-                                       class="sr-only" 
-                                       {% if edit_mode and form_data.get('return_type') == 'RET' %}checked{% endif %}
-                                       required>
-                                <div class="radio-card arctic-card p-4">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                            <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
-                                        </div>
-                                        <div>
-                                            <p class="font-semibold text-deep-arctic">Returnable</p>
-                                            <p class="text-sm text-gray-600">Items will be returned after use</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </label>
-                            <label class="cursor-pointer">
-                                <input type="radio" 
-                                       name="return_type" 
-                                       value="NONRET" 
-                                       class="sr-only" 
-                                       {% if edit_mode and form_data.get('return_type') == 'NONRET' %}checked{% endif %}
-                                       required>
-                                <div class="radio-card arctic-card p-4">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-6 h-6 border-2 border-deep-arctic rounded-full flex items-center justify-center">
-                                            <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
-                                        </div>
-                                        <div>
-                                            <p class="font-semibold text-deep-arctic">Non-Returnable</p>
-                                            <p class="text-sm text-gray-600">Items will not be returned</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
+                    <!-- Hidden field for reimport type (always REIMP) -->
+                    <input type="hidden" name="return_type" value="REIMP">
 
                     <!-- Expedition Details -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -234,8 +232,11 @@
                                    min="2000"
                                    max="2100"
                                    placeholder="YYYY"
-                                   value="{% if edit_mode %}{{ form_data.get('expedition_year', '') }}{% endif %}"
+                                   value="{% if original_shipment %}{{ original_shipment.expedition_year or '' }}{% endif %}"
                                    required>
+                            {% if original_shipment and original_shipment.expedition_year %}
+                            <p class="text-sm text-blue-600 mt-1">📋 Original: {{ original_shipment.expedition_year }}</p>
+                            {% endif %}
                         </div>
                         <div>
                             <label class="input-label">Month</label>
@@ -244,19 +245,22 @@
                                     class="input-field"
                                     required>
                                 <option value="">Select Month</option>
-                                <option value="JAN" {% if edit_mode and form_data.get('expedition_month') == 'JAN' %}selected{% endif %}>January</option>
-                                <option value="FEB" {% if edit_mode and form_data.get('expedition_month') == 'FEB' %}selected{% endif %}>February</option>
-                                <option value="MAR" {% if edit_mode and form_data.get('expedition_month') == 'MAR' %}selected{% endif %}>March</option>
-                                <option value="APR" {% if edit_mode and form_data.get('expedition_month') == 'APR' %}selected{% endif %}>April</option>
-                                <option value="MAY" {% if edit_mode and form_data.get('expedition_month') == 'MAY' %}selected{% endif %}>May</option>
-                                <option value="JUN" {% if edit_mode and form_data.get('expedition_month') == 'JUN' %}selected{% endif %}>June</option>
-                                <option value="JUL" {% if edit_mode and form_data.get('expedition_month') == 'JUL' %}selected{% endif %}>July</option>
-                                <option value="AUG" {% if edit_mode and form_data.get('expedition_month') == 'AUG' %}selected{% endif %}>August</option>
-                                <option value="SEP" {% if edit_mode and form_data.get('expedition_month') == 'SEP' %}selected{% endif %}>September</option>
-                                <option value="OCT" {% if edit_mode and form_data.get('expedition_month') == 'OCT' %}selected{% endif %}>October</option>
-                                <option value="NOV" {% if edit_mode and form_data.get('expedition_month') == 'NOV' %}selected{% endif %}>November</option>
-                                <option value="DEC" {% if edit_mode and form_data.get('expedition_month') == 'DEC' %}selected{% endif %}>December</option>
+                                <option value="JAN" {% if original_form_data.get('expedition_month') == 'JAN' %}selected{% endif %}>January</option>
+                                <option value="FEB" {% if original_form_data.get('expedition_month') == 'FEB' %}selected{% endif %}>February</option>
+                                <option value="MAR" {% if original_form_data.get('expedition_month') == 'MAR' %}selected{% endif %}>March</option>
+                                <option value="APR" {% if original_form_data.get('expedition_month') == 'APR' %}selected{% endif %}>April</option>
+                                <option value="MAY" {% if original_form_data.get('expedition_month') == 'MAY' %}selected{% endif %}>May</option>
+                                <option value="JUN" {% if original_form_data.get('expedition_month') == 'JUN' %}selected{% endif %}>June</option>
+                                <option value="JUL" {% if original_form_data.get('expedition_month') == 'JUL' %}selected{% endif %}>July</option>
+                                <option value="AUG" {% if original_form_data.get('expedition_month') == 'AUG' %}selected{% endif %}>August</option>
+                                <option value="SEP" {% if original_form_data.get('expedition_month') == 'SEP' %}selected{% endif %}>September</option>
+                                <option value="OCT" {% if original_form_data.get('expedition_month') == 'OCT' %}selected{% endif %}>October</option>
+                                <option value="NOV" {% if original_form_data.get('expedition_month') == 'NOV' %}selected{% endif %}>November</option>
+                                <option value="DEC" {% if original_form_data.get('expedition_month') == 'DEC' %}selected{% endif %}>December</option>
                             </select>
+                            {% if original_form_data.get('expedition_month') %}
+                            <p class="text-sm text-blue-600 mt-1">📋 Original: {{ original_form_data.get('expedition_month') }}</p>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -318,8 +322,8 @@
                                 Headland Sada, Vasco da Gama, Goa - 403804<br>
                                 India<br>
                                 Phone: +91 832 2525501<br>
-                                GST: 30AAAAN4327G1ZJ<br>
-                                IEC No.: 1196000125
+                                GST: 30AACFN4991P1ZN<br>
+                                LUT No.: AD300618000016R
                             </div>
                         </div>
                         
@@ -376,11 +380,11 @@
                                            placeholder="Enter GST number">
                                 </div>
                                 <div>
-                                    <label class="input-label">IEC Number</label>
+                                    <label class="input-label">LUT Number</label>
                                     <input type="text" 
-                                           name="other_exporter_iec" 
+                                           name="other_exporter_lut" 
                                            class="input-field"
-                                           placeholder="Enter IEC number">
+                                           placeholder="Enter LUT number">
                                 </div>
                             </div>
                         </div>
@@ -391,13 +395,13 @@
                 <div class="space-y-4">
                     <h3 class="section-title">Consignee Details</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Himadri Option -->
+                        <!-- NCPOR Option -->
                         <label class="cursor-pointer">
                             <input type="radio" 
                                    name="consignee" 
-                                   value="himadri" 
+                                   value="ncpor" 
                                    class="sr-only" 
-                                   id="consigneeHimadriRadio"
+                                   id="consigneeNcporRadio"
                                    checked
                                    required>
                             <div class="radio-card arctic-card p-4 h-full">
@@ -406,8 +410,8 @@
                                         <div class="w-3 h-3 bg-deep-arctic rounded-full hidden peer-checked:block"></div>
                                     </div>
                                     <div>
-                                        <p class="font-semibold text-deep-arctic">Himadri</p>
-                                        <p class="text-sm text-gray-600">Indian Arctic Research Station</p>
+                                        <p class="font-semibold text-deep-arctic">NCPOR</p>
+                                        <p class="text-sm text-gray-600">National Center for Polar and Ocean Research</p>
                                     </div>
                                 </div>
                             </div>
@@ -436,13 +440,14 @@
 
                     <!-- Dynamic Consignee Details -->
                     <div id="consigneeDetailsSection" class="mt-4">
-                        <!-- Himadri Details (Read-only) -->
-                        <div id="himadriConsigneeDetails">
-                    <div class="readonly-field">
-                                <strong>Himadri - Indian Arctic Research Station C/O Kingsbay AS</strong><br>
-                                N-9173 Ny-Alesund, Norway<br>
-                                Point of Contact: Kingsbay AS, Longyearbyen<br>
-                                Phone: +47 79 027200
+                        <!-- NCPOR Details (Read-only) -->
+                        <div id="ncporConsigneeDetails">
+                            <div class="readonly-field">
+                                <strong>National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]</strong><br>
+                                Ministry of Earth Sciences (Govt. of India)<br>
+                                Headland Sada, Vasco da Gama, Goa - 403804<br>
+                                Phone: +91 832 2525501<br>
+                                GST: 30AACFN4991P1ZN | LUT: AD300618000016R
                             </div>
                         </div>
                         
@@ -673,8 +678,7 @@
                                         <input type="text" 
                                                name="{prefix}_hsn_code" 
                                                class="input-field"
-                                               placeholder="e.g., 9015.80.90"
-                                               required>
+                                               placeholder="e.g., 9015.80.90">
                                     </div>
                                     <div>
                                         <label class="input-label">Quantity</label>
@@ -778,14 +782,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const requesterName = document.getElementById('requesterName');
     const expeditionYear = document.getElementById('expeditionYear');
     const expeditionMonth = document.getElementById('expeditionMonth');
-    const returnTypeInputs = document.getElementsByName('return_type');
     const invoicePreview = document.getElementById('invoiceNumberPreview');
 
     // Set current date in hidden field
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('invoiceDateHidden').value = today;
     // Auto-fill current year and month if not in edit mode
-    const isEditMode = {% if edit_mode %}true{% else %}false{% endif %};
+    const isEditMode = false;
     if (!isEditMode) {
         const currentDate = new Date();
         const currentYear = currentDate.getFullYear();
@@ -808,39 +811,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to generate invoice number
     function updateInvoiceNumber() {
-        let firstName = 'FIRSTNAME';
-        if (requesterName.value) {
-            const nameParts = requesterName.value.trim().split(' ');
-            // If we have title + first name (or more)
-            if (nameParts.length > 1) {
-                firstName = nameParts[1].toUpperCase(); // Take second word as first name
-            } else {
-                firstName = nameParts[0].toUpperCase(); // If only one word, use that
-            }
+        let uniqueId = 'XXXXXX';
+        
+        // Get selected user's unique ID from dropdown
+        const selectedOption = requesterName.options[requesterName.selectedIndex];
+        if (selectedOption && selectedOption.getAttribute('data-unique-id')) {
+            uniqueId = selectedOption.getAttribute('data-unique-id');
         }
 
         const year = expeditionYear.value || 'YYYY';
         const month = expeditionMonth.value || 'MMM';
-        let returnType = 'TYPE';
         
-        for (const input of returnTypeInputs) {
-            if (input.checked) {
-                returnType = input.value;
-                break;
-            }
-        }
-
-                    const invoiceNumber = `NCPOR/REIMP/${year}/${month}/${returnType}/${firstName}/0000`;
+        // Reimport type is always REIMP
+        const invoiceNumber = `NCPOR/REIMP/${year}/${month}/REIMP/${uniqueId}/0000`;
         invoicePreview.textContent = invoiceNumber;
     }
 
     // Add event listeners for invoice number generation
-    requesterName.addEventListener('input', updateInvoiceNumber);
+    requesterName.addEventListener('change', function() {
+        updateInvoiceNumber();
+        // Update hidden field with full name
+        const selectedOption = this.options[this.selectedIndex];
+        document.getElementById('requesterFullName').value = selectedOption ? selectedOption.value : '';
+    });
     expeditionYear.addEventListener('input', updateInvoiceNumber);
     expeditionMonth.addEventListener('change', updateInvoiceNumber);
-    returnTypeInputs.forEach(input => {
-        input.addEventListener('change', updateInvoiceNumber);
-    });
+
+    // Initialize invoice number on page load
+    updateInvoiceNumber();
 
     // Elements for package handling
     const totalPackagesInput = document.getElementById('totalPackagesInput');
@@ -974,9 +972,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const ncporExporterDetails = document.getElementById('ncporExporterDetails');
     const otherExporterDetails = document.getElementById('otherExporterDetails');
 
-    const consigneeHimadriRadio = document.getElementById('consigneeHimadriRadio');
+    const consigneeNcporRadio = document.getElementById('consigneeNcporRadio');
     const consigneeOtherRadio = document.getElementById('consigneeOtherRadio');
-    const himadriConsigneeDetails = document.getElementById('himadriConsigneeDetails');
+    const ncporConsigneeDetails = document.getElementById('ncporConsigneeDetails');
     const otherConsigneeDetails = document.getElementById('otherConsigneeDetails');
 
     // Function to toggle required fields
@@ -1002,12 +1000,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to handle consignee selection
     function handleConsigneeSelection() {
-        if (consigneeHimadriRadio.checked) {
-            himadriConsigneeDetails.classList.remove('hidden');
+        if (consigneeNcporRadio.checked) {
+            ncporConsigneeDetails.classList.remove('hidden');
             otherConsigneeDetails.classList.add('hidden');
             toggleRequiredFields(otherConsigneeDetails, false);
         } else {
-            himadriConsigneeDetails.classList.add('hidden');
+            ncporConsigneeDetails.classList.add('hidden');
             otherConsigneeDetails.classList.remove('hidden');
             toggleRequiredFields(otherConsigneeDetails, true);
         }
@@ -1016,7 +1014,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listeners
     exporterNcporRadio.addEventListener('change', handleExporterSelection);
     exporterOtherRadio.addEventListener('change', handleExporterSelection);
-    consigneeHimadriRadio.addEventListener('change', handleConsigneeSelection);
+    consigneeNcporRadio.addEventListener('change', handleConsigneeSelection);
     consigneeOtherRadio.addEventListener('change', handleConsigneeSelection);
 
     // Initial setup

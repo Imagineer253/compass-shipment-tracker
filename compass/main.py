@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify, current_app
 from flask_login import login_required, current_user
 from datetime import datetime
 import os
@@ -6,20 +6,67 @@ from docx import Document
 from docxtpl import DocxTemplate
 from docx.shared import Cm, Pt
 from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ROW_HEIGHT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
 from docx.table import _Cell
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 import io
 import json
 from num2words import num2words
-from .models import User, Role, Shipment, CombinedShipmentCounter, SigningAuthority, db
+from .models import User, Role, Shipment, CombinedShipmentCounter, SigningAuthority, PackageQRCode, db
 from werkzeug.security import generate_password_hash, check_password_hash
+from .utils.helpers import generate_file_reference_number
+from .services.qr_service import QRCodeService
 
 main = Blueprint('main', __name__)
 
-def get_package_type_display_name(package_type):
-    """Convert package type code to display name"""
+def prevent_table_page_break(table):
+    """
+    Prevent table from being split across pages by setting table properties
+    """
+    try:
+        # Get table properties
+        tblPr = table._element.xpath("./w:tblPr")[0]
+        
+        # Add table positioning properties to keep table together
+        tblpPr = OxmlElement('w:tblpPr')
+        
+        # Set table to keep together on one page
+        cantSplit = OxmlElement('w:cantSplit')
+        cantSplit.set(qn('w:val'), '1')
+        tblPr.append(cantSplit)
+        
+        # Set all rows to not break across pages
+        for row in table.rows:
+            trPr = row._element.get_or_add_trPr()
+            cantSplit = OxmlElement('w:cantSplit')
+            cantSplit.set(qn('w:val'), '1')
+            trPr.append(cantSplit)
+            
+    except Exception as e:
+        print(f"Warning: Could not set page break prevention: {e}")
+
+def add_page_break_before_element(doc, target_element):
+    """
+    Add a page break before the target element if there might not be enough space
+    """
+    try:
+        # Create a new paragraph before the target element
+        new_paragraph = doc.add_paragraph()
+        
+        # Add a page break to the paragraph
+        run = new_paragraph.add_run()
+        run.add_break(WD_BREAK.PAGE)
+        
+        # Insert the new paragraph before the target element
+        parent = target_element.getparent()
+        parent.insert(list(parent).index(target_element), new_paragraph._element)
+        
+    except Exception as e:
+        print(f"Warning: Could not add page break: {e}")
+
+def get_package_type_display_name(package_type, form_data=None, package_num=None):
+    """Convert package type code to display name, handling 'other' type with custom input"""
     package_type_mapping = {
         'cardboard_box': 'Cardboard Box',
         'plastic_crate': 'Plastic Crate',
@@ -32,6 +79,13 @@ def get_package_type_display_name(package_type):
         'carton': 'Plastic Crate',
         'crate': 'Metal Trunk'
     }
+    
+    # If package type is 'other' and we have form_data and package_num, get the custom type
+    if package_type == 'other' and form_data and package_num:
+        other_type = form_data.get(f'package_{package_num}_other_type', '')
+        if other_type:
+            return other_type
+    
     return package_type_mapping.get(package_type, package_type.title())
 
 def admin_required(f):
@@ -63,12 +117,70 @@ def export_shipment():
 @main.route('/import-shipment')
 @login_required
 def import_shipment():
-    return render_template('shipments/import_shipment.html', user=current_user)
+    # Get all active users for dropdown selection (both admin and regular users need this)
+    all_users = User.query.filter_by(is_active=True).order_by(User.first_name, User.last_name).all()
+    return render_template('shipments/import_shipment.html', user=current_user, all_users=all_users)
 
 @main.route('/reimport-shipment')
 @login_required
 def reimport_shipment():
-    return render_template('shipments/reimport_shipment.html', user=current_user, is_reimport=True)
+    # Get exported shipments for selection
+    if current_user.is_admin():
+        # Admin sees all exported shipments that have been delivered
+        exported_shipments = Shipment.query.filter(
+            Shipment.shipment_type == 'export',
+            Shipment.status.in_(['Delivered', 'Document_Generated'])  # Only completed exports can be reimported
+        ).order_by(Shipment.created_at.desc()).all()
+    else:
+        # Regular users see only their own exported shipments
+        exported_shipments = Shipment.query.filter(
+            Shipment.shipment_type == 'export',
+            Shipment.created_by == current_user.id,
+            Shipment.status.in_(['Delivered', 'Document_Generated'])  # Only completed exports can be reimported
+        ).order_by(Shipment.created_at.desc()).all()
+    
+    return render_template('shipments/reimport_selection.html', 
+                         user=current_user, 
+                         exported_shipments=exported_shipments)
+
+@main.route('/reimport-shipment/<int:shipment_id>')
+@login_required
+def reimport_form(shipment_id):
+    # Get the selected shipment for reimport
+    if current_user.is_admin():
+        # Admin can reimport any exported shipment
+        original_shipment = Shipment.query.filter(
+            Shipment.id == shipment_id,
+            Shipment.shipment_type == 'export',
+            Shipment.status.in_(['Delivered', 'Document_Generated'])
+        ).first_or_404()
+    else:
+        # Regular users can only reimport their own shipments
+        original_shipment = Shipment.query.filter(
+            Shipment.id == shipment_id,
+            Shipment.shipment_type == 'export',
+            Shipment.created_by == current_user.id,
+            Shipment.status.in_(['Delivered', 'Document_Generated'])
+        ).first_or_404()
+    
+    # Get all users for dropdown (needed for reimport form)
+    all_users = User.query.filter_by(is_active=True).order_by(User.first_name, User.last_name).all()
+    
+    # Parse original shipment form data if available
+    original_form_data = {}
+    if original_shipment and original_shipment.form_data:
+        try:
+            import json
+            original_form_data = json.loads(original_shipment.form_data)
+        except (json.JSONDecodeError, TypeError):
+            original_form_data = {}
+    
+    return render_template('shipments/reimport_shipment.html', 
+                         user=current_user, 
+                         original_shipment=original_shipment,
+                         original_form_data=original_form_data,
+                         all_users=all_users,
+                         is_reimport=True)
 
 @main.route('/cold-shipment')
 @login_required
@@ -169,6 +281,9 @@ def handle_table_placement(doc, form_data):
             top_border.set(qn('w:sz'), '0')
             tcBorders.append(top_border)
 
+        # Add page break prevention to the table
+        prevent_table_page_break(table)
+        
         # Insert the table after the placeholder and remove the placeholder
         table._element = target_paragraph._element.addnext(table._element)
         target_paragraph._element.getparent().remove(target_paragraph._element)
@@ -273,6 +388,9 @@ def handle_pl_table_placement(doc, form_data):
             top_border.set(qn('w:sz'), '0')
             tcBorders.append(top_border)
 
+        # Add page break prevention to the table
+        prevent_table_page_break(table)
+        
         # Insert the table after the placeholder and remove the placeholder
         table._element = target_paragraph._element.addnext(table._element)
         target_paragraph._element.getparent().remove(target_paragraph._element)
@@ -357,16 +475,57 @@ def populate_table_data(table, form_data):
             
             # Box details - Include requester name for combined shipments
             package_type = form_data.get(f'package_{package_num}_type', '')
+            package_type_display = get_package_type_display_name(package_type, form_data, package_num)
             
-            # Check if this is a combined shipment with requester names
+            # Get package owner information
+            box_text = f"Box-{package_num} ({package_type_display})"
+            
+            # Check if this is a combined shipment with package ownership info
+            package_belongs_to_id = form_data.get(f'package_{package_num}_belongs_to')
             attn_field_name = f'package_{package_num}_attn'
+            
+            # Collect ownership info to add compactly
+            ownership_info = []
+            
+            if package_belongs_to_id:
+                # Combined shipment - get user by ID for package ownership
+                try:
+                    from .models import User
+                    owner_user = User.query.get(int(package_belongs_to_id))
+                    if owner_user:
+                        owner_name = f"{owner_user.first_name} {owner_user.last_name}"
+                        owner_unique_id = owner_user.unique_id
+                        ownership_info.append(f"Owner: {owner_name} ({owner_unique_id})")
+                except (ValueError, TypeError):
+                    pass
+                    
+            # Check if there's attention field (requester) for items
             if attn_field_name in form_data and form_data[attn_field_name]:
-                # Combined shipment format: Box-1 (Cardboard) Requester Name
+                # Get requester unique ID if available
                 requester_name = form_data[attn_field_name]
-                row_cells[1].text = f"Box-{package_num}\n({package_type})\n{requester_name}"
-            else:
-                # Regular shipment format: Box-1 (Cardboard)
-                row_cells[1].text = f"Box-{package_num}\n({package_type})"
+                try:
+                    from .models import User
+                    # Try to find user by full name to get their unique ID
+                    name_parts = requester_name.split()
+                    if len(name_parts) >= 2:
+                        first_name = name_parts[0]
+                        last_name = ' '.join(name_parts[1:])  # Handle multi-word last names
+                        requester_user = User.query.filter_by(first_name=first_name, last_name=last_name).first()
+                        if requester_user and requester_user.unique_id:
+                            ownership_info.append(f"Req: {requester_name} ({requester_user.unique_id})")
+                        else:
+                            ownership_info.append(f"Req: {requester_name}")
+                    else:
+                        ownership_info.append(f"Req: {requester_name}")
+                except Exception:
+                    ownership_info.append(f"Req: {requester_name}")
+            
+            # Format the final box text more compactly
+            if ownership_info:
+                # Put ownership info on new line but in a more compact format
+                box_text += f"\n{' | '.join(ownership_info)}"
+            
+            row_cells[1].text = box_text
             row_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
             
             # Combined description of all items in package
@@ -643,8 +802,57 @@ def populate_pl_table_data(table, form_data):
             
             # Box details
             package_type = form_data.get(f'package_{package_num}_type', '')
-            package_type_display = get_package_type_display_name(package_type)
-            row_cells[1].text = f"Box-{package_num}\n({package_type_display})"
+            package_type_display = get_package_type_display_name(package_type, form_data, package_num)
+            
+            # Get package owner information for packing list
+            box_text = f"Box-{package_num} ({package_type_display})"
+            
+            # Check if this is a combined shipment with package ownership info
+            package_belongs_to_id = form_data.get(f'package_{package_num}_belongs_to')
+            attn_field_name = f'package_{package_num}_attn'
+            
+            # Collect ownership info to add compactly
+            ownership_info = []
+            
+            if package_belongs_to_id:
+                # Combined shipment - get user by ID for package ownership
+                try:
+                    from .models import User
+                    owner_user = User.query.get(int(package_belongs_to_id))
+                    if owner_user:
+                        owner_name = f"{owner_user.first_name} {owner_user.last_name}"
+                        owner_unique_id = owner_user.unique_id
+                        ownership_info.append(f"Owner: {owner_name} ({owner_unique_id})")
+                except (ValueError, TypeError):
+                    pass
+                    
+            # Check if there's attention field (requester) for items
+            if attn_field_name in form_data and form_data[attn_field_name]:
+                # Get requester unique ID if available
+                requester_name = form_data[attn_field_name]
+                try:
+                    from .models import User
+                    # Try to find user by full name to get their unique ID
+                    name_parts = requester_name.split()
+                    if len(name_parts) >= 2:
+                        first_name = name_parts[0]
+                        last_name = ' '.join(name_parts[1:])  # Handle multi-word last names
+                        requester_user = User.query.filter_by(first_name=first_name, last_name=last_name).first()
+                        if requester_user and requester_user.unique_id:
+                            ownership_info.append(f"Req: {requester_name} ({requester_user.unique_id})")
+                        else:
+                            ownership_info.append(f"Req: {requester_name}")
+                    else:
+                        ownership_info.append(f"Req: {requester_name}")
+                except Exception:
+                    ownership_info.append(f"Req: {requester_name}")
+            
+            # Format the final box text more compactly
+            if ownership_info:
+                # Put ownership info on new line but in a more compact format
+                box_text += f"\n{' | '.join(ownership_info)}"
+            
+            row_cells[1].text = box_text
             row_cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
             
             # Combined description of all items in package
@@ -755,6 +963,9 @@ def handle_shipper_table_placement(doc, form_data):
         header_cells[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
         header_cells[2].paragraphs[0].runs[0].font.bold = True
         
+        # Add page break prevention to the table
+        prevent_table_page_break(table)
+        
         # Insert the table before the placeholder paragraph
         parent_element.insert(list(parent_element).index(target_paragraph._element), table._element)
         
@@ -783,13 +994,25 @@ def populate_shipper_table_data(table, form_data):
             
             # Package details
             package_type = form_data.get(f'package_{package_num}_type', 'box')
-            package_type_display = get_package_type_display_name(package_type)
+            package_type_display = get_package_type_display_name(package_type, form_data, package_num)
             
             # Package dimensions
             length = form_data.get(f'package_{package_num}_length', '')
             width = form_data.get(f'package_{package_num}_width', '')
             height = form_data.get(f'package_{package_num}_height', '')
             dimensions = f"({length} x {width} x {height} cm)" if all([length, width, height]) else ""
+            
+            # Get package owner name (without label)
+            owner_name = ""
+            package_belongs_to_id = form_data.get(f'package_{package_num}_belongs_to')
+            if package_belongs_to_id:
+                try:
+                    from .models import User
+                    owner_user = User.query.get(int(package_belongs_to_id))
+                    if owner_user:
+                        owner_name = f" {owner_user.first_name} {owner_user.last_name}"
+                except (ValueError, TypeError):
+                    pass
             
             # Check for requester name (combined shipment)
             requester_info = ""
@@ -799,7 +1022,7 @@ def populate_shipper_table_data(table, form_data):
             
             # Create description content
             description_parts = []
-            description_parts.append(f"Box No.- {package_num:02d} ({package_type_display}){requester_info}{dimensions}")
+            description_parts.append(f"Box No.- {package_num:02d} ({package_type_display}){requester_info}{dimensions}{owner_name}")
             
             # Add all items in this package
             for item_num in range(1, items_count + 1):
@@ -943,10 +1166,15 @@ def submit_shipment():
         # Get form data
         form_data = request.form.to_dict()
         
-        # Validate package limit
+        # Validate package limit - different limits for regular vs combined exports
         total_packages = int(form_data.get('total_packages', 0))
-        if total_packages > 10:
-            flash('Error: Maximum 10 packages allowed per shipment.', 'error')
+        export_type = form_data.get('export_type', 'regular')
+        is_combined_export = (export_type == 'combined' and data['shipment_type'] == 'export' and current_user.is_admin())
+        max_packages = 20 if is_combined_export else 10
+        
+        if total_packages > max_packages:
+            export_type_text = 'combined export' if is_combined_export else 'shipment'
+            flash(f'Error: Maximum {max_packages} packages allowed per {export_type_text}.', 'error')
             # Redirect back to the appropriate shipment form based on type
             if data['shipment_type'] == 'export':
                 return redirect(url_for('main.export_shipment'))
@@ -979,6 +1207,40 @@ def submit_shipment():
         
         db.session.add(shipment)
         db.session.commit()
+        
+        # Generate QR codes for each package after shipment is created
+        try:
+            qr_service = QRCodeService()
+            base_url = request.url_root.rstrip('/')  # Get the base URL without trailing slash
+            
+            total_packages = int(form_data.get('total_packages', 0))
+            
+            for package_num in range(1, total_packages + 1):
+                # Extract package information from form data
+                package_data = {
+                    'type': form_data.get(f'package_{package_num}_type'),
+                    'description': form_data.get(f'package_{package_num}_description'),
+                    'weight': form_data.get(f'package_{package_num}_weight'),
+                    'dimensions': form_data.get(f'package_{package_num}_dimensions'),
+                    'attention_person_id': form_data.get(f'package_{package_num}_belongs_to')
+                }
+                
+                # Generate QR code for this package
+                package_qr = qr_service.generate_package_qr_code(
+                    shipment=shipment,
+                    package_number=package_num,
+                    package_data=package_data,
+                    base_url=base_url
+                )
+                
+                if not package_qr:
+                    current_app.logger.warning(f"Failed to generate QR code for package {package_num} in shipment {shipment.id}")
+            
+            current_app.logger.info(f"Generated QR codes for {total_packages} packages in shipment {shipment.id}")
+            
+        except Exception as e:
+            current_app.logger.error(f"Error generating QR codes for shipment {shipment.id}: {str(e)}")
+            # Don't fail the shipment creation if QR generation fails
         
         # All users (including admins) submit for review - no immediate document generation
         flash(f'Shipment {invoice_number} submitted successfully! Admin will review and acknowledge receipt.', 'success')
@@ -1077,22 +1339,45 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
         
         # Prepare context based on shipment type
         if shipment.shipment_type == 'export':
+            # Check if "other" consignee was selected
+            consignee_selection = form_data.get('consignee', 'himadri')  # Default to himadri
+            
+            if consignee_selection == 'other':
+                # Use other consignee details
+                consignee_name = form_data.get('other_consignee_org', 'Other Organization')
+                consignee_address = form_data.get('other_consignee_address', 'Other Address')
+                consignee_contact = form_data.get('other_consignee_contact', 'Other Contact')
+                consignee_phone = form_data.get('other_consignee_phone', 'Other Phone')
+            else:
+                # Use default Himadri details
+                consignee_name = "Himadri - Indian Arctic Research Station C/O Kingsbay AS"
+                consignee_address = "N-9173 Ny-Alesund, Norway"
+                consignee_contact = "Kingsbay AS, Longyearbyen"
+                consignee_phone = "+47 79 027200"
+            
             context = {
                 'invoice_no': shipment.invoice_number,
                 'invoice_date': datetime.now().strftime('%d-%m-%Y'),
+                'file_reference_number': shipment.file_reference_number or '',
                 'exporter_name': "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]",
                 'exporter_ministry': "Ministry of Earth Sciences (Govt. of India)",
                 'exporter_address': "Headland Sada, Vasco da Gama, Goa - 403804",
                 'exporter_country': "India",
                 'exporter_phone': "+91 832 2525501",
-                'exporter_gst': "30AACFN4991PlZN",
-                'exporter_iec': "1196000125",
-                'consignee_name': "Himadri - Indian Arctic Research Station C/O Kingsbay AS",
-                'consignee_address': "N-9173 Ny-Alesund, Norway",
-                'consignee_contact': "Kingsbay AS, Longyearbyen",
-                'consignee_phone': "+47 79 027200",
+                'exporter_gst': "30AACFN4991P1ZN",
+                'exporter_lut': "AD300618000016R",
+                'consignee_name': consignee_name,
+                'consignee_address': consignee_address,
+                'consignee_contact': consignee_contact,
+                'consignee_phone': consignee_phone,
                 'destination_country': form_data.get('destination_country', 'NORWAY'),
+                'country_of_origin_goods': form_data.get('country_of_origin', 'India'),
+                'country_of_final_destination': form_data.get('country_of_final_destination', 'Norway'),
                 'airport_of_loading': form_data.get('airport_loading', 'MUMBAI'),
+                'mode_of_transport': form_data.get('mode_of_transport', 'Air'),
+                'transport_facility_type': 'Air Port' if form_data.get('mode_of_transport', 'Air') == 'Air' else 'Port',
+                'port_of_loading': form_data.get('port_of_loading', ''),
+                'port_of_discharge': form_data.get('port_of_discharge', ''),
                 'requester_name': form_data.get('requester_name', ''),
                 'expedition_year': form_data.get('expedition_year', ''),
                 'batch_number': form_data.get('batch_number', ''),
@@ -1102,27 +1387,56 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
                 **signing_authority_context  # Add signing authority details
             }
         elif shipment.shipment_type in ['import', 'reimport']:
+            # Check if "other" consignee was selected
+            consignee_selection = form_data.get('consignee', 'ncpor')  # Default to ncpor for import/reimport (NCPOR is the default consignee for imports)
+            
+            if consignee_selection == 'other':
+                # Use other consignee details
+                consignee_name = form_data.get('other_consignee_org', 'Other Organization')
+                consignee_address = form_data.get('other_consignee_address', 'Other Address')
+                consignee_phone = form_data.get('other_consignee_phone', 'Other Phone')
+                consignee_gst = form_data.get('other_consignee_gst', '')
+                consignee_lut = form_data.get('other_consignee_lut', '')
+                consignee_ministry = form_data.get('other_consignee_ministry', '')
+                consignee_location = form_data.get('other_consignee_country', 'India')
+            else:
+                # Use default NCPOR details
+                consignee_name = "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]"
+                consignee_address = "Headland Sada, Vasco da Gama, Goa - 403804"
+                consignee_phone = "+91 832 2525501"
+                consignee_gst = "30AACFN4991P1ZN"
+                consignee_lut = "AD300618000016R"
+                consignee_ministry = "Ministry of Earth Sciences (Govt. of India)"
+                consignee_location = "India"
+            
             context = {
                 'invoice_no': shipment.invoice_number,
                 'invoice_date': datetime.now().strftime('%d-%m-%Y'),
+                'file_reference_number': shipment.file_reference_number or '',
                 'exporter_name': "Station Leader",
                 'exporter_org': "HIMADRI-Indian Arctic Research Station",
                 'exporter_address': "Ny-Alesund, c/o Kings Bay AS",
                 'exporter_location': "N-9173, Ny-Alesund, Norway",
                 'exporter_phone': "+47 79 02 72 00",
-                'consignee_name': "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]",
-                'consignee_ministry': "Ministry of Earth Sciences (Govt. of India)",
-                'consignee_address': "Headland Sada, Vasco da Gama, Goa - 403804",
-                'consignee_location': "India",
-                'consignee_phone': "+91 832 2525501",
-                'consignee_gst': "30AACFN4991PlZN",
-                'consignee_iec': "1196000125",
+                'consignee_name': consignee_name,
+                'consignee_ministry': consignee_ministry,
+                'consignee_address': consignee_address,
+                'consignee_location': consignee_location,
+                'consignee_phone': consignee_phone,
+                'consignee_gst': consignee_gst,
+                'consignee_lut': consignee_lut,
                 'consigner_name': "Himadri - Indian Arctic Research Station C/O Kingsbay AS",
                 'consigner_address': "N-9173 Ny-Alesund, Norway",
                 'consigner_contact': "Kingsbay AS, Longyearbyen",
                 'consigner_phone': "+47 79 027200",
                 'destination_country': 'INDIA',
+                'country_of_origin_goods': form_data.get('country_of_origin', 'Norway'),
+                'country_of_final_destination': form_data.get('country_of_final_destination', 'India'),
                 'airport_of_loading': form_data.get('import_mode', 'AIR').upper(),
+                'mode_of_transport': form_data.get('mode_of_transport', 'Air'),
+                'transport_facility_type': 'Air Port' if form_data.get('mode_of_transport', 'Air') == 'Air' else 'Port',
+                'port_of_loading': form_data.get('port_of_loading', ''),
+                'port_of_discharge': form_data.get('port_of_discharge', ''),
                 'requester_name': form_data.get('requester_name', ''),
                 'expedition_year': form_data.get('expedition_year', ''),
                 'batch_number': form_data.get('batch_number', ''),
@@ -1135,6 +1449,7 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
             context = {
                 'invoice_no': shipment.invoice_number,
                 'invoice_date': datetime.now().strftime('%d-%m-%Y'),
+                'file_reference_number': shipment.file_reference_number or '',
                 'requester_name': form_data.get('requester_name', ''),
                 'expedition_year': form_data.get('expedition_year', ''),
                 'batch_number': form_data.get('batch_number', ''),
@@ -1169,10 +1484,12 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
         # Compute amount in words
         amount_in_words = f"USD {num2words(int(total_amount))} Only"
 
-        # Update amount in words
+        # Update amount in words and total amount
         for paragraph in doc.paragraphs:
             if '[AMOUNT_IN_WORDS]' in paragraph.text:
                 paragraph.text = paragraph.text.replace('[AMOUNT_IN_WORDS]', amount_in_words)
+            if '[TOTAL_AMOUNT]' in paragraph.text:
+                paragraph.text = paragraph.text.replace('[TOTAL_AMOUNT]', f"{total_amount:.0f}")
         
         # Save to buffer
         docx_buffer = io.BytesIO()
@@ -1438,6 +1755,139 @@ def admin_delete_user(user_id):
     
     return redirect(url_for('main.admin_users'))
 
+@main.route('/admin/qr-codes')
+@login_required
+@admin_required
+def qr_codes_management():
+    """Admin page to manage QR codes for all packages"""
+    # Get all packages with QR codes, with pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # Get shipment filter
+    shipment_filter = request.args.get('shipment_id', type=int)
+    status_filter = request.args.get('status', '')
+    
+    query = PackageQRCode.query.join(Shipment)
+    
+    if shipment_filter:
+        query = query.filter(PackageQRCode.shipment_id == shipment_filter)
+    
+    if status_filter:
+        query = query.filter(Shipment.status == status_filter)
+    
+    packages = query.order_by(PackageQRCode.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    # Get all shipments for filter dropdown
+    all_shipments = Shipment.query.order_by(Shipment.created_at.desc()).limit(100).all()
+    
+    # Get status options
+    status_options = ['Submitted', 'Acknowledged', 'Document_Generated', 'Delivered', 'Failed', 'Needs_Changes', 'Combined']
+    
+    return render_template('admin/qr_codes.html', 
+                         packages=packages, 
+                         all_shipments=all_shipments,
+                         status_options=status_options,
+                         current_shipment_filter=shipment_filter,
+                         current_status_filter=status_filter)
+
+@main.route('/admin/regenerate-qr/<int:package_id>')
+@login_required
+@admin_required
+def regenerate_qr_code(package_id):
+    """Regenerate QR code for a specific package"""
+    package_qr = PackageQRCode.query.get_or_404(package_id)
+    
+    try:
+        qr_service = QRCodeService()
+        base_url = request.url_root.rstrip('/')
+        
+        updated_package = qr_service.regenerate_qr_code(package_qr, base_url)
+        
+        if updated_package:
+            flash(f'QR code regenerated successfully for package #{package_qr.package_number} in shipment {package_qr.shipment.invoice_number}', 'success')
+        else:
+            flash('Failed to regenerate QR code. Please try again.', 'error')
+            
+    except Exception as e:
+        current_app.logger.error(f"Error regenerating QR code for package {package_id}: {str(e)}")
+        flash('Error occurred while regenerating QR code.', 'error')
+    
+    return redirect(url_for('main.qr_codes_management'))
+
+@main.route('/admin/download-qr/<int:package_id>')
+@login_required
+@admin_required
+def download_qr_code(package_id):
+    """Download QR code image for a specific package"""
+    package_qr = PackageQRCode.query.get_or_404(package_id)
+    
+    if not package_qr.qr_image_path:
+        flash('QR code image not found. Try regenerating the QR code.', 'error')
+        return redirect(url_for('main.qr_codes_management'))
+    
+    try:
+        qr_file_path = os.path.join(current_app.root_path, package_qr.qr_image_path)
+        
+        if os.path.exists(qr_file_path):
+            filename = f"qr_code_{package_qr.shipment.invoice_number.replace('/', '_')}_pkg_{package_qr.package_number}.png"
+            return send_file(qr_file_path, as_attachment=True, download_name=filename)
+        else:
+            flash('QR code file not found. Try regenerating the QR code.', 'error')
+            
+    except Exception as e:
+        current_app.logger.error(f"Error downloading QR code for package {package_id}: {str(e)}")
+        flash('Error occurred while downloading QR code.', 'error')
+    
+    return redirect(url_for('main.qr_codes_management'))
+
+@main.route('/admin/qr-bulk-actions', methods=['POST'])
+@login_required
+@admin_required
+def qr_bulk_actions():
+    """Handle bulk actions for QR codes"""
+    action = request.form.get('action')
+    package_ids = request.form.getlist('package_ids')
+    
+    if not package_ids:
+        flash('No packages selected.', 'error')
+        return redirect(url_for('main.qr_codes_management'))
+    
+    package_ids = [int(pid) for pid in package_ids if pid.isdigit()]
+    
+    if action == 'regenerate':
+        try:
+            qr_service = QRCodeService()
+            base_url = request.url_root.rstrip('/')
+            success_count = 0
+            
+            for package_id in package_ids:
+                package_qr = PackageQRCode.query.get(package_id)
+                if package_qr:
+                    updated = qr_service.regenerate_qr_code(package_qr, base_url)
+                    if updated:
+                        success_count += 1
+            
+            flash(f'Successfully regenerated {success_count} out of {len(package_ids)} QR codes.', 'success')
+            
+        except Exception as e:
+            current_app.logger.error(f"Error in bulk QR regeneration: {str(e)}")
+            flash('Error occurred during bulk regeneration.', 'error')
+    
+    elif action == 'cleanup':
+        try:
+            qr_service = QRCodeService()
+            removed_count = qr_service.cleanup_orphaned_qr_codes()
+            flash(f'Cleaned up {removed_count} orphaned QR code files.', 'success')
+            
+        except Exception as e:
+            current_app.logger.error(f"Error in QR cleanup: {str(e)}")
+            flash('Error occurred during cleanup.', 'error')
+    
+    return redirect(url_for('main.qr_codes_management'))
+
 @main.route('/admin/signing-authorities')
 @login_required
 @admin_required
@@ -1644,6 +2094,8 @@ def admin_assign_signing_authority():
 @admin_required
 def admin_acknowledge_shipment(shipment_id):
     """Admin endpoint to acknowledge receipt of a shipment"""
+    from .utils.helpers import generate_file_reference_number
+    
     shipment = Shipment.query.get_or_404(shipment_id)
     
     # Allow acknowledgment regardless of current status
@@ -1651,11 +2103,17 @@ def admin_acknowledge_shipment(shipment_id):
     if shipment.status not in ['Acknowledged', 'Document_Generated', 'Delivered']:
         shipment.status = 'Acknowledged'
     
+    # Set acknowledgment details
     shipment.acknowledged_by = current_user.id
     shipment.acknowledged_at = datetime.now()
+    
+    # Generate file reference number if not already generated
+    if not shipment.file_reference_number:
+        shipment.file_reference_number = generate_file_reference_number(shipment, current_user)
+    
     db.session.commit()
     
-    flash(f'Shipment {shipment.invoice_number} acknowledged successfully!', 'success')
+    flash(f'Shipment {shipment.invoice_number} acknowledged successfully! File Reference: {shipment.file_reference_number}', 'success')
     return redirect(url_for('main.dashboard'))
 
 @main.route('/admin/generate-document/<int:shipment_id>')
@@ -1683,6 +2141,9 @@ def admin_generate_document(shipment_id, document_type='invoice_packing'):
         if not shipment.acknowledged_by:
             shipment.acknowledged_by = current_user.id
             shipment.acknowledged_at = datetime.now()
+            # Generate file reference number if not already generated
+            if not shipment.file_reference_number:
+                shipment.file_reference_number = generate_file_reference_number(shipment, current_user)
         
         db.session.commit()
         
@@ -1793,8 +2254,23 @@ def admin_combine_form():
     shipment_ids = session.get('combine_shipment_ids', [])
     print(f"DEBUG: shipment_ids from session: {shipment_ids}")
     
+    # DEBUG: If no shipments in session, auto-select test shipments for debugging
     if not shipment_ids:
-        flash('No shipments selected for combining', 'error')
+        # Try to get some test export shipments for debugging
+        test_shipments = Shipment.query.filter_by(
+            shipment_type='export',
+            status='Submitted'
+        ).filter(
+            Shipment.is_combined == False
+        ).limit(3).all()
+        
+        if test_shipments:
+            shipment_ids = [s.id for s in test_shipments]
+            session['combine_shipment_ids'] = shipment_ids
+            flash(f'DEBUG: Auto-selected {len(shipment_ids)} test shipments for combining', 'info')
+            print(f"DEBUG: Auto-selected test shipments: {shipment_ids}")
+        else:
+            flash('No shipments available for combining. Create test data first!', 'error')
         return redirect(url_for('main.dashboard'))
     
     # Get all shipments to combine
@@ -1816,30 +2292,115 @@ def admin_combine_form():
         flash('Error retrieving shipments for combining', 'error')
         return redirect(url_for('main.dashboard'))
     
-    # Get next unique combined number for display
+    # Get next unique combined number for display (not used in new format, just for fallback)
     try:
         combined_number = CombinedShipmentCounter.get_next_number()
         print(f"DEBUG: Combined number: {combined_number}")
     except Exception as e:
         print(f"DEBUG: Error getting combined number: {e}")
-        combined_number = 1
+        # Use timestamp as fallback instead of incrementing counter
+        import time
+        combined_number = int(time.time()) % 10000  # Last 4 digits of timestamp
     
-    # Generate combined invoice number
+    # Generate combined invoice number using the NEW logic with serial numbers
     first_shipment = shipments[0]
+    
+    print(f"DEBUG: Starting invoice generation for {len(shipments)} shipments")
+    print(f"DEBUG: First shipment type: {first_shipment.shipment_type}")
+    
+    # Get current date for proper format
+    from datetime import datetime
+    current_date = datetime.now()
+    year = current_date.strftime('%Y')
+    month = current_date.strftime('%b').upper()  # JAN, FEB, MAR, etc.
+    
+    print(f"DEBUG: Date components - Year: {year}, Month: {month}")
+    
+    # Get next serial number for the combined shipment
     try:
-        if first_shipment.shipment_type == 'export':
-            combined_invoice = f"NCPOR/ARC/{first_shipment.expedition_year}/COMBINED/Combined/{combined_number}"
-        elif first_shipment.shipment_type == 'import':
-            combined_invoice = f"NCPOR/IMP/{first_shipment.expedition_year}/RESEARCH/Combined/{combined_number}"
-        elif first_shipment.shipment_type == 'reimport':
-            combined_invoice = f"NCPOR/REIMP/{first_shipment.expedition_year}/RESEARCH/Combined/{combined_number}"
-        else:  # cold
-            combined_invoice = f"NCPOR/COLD/{first_shipment.expedition_year}/Combined/{combined_number}"
-        
-        print(f"DEBUG: Combined invoice: {combined_invoice}")
+        serial_number = ShipmentSerialCounter.get_next_serial()
+        print(f"DEBUG: Generated serial number: {serial_number}")
     except Exception as e:
-        print(f"DEBUG: Error generating combined invoice: {e}")
-        combined_invoice = f"COMBINED/{combined_number}"
+        print(f"DEBUG: Error getting serial number: {e}")
+        serial_number = "0001"  # Fallback
+    
+    # Collect unique IDs from all shipments being combined
+    unique_user_ids = []
+    seen_users = set()
+    
+    print(f"DEBUG: Collecting unique user IDs...")
+    for i, shipment in enumerate(shipments):
+        print(f"DEBUG: Processing shipment {i+1}: {shipment.invoice_number}")
+        user_id = shipment.created_by
+        print(f"DEBUG: Shipment {i+1} created_by: {user_id}")
+        
+        if user_id not in seen_users:
+            try:
+                user = User.query.get(user_id)
+                if user:
+                    print(f"DEBUG: Found user: {user.first_name} {user.last_name}, unique_id: {user.unique_id}")
+                    if user.unique_id:
+                        unique_user_ids.append(user.unique_id)
+                        seen_users.add(user_id)
+                    else:
+                        print(f"DEBUG: WARNING - User {user.first_name} {user.last_name} has no unique_id!")
+                else:
+                    print(f"DEBUG: WARNING - User with ID {user_id} not found!")
+            except Exception as e:
+                print(f"DEBUG: Error getting user {user_id}: {e}")
+    
+    # Ensure we have at least one unique ID
+    if not unique_user_ids:
+        print(f"DEBUG: WARNING - No unique IDs found, using fallback")
+        unique_user_ids = ["UNKNOWN"]
+    
+    # Create combined unique IDs string
+    unique_ids_str = "/".join(unique_user_ids)
+    print(f"DEBUG: Combined unique IDs: {unique_ids_str}")
+    
+    # Generate invoice number following the correct format: NCPOR/ARC/YYYY/MMM/EXP/TYPE/CMB/Unique_IDs/Serial
+    # Since we're combining shipments, we always use CMB (combined) logic similar to real-time method
+    if first_shipment.shipment_type == 'export':
+        # Extract return type from ALL shipments being combined to determine the type
+        return_types = set()
+        print(f"DEBUG: Analyzing return types from all shipments...")
+        
+        for shipment in shipments:
+            print(f"DEBUG: Analyzing invoice: {shipment.invoice_number}")
+            original_invoice_parts = shipment.invoice_number.split('/')
+            print(f"DEBUG: Invoice parts: {original_invoice_parts}")
+            
+            if len(original_invoice_parts) >= 6:
+                return_type_part = original_invoice_parts[5]
+                return_types.add(return_type_part)
+                print(f"DEBUG: Found return type: {return_type_part}")
+            else:
+                print(f"DEBUG: Invoice format doesn't have return type at position 5")
+        
+        # If all shipments have the same return type, use it; otherwise use RET as default
+        if len(return_types) == 1:
+            return_type = return_types.pop()
+            print(f"DEBUG: All shipments have same return type: {return_type}")
+        else:
+            return_type = 'RET'  # Default when mixed types
+            print(f"DEBUG: Mixed or no return types found, using default: {return_type}")
+        
+        # Use CMB format like real-time method since we're combining multiple shipments
+        combined_invoice = f"NCPOR/ARC/{year}/{month}/EXP/{return_type}/CMB/{unique_ids_str}/{serial_number}"
+        
+    elif first_shipment.shipment_type == 'import':
+        # Use CMB format for import combined shipments too
+        combined_invoice = f"NCPOR/IMP/{year}/{month}/RESEARCH/CMB/{unique_ids_str}/{serial_number}"
+        
+    elif first_shipment.shipment_type == 'reimport':
+        # Use CMB format for reimport combined shipments too
+        combined_invoice = f"NCPOR/REIMP/{year}/{month}/RESEARCH/CMB/{unique_ids_str}/{serial_number}"
+        
+    else:  # cold
+        # Use CMB format for cold combined shipments too
+        combined_invoice = f"NCPOR/COLD/{year}/{month}/CMB/{unique_ids_str}/{serial_number}"
+        
+    print(f"DEBUG: Successfully generated combined invoice: {combined_invoice}")
     
     # Combine form data from all shipments
     combined_packages = []
@@ -1858,12 +2419,14 @@ def admin_combine_form():
                 new_pkg_num = total_packages + pkg_num
                 package_data = {
                     'package_number': new_pkg_num,
-                    'type': get_package_type_display_name(form_data.get(f'package_{pkg_num}_type', '')),
+                    'type': get_package_type_display_name(form_data.get(f'package_{pkg_num}_type', ''), form_data, pkg_num),
                     'length': form_data.get(f'package_{pkg_num}_length', ''),
                     'width': form_data.get(f'package_{pkg_num}_width', ''),
                     'height': form_data.get(f'package_{pkg_num}_height', ''),
                     'item_list': [],  # Changed from 'items' to avoid conflict with dict.items()
-                    'items_count': 0  # Pre-calculated count
+                    'items_count': 0,  # Pre-calculated count
+                    'source_shipment': shipment.invoice_number,
+                    'source_user': f"{shipment.created_by_user.first_name} {shipment.created_by_user.last_name}"
                 }
                 
                 # Get items for this package
@@ -1909,6 +2472,9 @@ def admin_combine_form():
     total_items = sum(package.get('items_count', 0) for package in combined_packages)
     print(f"DEBUG: Total items: {total_items}")
     
+    # Get all users for dropdown selection
+    all_users = User.query.filter_by(is_active=True).order_by(User.first_name, User.last_name).all()
+    
     # Prepare context for template
     context = {
         'shipments': shipments or [],  # Ensure it's always a list
@@ -1919,6 +2485,7 @@ def admin_combine_form():
         'total_items': total_items,  # Pre-calculated total items
         'first_shipment': first_shipment,
         'shipment_ids': shipment_ids or [],  # Ensure it's always a list
+        'all_users': all_users,  # Add users for dropdown
         'edit_mode': True,
         'shipment': shipments[0]
     }
@@ -1945,34 +2512,52 @@ def admin_finalize_combine():
         # Get the form data from the combine form
         form_data = request.form.to_dict()
         
+        # Process multi-value form fields (like checkboxes, multiple selects)
+        for key, value in request.form.lists():
+            if len(value) > 1:
+                form_data[key] = value
+        
+        # Validate package limit for combined shipments (max 20 packages)
+        total_packages = int(form_data.get('total_packages', 0))
+        if total_packages > 20:
+            flash('Error: Maximum 20 packages allowed for combined shipments.', 'error')
+            return redirect(url_for('main.admin_combine_form'))
+        
         # Get all shipments to combine
         shipments = Shipment.query.filter(Shipment.id.in_(shipment_ids)).all()
         first_shipment = shipments[0]
         
-        # Get the combined number (should be consistent)
-        combined_number = int(form_data.get('combined_number'))
+        # Get the combined invoice number from the form (already generated with proper format)
         combined_invoice = form_data.get('combined_invoice')
         
-        # Create combined shipment record
+        # Extract serial number from the invoice number (it's the last part)
+        serial_number = combined_invoice.split('/')[-1] if '/' in combined_invoice else '0001'
+        
+        # Create combined shipment record with additional fields
         combined_shipment = Shipment(
             invoice_number=combined_invoice,
+            serial_number=serial_number,  # Use the extracted serial number
             shipment_type=first_shipment.shipment_type,
             status='Document_Generated',  # Combined shipments go straight to generated
             created_by=current_user.id,
             acknowledged_by=current_user.id,
             acknowledged_at=datetime.now(),
-            requester_name='Combined Shipment',
-            expedition_year=first_shipment.expedition_year,
-            batch_number=first_shipment.batch_number,
-            destination_country=first_shipment.destination_country,
+            requester_name=form_data.get('requester_name', 'Combined Shipment'),
+            expedition_year=form_data.get('expedition_year', first_shipment.expedition_year),
+            batch_number=first_shipment.batch_number,  # Use first shipment's batch number since it's removed from form
+            destination_country=form_data.get('destination_country', first_shipment.destination_country),
             total_packages=int(form_data.get('total_packages', 0)),
             form_data=json.dumps(form_data),
             is_combined=True,
-            combined_shipment_id=f"CMB{combined_number}",
+            combined_shipment_id=f"CMB{form_data.get('combined_number', '1')}",
             parent_shipment_ids=json.dumps(shipment_ids)
         )
         
         db.session.add(combined_shipment)
+        db.session.flush()  # Flush to get the shipment ID before generating file reference
+        
+        # Generate file reference number for combined shipment
+        combined_shipment.file_reference_number = generate_file_reference_number(combined_shipment, current_user)
         
         # Update original shipments status to 'Combined'
         for shipment in shipments:
@@ -1983,10 +2568,13 @@ def admin_finalize_combine():
         # Clear session data
         session.pop('combine_shipment_ids', None)
         
-        # Generate the document immediately (default to invoice_packing for combined shipments)
-        return generate_shipment_document(combined_shipment, form_data, 'invoice_packing')
+        flash(f'Successfully combined {len(shipments)} shipments into {combined_invoice}! You can now generate documents from the dashboard.', 'success')
+        
+        # Redirect back to dashboard instead of immediately generating document
+        return redirect(url_for('main.dashboard'))
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Error finalizing combined shipment: {str(e)}', 'error')
         return redirect(url_for('main.dashboard'))
 
@@ -2002,6 +2590,9 @@ def admin_mark_delivered(shipment_id):
     if not shipment.acknowledged_by:
         shipment.acknowledged_by = current_user.id
         shipment.acknowledged_at = datetime.now()
+        # Generate file reference number if not already generated
+        if not shipment.file_reference_number:
+            shipment.file_reference_number = generate_file_reference_number(shipment, current_user)
     
     # Update shipment status to delivered
     shipment.status = 'Delivered'
@@ -2137,6 +2728,21 @@ def edit_shipment(shipment_id):
     # Parse form data
     form_data = json.loads(shipment.form_data) if shipment.form_data else {}
     
+    # Ensure critical fields are available for form population
+    if 'requester_user_id' not in form_data and shipment.created_by:
+        form_data['requester_user_id'] = str(shipment.created_by)
+    
+    # Ensure expedition_month is available (extract from invoice if missing)
+    if 'expedition_month' not in form_data and shipment.invoice_number:
+        # Extract month from invoice number (format: NCPOR/ARC/YYYY/MMM/...)
+        invoice_parts = shipment.invoice_number.split('/')
+        if len(invoice_parts) >= 4:
+            form_data['expedition_month'] = invoice_parts[3]  # MMM part
+    
+    # Ensure total_packages is available
+    if 'total_packages' not in form_data and shipment.total_packages:
+        form_data['total_packages'] = str(shipment.total_packages)
+    
     # For combined shipments, use the combine form template
     if shipment.is_combined:
         # Prepare data structure similar to combine form
@@ -2146,7 +2752,7 @@ def edit_shipment(shipment_id):
         for pkg_num in range(1, total_packages + 1):
             package_data = {
                 'package_number': pkg_num,
-                'type': get_package_type_display_name(form_data.get(f'package_{pkg_num}_type', '')),
+                'type': get_package_type_display_name(form_data.get(f'package_{pkg_num}_type', ''), form_data, pkg_num),
                 'length': form_data.get(f'package_{pkg_num}_length', ''),
                 'width': form_data.get(f'package_{pkg_num}_width', ''),
                 'height': form_data.get(f'package_{pkg_num}_height', ''),
@@ -2208,10 +2814,14 @@ def edit_shipment(shipment_id):
         }
         template = template_map.get(shipment.shipment_type, 'shipments/export_shipment.html')
     
+    # Get all users for admin templates that need user selection
+    all_users = User.query.filter_by(is_active=True).order_by(User.first_name, User.last_name).all()
+    
     return render_template(template, 
                          edit_mode=True, 
                          shipment=shipment, 
-                         form_data=form_data)
+                         form_data=form_data,
+                         all_users=all_users)
 
 @main.route('/update-shipment/<int:shipment_id>', methods=['POST'])
 @login_required
@@ -2270,31 +2880,10 @@ def update_shipment(shipment_id):
         destination_country = form_data.get('destination_country', '')
         total_packages = int(form_data.get('total_packages', 0))  # Use the form field directly
         
-        # Generate new invoice number with user's unique ID and serial number
-        year = form_data.get('expedition_year', '')
-        month = form_data.get('expedition_month', '')
-        user_unique_id = current_user.unique_id if hasattr(current_user, 'unique_id') and current_user.unique_id else 'XXXXXX'
+        # DO NOT regenerate invoice number when editing - preserve the original invoice number
+        # The invoice number should remain the same as it was originally assigned
         
-        # Keep existing serial number if it exists, otherwise generate a new one
-        serial_number = shipment.serial_number if hasattr(shipment, 'serial_number') and shipment.serial_number else None
-        if not serial_number:
-            from compass.models import ShipmentSerialCounter
-            serial_number = ShipmentSerialCounter.get_next_serial()
-            shipment.serial_number = serial_number
-        
-        if shipment.shipment_type == 'export':
-            new_invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{form_data.get('return_type', '')}/{user_unique_id}/{serial_number}"
-        elif shipment.shipment_type == 'import':
-            new_invoice_number = f"NCPOR/IMP/{year}/{month}/{form_data.get('return_type', '')}/{user_unique_id}/{serial_number}"
-        elif shipment.shipment_type == 'reimport':
-            new_invoice_number = f"NCPOR/REIMP/{year}/{month}/{form_data.get('return_type', '')}/{user_unique_id}/{serial_number}"
-        elif shipment.shipment_type == 'cold':
-            new_invoice_number = f"NCPOR/COLD/{year}/{month}/{user_unique_id}/{serial_number}"
-        else:
-            new_invoice_number = f"NCPOR/UNKNOWN/{year}/{month}/{form_data.get('return_type', '')}/{user_unique_id}/{serial_number}"
-        
-        # Update shipment
-        shipment.invoice_number = new_invoice_number
+        # Update shipment (keeping original invoice number)
         shipment.requester_name = requester_name
         shipment.expedition_year = expedition_year
         shipment.expedition_month = form_data.get('expedition_month', '')
@@ -2324,7 +2913,7 @@ def update_shipment(shipment_id):
         db.session.commit()
         
         user_type = "Admin" if current_user.is_admin() else "User"
-        flash(f'Shipment updated successfully by {user_type}! New Invoice: {new_invoice_number} | Requester: {requester_name}, Year: {expedition_year}, Packages: {total_packages}', 'success')
+        flash(f'Shipment updated successfully by {user_type}! Invoice: {shipment.invoice_number} | Requester: {requester_name}, Year: {expedition_year}, Packages: {total_packages}', 'success')
         return redirect(url_for('main.dashboard'))
         
     except Exception as e:
@@ -2414,6 +3003,9 @@ def admin_update_status(shipment_id, new_status):
     if new_status != 'Submitted' and not shipment.acknowledged_by:
         shipment.acknowledged_by = current_user.id
         shipment.acknowledged_at = datetime.now()
+        # Generate file reference number if not already generated
+        if not shipment.file_reference_number:
+            shipment.file_reference_number = generate_file_reference_number(shipment, current_user)
     
     # Update shipment status
     old_status = shipment.status
