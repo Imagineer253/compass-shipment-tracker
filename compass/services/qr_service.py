@@ -14,10 +14,12 @@ class QRCodeService:
     
     def __init__(self):
         self.qr_storage_dir = os.path.join(current_app.static_folder, 'qr_codes')
+        self.qr_codes_dir = os.path.join(current_app.static_folder, 'qrcodes')  # Alternative directory
         self.logo_path = os.path.join(current_app.static_folder, 'images', 'ncpor_logo.png')
         
-        # Ensure QR codes directory exists
+        # Ensure both QR codes directories exist
         os.makedirs(self.qr_storage_dir, exist_ok=True)
+        os.makedirs(self.qr_codes_dir, exist_ok=True)
     
     def generate_package_qr_code(self, shipment, package_number, package_data, base_url):
         """
@@ -76,12 +78,12 @@ class QRCodeService:
             Relative path to saved QR code image
         """
         try:
-            # Create QR code instance with PRINT-QUALITY settings
+            # Create QR code instance with optimal settings
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_H,  # High error correction for logo embedding
-                box_size=20,  # Increased from 10 to 20 for higher resolution
-                border=6,     # Slightly larger border for print clarity
+                box_size=10,
+                border=4,
             )
             
             qr.add_data(tracking_url)
@@ -102,15 +104,10 @@ class QRCodeService:
             # Add tracking code text below QR code
             final_image = self._add_tracking_text(qr_with_logo, unique_code)
             
-            # Save image with PRINT-QUALITY settings
+            # Save image
             filename = f"package_{unique_code}.png"
             file_path = os.path.join(self.qr_storage_dir, filename)
-            
-            # Save at high resolution with optimal settings for printing
-            final_image.save(file_path, 'PNG', 
-                           optimize=False,  # Don't compress for print quality
-                           dpi=(300, 300),  # High DPI for printing
-                           quality=100)     # Maximum quality
+            final_image.save(file_path, 'PNG', quality=95)
             
             # Return relative path for web access
             return f"static/qr_codes/{filename}"
@@ -225,9 +222,9 @@ class QRCodeService:
             PIL Image with tracking text added
         """
         try:
-            # Calculate new image size with space for text (larger for print)
+            # Calculate new image size with space for text
             qr_width, qr_height = qr_image.size
-            text_height = 80  # Increased height for better print visibility
+            text_height = 40
             new_height = qr_height + text_height
             
             # Create new image with extra space
@@ -236,43 +233,25 @@ class QRCodeService:
             # Paste QR code at the top
             final_image.paste(qr_image, (0, 0))
             
-            # Add tracking code text with print-optimized settings
+            # Add tracking code text
             draw = ImageDraw.Draw(final_image)
             
-            # Use larger font for print clarity
             try:
-                # Try multiple font sizes for optimal print visibility
-                font_large = ImageFont.truetype("arial.ttf", 24)  # Larger font for print
-                font_small = ImageFont.truetype("arial.ttf", 16)
+                font = ImageFont.truetype("arial.ttf", 12)
             except:
-                try:
-                    font_large = ImageFont.load_default()
-                    font_small = ImageFont.load_default()
-                except:
-                    font_large = None
-                    font_small = None
+                font = ImageFont.load_default()
             
-            # Main tracking code (larger)
-            display_text = f"{unique_code}"
+            # Format tracking code for display
+            display_text = f"Track: {unique_code}"
             
-            if font_large:
-                # Calculate text position (centered)
-                bbox = draw.textbbox((0, 0), display_text, font=font_large)
-                text_width = bbox[2] - bbox[0]
-                text_x = (qr_width - text_width) // 2
-                text_y = qr_height + 15
-                
-                # Draw main tracking code with thick text for print clarity
-                draw.text((text_x, text_y), display_text, fill=(30, 63, 102), font=font_large)
-                
-                # Add "COMPASS NCPOR" subtitle
-                subtitle = "COMPASS NCPOR"
-                if font_small:
-                    bbox_sub = draw.textbbox((0, 0), subtitle, font=font_small)
-                    sub_width = bbox_sub[2] - bbox_sub[0]
-                    sub_x = (qr_width - sub_width) // 2
-                    sub_y = text_y + 35
-                    draw.text((sub_x, sub_y), subtitle, fill=(100, 100, 100), font=font_small)
+            # Calculate text position (centered)
+            bbox = draw.textbbox((0, 0), display_text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_x = (qr_width - text_width) // 2
+            text_y = qr_height + 10
+            
+            # Draw text
+            draw.text((text_x, text_y), display_text, fill=(30, 63, 102), font=font)
             
             return final_image
             
@@ -292,8 +271,12 @@ class QRCodeService:
             Updated PackageQRCode instance
         """
         try:
-            # Generate new QR code image
-            qr_image_path = self._create_qr_code_image(package_qr.qr_code_url, package_qr.unique_code)
+            # Update the QR code URL with new base URL
+            new_tracking_url = f"{base_url}/track/{package_qr.unique_code}"
+            package_qr.qr_code_url = new_tracking_url
+            
+            # Generate new QR code image with updated URL
+            qr_image_path = self._create_qr_code_image(new_tracking_url, package_qr.unique_code)
             
             if qr_image_path:
                 # Remove old QR code file if it exists
@@ -311,6 +294,55 @@ class QRCodeService:
         except Exception as e:
             current_app.logger.error(f"Error regenerating QR code: {str(e)}")
             return package_qr
+    
+    def update_all_qr_codes_with_new_url(self, new_base_url):
+        """
+        Update all existing QR codes with a new base URL
+        
+        Args:
+            new_base_url: New base URL for the application
+            
+        Returns:
+            Number of QR codes updated
+        """
+        try:
+            updated_count = 0
+            all_qr_codes = PackageQRCode.query.all()
+            
+            current_app.logger.info(f"Updating {len(all_qr_codes)} QR codes with new base URL: {new_base_url}")
+            
+            for package_qr in all_qr_codes:
+                # Update tracking URL
+                new_tracking_url = f"{new_base_url}/track/{package_qr.unique_code}"
+                old_url = package_qr.qr_code_url
+                
+                if old_url != new_tracking_url:
+                    package_qr.qr_code_url = new_tracking_url
+                    
+                    # Regenerate QR code image with new URL
+                    qr_image_path = self._create_qr_code_image(new_tracking_url, package_qr.unique_code)
+                    
+                    if qr_image_path:
+                        # Remove old QR code file if it exists
+                        if package_qr.qr_image_path:
+                            old_path = os.path.join(current_app.root_path, package_qr.qr_image_path)
+                            if os.path.exists(old_path):
+                                os.remove(old_path)
+                        
+                        package_qr.qr_image_path = qr_image_path
+                        updated_count += 1
+                        
+                        current_app.logger.debug(f"Updated QR code {package_qr.unique_code}: {old_url} -> {new_tracking_url}")
+            
+            # Commit all changes
+            db.session.commit()
+            current_app.logger.info(f"Successfully updated {updated_count} QR codes")
+            return updated_count
+            
+        except Exception as e:
+            current_app.logger.error(f"Error updating QR codes with new URL: {str(e)}")
+            db.session.rollback()
+            return 0
     
     def get_qr_code_url(self, package_qr):
         """
@@ -360,106 +392,94 @@ class QRCodeService:
             current_app.logger.error(f"Error during QR cleanup: {str(e)}")
             return 0
     
-    def create_print_sheet(self, package_qr_codes, sheet_layout=(2, 1)):
+    def generate_webapp_qr_code(self, base_url):
         """
-        Create a printable A4 sheet with multiple QR codes
+        Generate QR code for the COMPASS web app homepage
         
         Args:
-            package_qr_codes: List of PackageQRCode instances
-            sheet_layout: Tuple (cols, rows) for QR code arrangement
+            base_url (str): The base URL of the web application
             
         Returns:
-            PIL Image of printable sheet
+            str: Path to the generated QR code image
         """
         try:
-            # A4 dimensions at 300 DPI (print quality)
-            a4_width = int(8.27 * 300)   # 2481 pixels
-            a4_height = int(11.69 * 300)  # 3507 pixels
+            current_app.logger.info(f"Starting webapp QR generation for URL: {base_url}")
             
-            # Create white A4 sheet
-            sheet = Image.new('RGB', (a4_width, a4_height), (255, 255, 255))
+            # Create QR code instance
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,  # High error correction for logo
+                box_size=12,  # Slightly larger for better scanning
+                border=4,
+            )
             
-            cols, rows = sheet_layout
-            max_qr_codes = cols * rows
+            # Add web app URL
+            qr.add_data(base_url)
+            qr.make(fit=True)
             
-            # Calculate QR code size and spacing
-            margin = 150  # 0.5 inch margins
-            available_width = a4_width - (2 * margin)
-            available_height = a4_height - (2 * margin)
+            current_app.logger.info("QR code data added successfully")
             
-            qr_width = available_width // cols
-            qr_height = available_height // rows
+            # Generate QR code image with COMPASS branding colors
+            qr_image = qr.make_image(
+                fill_color=(30, 63, 102),  # NCPOR dark blue
+                back_color=(255, 255, 255)  # White background
+            )
             
-            # Process QR codes
-            for i, package_qr in enumerate(package_qr_codes[:max_qr_codes]):
-                if package_qr.qr_image_path:
-                    try:
-                        # Load QR code image
-                        qr_image_path = os.path.join(current_app.static_folder, 
-                                                   package_qr.qr_image_path.replace('static/', ''))
-                        qr_image = Image.open(qr_image_path)
-                        
-                        # Resize QR code to fit in allocated space (with padding)
-                        max_qr_size = min(qr_width - 100, qr_height - 200)  # Leave space for info
-                        qr_image.thumbnail((max_qr_size, max_qr_size), Image.Resampling.LANCZOS)
-                        
-                        # Calculate position
-                        row = i // cols
-                        col = i % cols
-                        
-                        x = margin + (col * qr_width) + (qr_width - qr_image.width) // 2
-                        y = margin + (row * qr_height) + 50  # 50px from top of cell
-                        
-                        # Paste QR code
-                        sheet.paste(qr_image, (x, y))
-                        
-                        # Add package information below QR code
-                        self._add_package_info_to_sheet(sheet, package_qr, x, y + qr_image.height + 20, qr_width)
-                        
-                    except Exception as e:
-                        current_app.logger.error(f"Error adding QR code {i} to sheet: {str(e)}")
-                        continue
+            current_app.logger.info("QR code image generated successfully")
             
-            return sheet
+            # Convert to RGB
+            qr_image = qr_image.convert('RGB')
+            current_app.logger.info("QR code converted to RGB")
+            
+            # Embed NCPOR logo in the center
+            current_app.logger.info(f"Checking logo path: {self.logo_path}")
+            if os.path.exists(self.logo_path):
+                try:
+                    current_app.logger.info("Logo file found, starting embedding process")
+                    logo = Image.open(self.logo_path)
+                    
+                    # Calculate logo size (15% of QR code size)
+                    qr_width, qr_height = qr_image.size
+                    logo_size = min(qr_width, qr_height) // 6
+                    
+                    # Resize logo maintaining aspect ratio
+                    logo = logo.resize((logo_size, logo_size), Image.LANCZOS)
+                    
+                    # Create a white background for the logo
+                    logo_bg = Image.new('RGB', (logo_size + 20, logo_size + 20), (255, 255, 255))
+                    logo_bg_pos = ((logo_bg.size[0] - logo.size[0]) // 2, 
+                                  (logo_bg.size[1] - logo.size[1]) // 2)
+                    
+                    # Handle transparency
+                    if logo.mode == 'RGBA':
+                        logo_bg.paste(logo, logo_bg_pos, logo)
+                    else:
+                        logo_bg.paste(logo, logo_bg_pos)
+                    
+                    # Calculate center position
+                    logo_pos = ((qr_width - logo_bg.size[0]) // 2, 
+                               (qr_height - logo_bg.size[1]) // 2)
+                    
+                    # Paste logo onto QR code
+                    qr_image.paste(logo_bg, logo_pos)
+                    current_app.logger.info("Logo embedded successfully")
+                    
+                except Exception as e:
+                    current_app.logger.warning(f"Could not embed logo in webapp QR code: {str(e)}")
+            else:
+                current_app.logger.warning(f"Logo file not found at: {self.logo_path}")
+            
+            # Save the QR code image
+            qr_image_path = os.path.join(self.qr_codes_dir, 'webapp_qr.png')
+            current_app.logger.info(f"Saving QR code to: {qr_image_path}")
+            qr_image.save(qr_image_path, 'PNG', optimize=True, quality=95)
+            current_app.logger.info("QR code saved successfully")
+            
+            current_app.logger.info(f"Generated webapp QR code: {qr_image_path}")
+            return qr_image_path
             
         except Exception as e:
-            current_app.logger.error(f"Error creating print sheet: {str(e)}")
-            return None
-    
-    def _add_package_info_to_sheet(self, sheet, package_qr, x, y, width):
-        """Add package information text to print sheet"""
-        try:
-            draw = ImageDraw.Draw(sheet)
-            
-            # Load fonts
-            try:
-                font_title = ImageFont.truetype("arial.ttf", 20)
-                font_info = ImageFont.truetype("arial.ttf", 14)
-            except:
-                font_title = ImageFont.load_default()
-                font_info = ImageFont.load_default()
-            
-            # Package info lines
-            lines = [
-                f"Shipment ID: {package_qr.shipment.id}",
-                f"Package: {package_qr.package_number}",
-                f"Type: {package_qr.package_type or 'N/A'}",
-                f"Weight: {package_qr.package_weight or 'N/A'}",
-                f"Track: {package_qr.unique_code}"
-            ]
-            
-            line_height = 25
-            for i, line in enumerate(lines):
-                font = font_title if i == 0 else font_info
-                color = (30, 63, 102) if i == 0 else (50, 50, 50)
-                
-                # Center text in the allocated width
-                bbox = draw.textbbox((0, 0), line, font=font)
-                text_width = bbox[2] - bbox[0]
-                text_x = x + (width - text_width) // 2
-                text_y = y + (i * line_height)
-                
-                draw.text((text_x, text_y), line, fill=color, font=font)
-                
-        except Exception as e:
-            current_app.logger.error(f"Error adding package info to sheet: {str(e)}")
+            import traceback
+            error_details = traceback.format_exc()
+            current_app.logger.error(f"Error generating webapp QR code: {str(e)}\n{error_details}")
+            raise Exception(f"QR generation failed: {str(e)}")

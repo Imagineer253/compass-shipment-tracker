@@ -1,0 +1,18 @@
+# ngrok configuration for COMPASS
+authtoken: YOUR_AUTHTOKEN_HERE  # Replace with your actual token
+
+tunnels:
+  compass:
+    proto: http
+    addr: 5000
+    subdomain: compass-tracker  # Custom subdomain (requires paid plan)
+    # Remove subdomain line for free random subdomain
+    bind_tls: true  # Force HTTPS
+    inspect: true   # Enable ngrok web interface
+    
+  # Optional: Separate tunnel for admin access
+  compass-admin:
+    proto: http
+    addr: 5000
+    subdomain: compass-admin  # Custom subdomain (requires paid plan)
+    # auth: "admin:password"  # Optional basic auth

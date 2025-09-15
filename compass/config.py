@@ -42,14 +42,7 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
-    
-    # Handle Railway's PostgreSQL URL format
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url and database_url.startswith('postgres://'):
-        # Fix for Railway's postgres:// URL format
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    
-    SQLALCHEMY_DATABASE_URI = database_url or \
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(os.path.dirname(__file__), '..', 'instance', 'compass.db')
     
     @classmethod

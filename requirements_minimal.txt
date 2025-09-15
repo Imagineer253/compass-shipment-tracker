@@ -1,0 +1,16 @@
+# Minimal requirements for COMPASS - Python 3.13 compatible
+Flask>=3.0.0
+Flask-Login>=0.6.3
+Flask-SQLAlchemy>=3.1.1
+Flask-Mail>=0.9.1
+Flask-Migrate>=4.0.5
+SQLAlchemy>=2.0.36
+email-validator>=2.1.0
+python-dotenv>=1.0.0
+pyotp>=2.9.0
+qrcode[pil]>=7.4.2
+Pillow>=10.4.0
+
+# Skip document generation for now if lxml issues persist
+# python-docx>=1.1.2
+# docxtpl>=0.18.0

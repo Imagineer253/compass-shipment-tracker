@@ -1843,46 +1843,6 @@ def download_qr_code(package_id):
     
     return redirect(url_for('main.qr_codes_management'))
 
-@main.route('/admin/print-qr-sheet/<int:shipment_id>')
-@login_required
-@admin_required
-def print_qr_sheet(shipment_id):
-    """Generate printable A4 sheet with QR codes for a shipment"""
-    try:
-        shipment = Shipment.query.get_or_404(shipment_id)
-        package_qr_codes = PackageQRCode.query.filter_by(shipment_id=shipment_id).all()
-        
-        if not package_qr_codes:
-            flash('No QR codes found for this shipment.', 'error')
-            return redirect(url_for('main.qr_codes_management'))
-        
-        # Create QR service and generate print sheet
-        qr_service = QRCodeService()
-        print_sheet = qr_service.create_print_sheet(package_qr_codes, sheet_layout=(2, 1))
-        
-        if print_sheet:
-            # Save print sheet temporarily
-            temp_filename = f"print_sheet_shipment_{shipment_id}.png"
-            temp_path = os.path.join(current_app.static_folder, 'temp', temp_filename)
-            
-            # Ensure temp directory exists
-            os.makedirs(os.path.dirname(temp_path), exist_ok=True)
-            
-            # Save with print quality
-            print_sheet.save(temp_path, 'PNG', dpi=(300, 300), quality=100)
-            
-            # Send file for download
-            return send_file(temp_path, as_attachment=True, 
-                           download_name=f"QR_Sheet_Shipment_{shipment.invoice_number.replace('/', '_')}.png")
-        else:
-            flash('Error generating print sheet.', 'error')
-            
-    except Exception as e:
-        current_app.logger.error(f"Error generating print sheet for shipment {shipment_id}: {str(e)}")
-        flash('Error occurred while generating print sheet.', 'error')
-    
-    return redirect(url_for('main.qr_codes_management'))
-
 @main.route('/admin/qr-bulk-actions', methods=['POST'])
 @login_required
 @admin_required
@@ -1927,6 +1887,84 @@ def qr_bulk_actions():
             flash('Error occurred during cleanup.', 'error')
     
     return redirect(url_for('main.qr_codes_management'))
+
+@main.route('/admin/webapp-qr')
+@login_required
+@admin_required
+def webapp_qr_code():
+    """Generate and display QR code for the web app homepage"""
+    try:
+        qr_service = QRCodeService()
+        base_url = request.url_root.rstrip('/')
+        
+        # Generate QR code for homepage
+        qr_image_path = qr_service.generate_webapp_qr_code(base_url)
+        
+        # Get QR code URL for display
+        qr_code_url = f"{base_url}/static/qrcodes/webapp_qr.png"
+        
+        return render_template('admin/webapp_qr.html', 
+                             qr_code_url=qr_code_url,
+                             webapp_url=base_url)
+                             
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        current_app.logger.error(f"Error generating webapp QR code: {str(e)}\n{error_details}")
+        flash(f'Error generating web app QR code: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+@main.route('/admin/download-webapp-qr')
+@login_required
+@admin_required
+def download_webapp_qr():
+    """Download the web app QR code image"""
+    try:
+        qr_codes_dir = os.path.join(current_app.root_path, 'static', 'qrcodes')
+        qr_image_path = os.path.join(qr_codes_dir, 'webapp_qr.png')
+        
+        if os.path.exists(qr_image_path):
+            return send_file(qr_image_path, 
+                           as_attachment=True, 
+                           download_name='COMPASS_WebApp_QR.png',
+                           mimetype='image/png')
+        else:
+            flash('Web app QR code not found. Please generate it first.', 'error')
+            return redirect(url_for('main.webapp_qr_code'))
+            
+    except Exception as e:
+        current_app.logger.error(f"Error downloading webapp QR code: {str(e)}")
+        flash('Error downloading QR code.', 'error')
+        return redirect(url_for('main.webapp_qr_code'))
+
+@main.route('/admin/update-all-qr-urls', methods=['POST'])
+@login_required
+@admin_required
+def update_all_qr_urls():
+    """Update all QR codes with current hosting URL"""
+    try:
+        qr_service = QRCodeService()
+        current_base_url = request.url_root.rstrip('/')
+        
+        current_app.logger.info(f"Admin {current_user.username} requested QR URL update to: {current_base_url}")
+        
+        # Update all package QR codes
+        updated_count = qr_service.update_all_qr_codes_with_new_url(current_base_url)
+        
+        # Also regenerate webapp QR code
+        webapp_qr_path = qr_service.generate_webapp_qr_code(current_base_url)
+        
+        if updated_count > 0:
+            flash(f'Successfully updated {updated_count} QR codes with new URL: {current_base_url}', 'success')
+        else:
+            flash('No QR codes needed updating - all URLs are already current.', 'info')
+            
+        return redirect(url_for('main.admin_qr_codes'))
+        
+    except Exception as e:
+        current_app.logger.error(f"Error updating all QR URLs: {str(e)}")
+        flash(f'Error updating QR codes: {str(e)}', 'error')
+        return redirect(url_for('main.admin_qr_codes'))
 
 @main.route('/admin/signing-authorities')
 @login_required
