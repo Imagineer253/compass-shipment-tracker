@@ -11,13 +11,6 @@
             <p class="text-gray-600 mt-2">Manage QR codes for all package tracking</p>
         </div>
         <div class="flex space-x-3">
-            <button onclick="updateAllQRUrls()" 
-                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                </svg>
-                Update All URLs
-            </button>
             <button onclick="bulkAction('cleanup')" 
                     class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,29 +182,21 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {% set status = package.shipment.status %}
-                                {% if status == 'Submitted' %}
+                                {% if status == 'Acknowledged' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    ✅ Acknowledged
+                                </span>
+                                {% elif status == 'Document_Generation' %}
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    📝 {{ status }}
+                                    📄 Generating Documents
                                 </span>
-                                {% elif status == 'Acknowledged' %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    ✅ {{ status }}
+                                {% elif status == 'Quotation_Requested' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                    💰 Quotation Requested
                                 </span>
-                                {% elif status == 'Document_Generated' %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                    📄 Documents Generated
-                                </span>
-                                {% elif status == 'Delivered' %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    🚚 {{ status }}
-                                </span>
-                                {% elif status == 'Failed' %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    ❌ {{ status }}
-                                </span>
-                                {% elif status == 'Combined' %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                    🔄 {{ status }}
+                                {% elif status == 'Awaiting_Quotation_Approval' %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                    ⏳ Awaiting Quotation Approval
                                 </span>
                                 {% else %}
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
@@ -392,34 +377,6 @@ function bulkAction(action) {
                 document.getElementById('bulkForm').submit();
             }
         }
-    }
-}
-
-function updateAllQRUrls() {
-    if (confirm('Update all QR codes to use current hosting URL? This will regenerate all QR code images.')) {
-        // Show loading state
-        const button = event.target;
-        const originalText = button.innerHTML;
-        button.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Updating...';
-        button.disabled = true;
-        
-        // Create and submit form
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ url_for("main.update_all_qr_urls") }}';
-        
-        // Add CSRF token
-        const csrfToken = document.querySelector('meta[name=csrf-token]');
-        if (csrfToken) {
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = csrfToken.getAttribute('content');
-            form.appendChild(csrfInput);
-        }
-        
-        document.body.appendChild(form);
-        form.submit();
     }
 }
 

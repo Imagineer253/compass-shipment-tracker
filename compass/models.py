@@ -476,6 +476,23 @@ class CombinedShipmentCounter(db.Model):
         
         db.session.commit()
         return counter_record.counter
+    
+    @classmethod
+    def reset_counter(cls):
+        """Reset counter based on actual combined shipments in database"""
+        from . import db
+        # Count actual combined shipments
+        actual_count = db.session.query(Shipment).filter(Shipment.is_combined == True).count()
+        
+        counter_record = cls.query.first()
+        if not counter_record:
+            counter_record = cls(counter=actual_count)
+            db.session.add(counter_record)
+        else:
+            counter_record.counter = actual_count
+        
+        db.session.commit()
+        return counter_record.counter
 
 class ShipmentSerialCounter(db.Model):
     """Model to track unique shipment serial numbers"""
@@ -484,16 +501,43 @@ class ShipmentSerialCounter(db.Model):
     
     @classmethod
     def get_next_serial(cls):
-        """Get the next unique shipment serial number (4-digit format)"""
+        """Get the next unique shipment serial number (4-digit format) with auto-optimization"""
+        from . import db
+        
+        # Auto-optimize counter if needed
+        shipment_count = db.session.query(Shipment).count()
         counter_record = cls.query.first()
+        
         if not counter_record:
-            counter_record = cls(counter=1)
+            # Initialize counter based on actual shipments
+            counter_record = cls(counter=shipment_count + 1)
             db.session.add(counter_record)
+        elif counter_record.counter < shipment_count:
+            # Counter is behind - sync it
+            counter_record.counter = shipment_count + 1
         else:
+            # Normal increment
             counter_record.counter += 1
         
         db.session.commit()
         return f"{counter_record.counter:04d}"  # Returns 4-digit format like 0001, 0002, etc.
+    
+    @classmethod
+    def reset_counter(cls):
+        """Reset counter based on actual shipments in database"""
+        from . import db
+        # Count actual shipments
+        actual_count = db.session.query(Shipment).count()
+        
+        counter_record = cls.query.first()
+        if not counter_record:
+            counter_record = cls(counter=actual_count)
+            db.session.add(counter_record)
+        else:
+            counter_record.counter = actual_count
+        
+        db.session.commit()
+        return counter_record.counter
 
 class FileReferenceCounter(db.Model):
     """Model to track unique file reference numbers"""
@@ -512,6 +556,23 @@ class FileReferenceCounter(db.Model):
         
         db.session.commit()
         return f"{counter_record.counter:04d}"  # Returns 4-digit format like 0001, 0002, etc.
+    
+    @classmethod
+    def reset_counter(cls):
+        """Reset counter based on actual file references in database"""
+        from . import db
+        # Count actual shipments with file reference numbers
+        actual_count = db.session.query(Shipment).filter(Shipment.file_reference_number.isnot(None)).count()
+        
+        counter_record = cls.query.first()
+        if not counter_record:
+            counter_record = cls(counter=actual_count)
+            db.session.add(counter_record)
+        else:
+            counter_record.counter = actual_count
+        
+        db.session.commit()
+        return counter_record.counter
 
 class SigningAuthority(db.Model):
     """Model to store signing authority details for documents"""

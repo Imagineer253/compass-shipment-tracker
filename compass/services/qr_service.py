@@ -271,12 +271,8 @@ class QRCodeService:
             Updated PackageQRCode instance
         """
         try:
-            # Update the QR code URL with new base URL
-            new_tracking_url = f"{base_url}/track/{package_qr.unique_code}"
-            package_qr.qr_code_url = new_tracking_url
-            
-            # Generate new QR code image with updated URL
-            qr_image_path = self._create_qr_code_image(new_tracking_url, package_qr.unique_code)
+            # Generate new QR code image
+            qr_image_path = self._create_qr_code_image(package_qr.qr_code_url, package_qr.unique_code)
             
             if qr_image_path:
                 # Remove old QR code file if it exists
@@ -294,55 +290,6 @@ class QRCodeService:
         except Exception as e:
             current_app.logger.error(f"Error regenerating QR code: {str(e)}")
             return package_qr
-    
-    def update_all_qr_codes_with_new_url(self, new_base_url):
-        """
-        Update all existing QR codes with a new base URL
-        
-        Args:
-            new_base_url: New base URL for the application
-            
-        Returns:
-            Number of QR codes updated
-        """
-        try:
-            updated_count = 0
-            all_qr_codes = PackageQRCode.query.all()
-            
-            current_app.logger.info(f"Updating {len(all_qr_codes)} QR codes with new base URL: {new_base_url}")
-            
-            for package_qr in all_qr_codes:
-                # Update tracking URL
-                new_tracking_url = f"{new_base_url}/track/{package_qr.unique_code}"
-                old_url = package_qr.qr_code_url
-                
-                if old_url != new_tracking_url:
-                    package_qr.qr_code_url = new_tracking_url
-                    
-                    # Regenerate QR code image with new URL
-                    qr_image_path = self._create_qr_code_image(new_tracking_url, package_qr.unique_code)
-                    
-                    if qr_image_path:
-                        # Remove old QR code file if it exists
-                        if package_qr.qr_image_path:
-                            old_path = os.path.join(current_app.root_path, package_qr.qr_image_path)
-                            if os.path.exists(old_path):
-                                os.remove(old_path)
-                        
-                        package_qr.qr_image_path = qr_image_path
-                        updated_count += 1
-                        
-                        current_app.logger.debug(f"Updated QR code {package_qr.unique_code}: {old_url} -> {new_tracking_url}")
-            
-            # Commit all changes
-            db.session.commit()
-            current_app.logger.info(f"Successfully updated {updated_count} QR codes")
-            return updated_count
-            
-        except Exception as e:
-            current_app.logger.error(f"Error updating QR codes with new URL: {str(e)}")
-            db.session.rollback()
-            return 0
     
     def get_qr_code_url(self, package_qr):
         """

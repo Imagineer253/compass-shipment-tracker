@@ -162,6 +162,7 @@
                         <a href="{{ url_for('main.dashboard') }}" class="nav-link">Dashboard</a>
                         {% if current_user.is_admin() %}
                             <a href="{{ url_for('main.admin_users') }}" class="nav-link">👥 Users</a>
+                            <a href="{{ url_for('main.admin_signing_authorities') }}" class="nav-link">✍️ Signing Authorities</a>
                         {% endif %}
                         
                         <!-- User Profile Dropdown -->
@@ -274,6 +275,7 @@
                     <a href="{{ url_for('main.dashboard') }}" class="nav-link-mobile">Dashboard</a>
                     {% if current_user.is_admin() %}
                         <a href="{{ url_for('main.admin_users') }}" class="nav-link-mobile">👥 Users</a>
+                        <a href="{{ url_for('main.admin_signing_authorities') }}" class="nav-link-mobile">✍️ Signing Authorities</a>
                     {% endif %}
                     <a href="{{ url_for('auth.profile') }}" class="nav-link-mobile">👤 Profile</a>
                     <a href="{{ url_for('two_fa.manage') }}" class="nav-link-mobile">🔒 Security</a>
@@ -287,15 +289,17 @@
     </nav>
 
     <main class="max-w-7xl mx-auto py-20 px-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="arctic-card p-4 mb-4 {% if category == 'error' %}bg-red-100{% else %}bg-green-100{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        {% block flash_messages %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="arctic-card p-4 mb-4 {% if category == 'error' %}bg-red-100{% else %}bg-green-100{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        {% endblock %}
         
         {% block content %}{% endblock %}
     </main>

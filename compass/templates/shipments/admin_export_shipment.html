@@ -312,6 +312,15 @@
                             </select>
                         </div>
                         <div>
+                            <label class="input-label" id="portLoadingLabel">Port of Loading</label>
+                            <input type="text" 
+                                   name="port_of_loading" 
+                                   id="portOfLoading"
+                                   class="input-field"
+                                   placeholder="Port"
+                                   value="{% if edit_mode %}{{ form_data.get('port_of_loading', '') }}{% endif %}">
+                        </div>
+                        <div>
                             <label class="input-label" id="portLabel">Port of Discharge</label>
                             <input type="text" 
                                    name="port_of_discharge" 
@@ -1443,17 +1452,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to update port placeholder based on transport mode
     function updatePortPlaceholder() {
         const modeSelect = document.getElementById('modeOfTransport');
-        const portInput = document.getElementById('portOfDischarge');
-        const portLabel = document.getElementById('portLabel');
+        const portLoadingInput = document.getElementById('portOfLoading');
+        const portLoadingLabel = document.getElementById('portLoadingLabel');
+        const portDischargeInput = document.getElementById('portOfDischarge');
+        const portDischargeLabel = document.getElementById('portLabel');
         
-        if (modeSelect && portInput && portLabel) {
+        if (modeSelect) {
             const selectedMode = modeSelect.value;
-            if (selectedMode === 'Air') {
-                portLabel.textContent = 'Airport of Discharge';
-                portInput.placeholder = 'Airport';
-            } else {
-                portLabel.textContent = 'Port of Discharge';
-                portInput.placeholder = 'Port';
+            
+            // Update Port of Loading
+            if (portLoadingInput && portLoadingLabel) {
+                if (selectedMode === 'Air') {
+                    portLoadingLabel.textContent = 'Airport of Loading';
+                    portLoadingInput.placeholder = 'Airport';
+                } else {
+                    portLoadingLabel.textContent = 'Port of Loading';
+                    portLoadingInput.placeholder = 'Port';
+                }
+            }
+            
+            // Update Port of Discharge
+            if (portDischargeInput && portDischargeLabel) {
+                if (selectedMode === 'Air') {
+                    portDischargeLabel.textContent = 'Airport of Discharge';
+                    portDischargeInput.placeholder = 'Airport';
+                } else {
+                    portDischargeLabel.textContent = 'Port of Discharge';
+                    portDischargeInput.placeholder = 'Port';
+                }
             }
         }
     }

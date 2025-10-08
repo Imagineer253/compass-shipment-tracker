@@ -143,7 +143,11 @@
         <div class="arctic-card p-4 mb-6 invoice-preview">
             <h3 class="text-lg font-semibold text-deep-arctic mb-2">Generated Invoice Number</h3>
             <div class="text-xl font-mono tracking-wide" id="invoiceNumberPreview">
-                NCPOR/IMP/YYYY/MMM/TYPE/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000
+                {% if edit_mode and shipment.invoice_number %}
+                    {{ shipment.invoice_number }}
+                {% else %}
+                    NCPOR/ARC/YYYY/MMM/SAM/RT/{{ current_user.unique_id if current_user.unique_id else 'ADMIN' }}/REQ_ID/Loading...
+                {% endif %}
             </div>
             <p class="text-sm text-gray-600 mt-2">This number will be used in your import documentation</p>
         </div>
@@ -185,6 +189,11 @@
                         <input type="hidden" 
                                name="requester_name" 
                                id="requesterNameHidden">
+                        
+                        <!-- Hidden field to store the selected user's unique ID for invoice generation -->
+                        <input type="hidden" 
+                               name="requester_unique_id" 
+                               id="requesterUniqueIdHidden">
                     </div>
                 </div>
 
@@ -253,7 +262,7 @@
                         </div>
                         <div>
                                         <p class="font-semibold text-deep-arctic">Himadri</p>
-                                        <p class="text-sm text-gray-600">Himadri Station</p>
+                                        <p class="text-sm text-gray-600">Indian Arctic Research Station</p>
                         </div>
                     </div>
                 </div>
@@ -285,12 +294,10 @@
                         <!-- Himadri Details (Default - Read-only) -->
                         <div id="himadriExporterDetails">
                     <div class="readonly-field">
-                                <strong>Himadri Station</strong><br>
-                                Indian Research Base<br>
-                                Ny-Ålesund, Svalbard<br>
-                                Norway<br>
-                                Phone: [Contact Information]<br>
-                                Research Station ID: HIMADRI
+                                <strong>Himadri - Indian Arctic Research Station</strong><br>
+                                Ny-Alesund, c/o Kings Bay AS<br>
+                                N-9173, Ny-Alesund, Norway<br>
+                                Phone: +47 79 02 72 00
                     </div>
                 </div>
 
@@ -415,7 +422,8 @@
                                 <strong>National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]</strong><br>
                                 Ministry of Earth Sciences (Govt. of India)<br>
                                 Headland Sada, Vasco da Gama, Goa - 403804<br>
-                                Phone: +91 832 2525501<br>
+                                Contact: Dr. Rohit Srivastava<br>
+                                Phone: 9274584406<br>
                                 GST: 30AACFN4991P1ZN | LUT: AD300618000016R
                             </div>
                         </div>
@@ -469,6 +477,65 @@
                 </div>
         </div>
     </div>
+
+                <!-- Shipping and Transport Details Section -->
+                <div class="space-y-4">
+                    <h3 class="section-title">🚢 Shipping & Transport Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="input-label">Country of Final Destination</label>
+                            <input type="text" 
+                                   name="country_of_final_destination" 
+                                   class="input-field"
+                                   placeholder="e.g., India"
+                                   value="{% if edit_mode %}{{ form_data.get('country_of_final_destination', '') }}{% endif %}">
+                        </div>
+                        <div>
+                            <label class="input-label">Mode of Transport</label>
+                            <select name="mode_of_transport" 
+                                    id="modeOfTransport"
+                                    class="input-field"
+                                    onchange="updatePortPlaceholder()">
+                                <option value="Air" {% if not edit_mode or form_data.get('mode_of_transport') == 'Air' or not form_data.get('mode_of_transport') %}selected{% endif %}>Air</option>
+                                <option value="Sea" {% if edit_mode and form_data.get('mode_of_transport') == 'Sea' %}selected{% endif %}>Sea</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="input-label" id="portLoadingLabel">Port of Loading</label>
+                            <input type="text" 
+                                   name="port_of_loading" 
+                                   id="portOfLoading"
+                                   class="input-field"
+                                   placeholder="Port"
+                                   value="{% if edit_mode %}{{ form_data.get('port_of_loading', '') }}{% endif %}">
+                        </div>
+                        <div>
+                            <label class="input-label" id="portLabel">Port of Discharge</label>
+                            <input type="text" 
+                                   name="port_of_discharge" 
+                                   id="portOfDischarge"
+                                   class="input-field"
+                                   placeholder="Port"
+                                   value="{% if edit_mode %}{{ form_data.get('port_of_discharge', '') }}{% endif %}">
+                        </div>
+                        <div>
+                            <label class="input-label">Final Destination</label>
+                            <input type="text" 
+                                   name="final_destination" 
+                                   class="input-field"
+                                   placeholder="e.g., New Delhi"
+                                   value="{% if edit_mode %}{{ form_data.get('final_destination', '') }}{% endif %}">
+                        </div>
+                        <div>
+                            <label class="input-label">Country of Origin</label>
+                            <input type="text" 
+                                   name="country_of_origin" 
+                                   class="input-field"
+                                   placeholder="Norway"
+                                   value="{% if edit_mode %}{{ form_data.get('country_of_origin', 'Norway') }}{% else %}Norway{% endif %}">
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Cargo Details Section -->
                 <div class="space-y-4 mt-8">
@@ -775,23 +842,33 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('invoiceDateHidden').value = today;
 
     // Function to handle requester user selection
-    function handleRequesterUserChange() {
+    async function handleRequesterUserChange() {
         if (requesterUserSelect) {
             const selectedOption = requesterUserSelect.options[requesterUserSelect.selectedIndex];
             if (selectedOption && selectedOption.value) {
                 const fullName = selectedOption.getAttribute('data-full-name');
+                const uniqueId = selectedOption.getAttribute('data-unique-id');
                 if (requesterNameHidden) {
                     requesterNameHidden.value = fullName;
+                }
+                // Update the unique ID field for invoice generation
+                const requesterUniqueIdHidden = document.getElementById('requesterUniqueIdHidden');
+                if (requesterUniqueIdHidden) {
+                    requesterUniqueIdHidden.value = uniqueId || 'REQ001';
                 }
             } else {
                 if (requesterNameHidden) {
                     requesterNameHidden.value = '';
                 }
+                const requesterUniqueIdHidden = document.getElementById('requesterUniqueIdHidden');
+                if (requesterUniqueIdHidden) {
+                    requesterUniqueIdHidden.value = '';
+                }
             }
         }
         // Only update invoice number in create mode, not edit mode
         if (!isEditMode) {
-            updateInvoiceNumber();
+            await updateInvoiceNumberPreview();
         }
     }
 
@@ -808,28 +885,64 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Auto-fill current year and month if not in edit mode
     const isEditMode = {% if edit_mode %}true{% else %}false{% endif %};
-    if (!isEditMode) {
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-        const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
-                           'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-        const currentMonth = monthNames[currentDate.getMonth()];
-        
-        // Set current year and month only if fields are empty
-        if (!expeditionYear.value) {
-        expeditionYear.value = currentYear;
+    
+    // Use async IIFE to handle async updateInvoiceNumberPreview call
+    (async function() {
+        if (!isEditMode) {
+            const currentDate = new Date();
+            const currentYear = currentDate.getFullYear();
+            const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+                               'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+            const currentMonth = monthNames[currentDate.getMonth()];
+            
+            // Set current year and month only if fields are empty
+            if (!expeditionYear.value) {
+                expeditionYear.value = currentYear;
+            }
+            if (!expeditionMonth.value) {
+                expeditionMonth.value = currentMonth;
+            }
+            
+            // Update invoice preview with new pattern
+            await updateInvoiceNumberPreview();
         }
-        if (!expeditionMonth.value) {
-        expeditionMonth.value = currentMonth;
-        }
-        
-        // Update invoice preview
-        updateInvoiceNumber();
-    }
+    })();
 
     // Set max year as current year + 1
     const maxYear = new Date().getFullYear() + 1;
     expeditionYear.setAttribute('max', maxYear);
+    
+    // Function to update invoice number preview with new pattern
+    async function updateInvoiceNumberPreview() {
+        const year = expeditionYear.value || new Date().getFullYear();
+        const month = expeditionMonth.value || (['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+                           'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][new Date().getMonth()]);
+        const adminId = '{{ current_user.unique_id if current_user.unique_id else "ADMIN" }}';
+        
+        // Get selected requester's unique ID
+        const requesterUniqueIdField = document.getElementById('requesterUniqueIdHidden');
+        const requesterId = requesterUniqueIdField ? requesterUniqueIdField.value || 'REQ_ID' : 'REQ_ID';
+        
+        // Fetch the next serial number from the API
+        let serialNumber = 'XXXX';
+        try {
+            const response = await fetch('/api/get-next-serial');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    serialNumber = data.next_serial;
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching next serial number:', error);
+        }
+        
+        // Update preview with new pattern including real serial number
+        const preview = `NCPOR/ARC/${year}/${month}/SAM/RT/${adminId}/${requesterId}/${serialNumber}`;
+        if (invoicePreview) {
+            invoicePreview.textContent = preview;
+        }
+    }
     expeditionYear.setAttribute('min', '2000');
 
     // Function to generate invoice number with API call
@@ -884,10 +997,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error('Error generating invoice preview:', error);
-                invoicePreview.textContent = `NCPOR/IMP/${year}/${month}/${returnType}/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000`;
+                invoicePreview.textContent = `NCPOR/ARC/${year}/${month}/SAM/RT/{{ current_user.unique_id if current_user.unique_id else 'ADMIN' }}/REQ_ID`;
             }
         } else {
-            invoicePreview.textContent = `NCPOR/IMP/${year || 'YYYY'}/${month || 'MMM'}/${returnType}/{{ current_user.unique_id if current_user.unique_id else 'XXXXXX' }}/0000`;
+            invoicePreview.textContent = `NCPOR/ARC/${year || 'YYYY'}/${month || 'MMM'}/SAM/RT/{{ current_user.unique_id if current_user.unique_id else 'ADMIN' }}/REQ_ID`;
             const infoElement = document.getElementById('invoiceInfo');
             if (infoElement) {
                 infoElement.innerHTML = '';
@@ -928,17 +1041,25 @@ document.addEventListener('DOMContentLoaded', function() {
         let totalNetWeight = 0;
         let totalValue = 0;
 
+        // Calculate total items
         document.querySelectorAll('.item-quantity').forEach(quantityInput => {
             totalItems += parseInt(quantityInput.value) || 0;
         });
 
+        // Calculate total net weight
         document.querySelectorAll('.item-weight').forEach(weightInput => {
-            const quantity = parseInt(weightInput.closest('.items-container').querySelector('.item-quantity').value) || 0;
-            totalNetWeight += (parseFloat(weightInput.value) || 0) * quantity;
+            // Find the corresponding quantity input for this item
+            const prefix = weightInput.dataset.prefix;
+            const quantityInput = document.querySelector(`[name="${prefix}_quantity"]`);
+            const quantity = quantityInput ? (parseInt(quantityInput.value) || 0) : 1;
+            const weight = parseFloat(weightInput.value) || 0;
+            totalNetWeight += weight * quantity;
         });
 
+        // Calculate total value from item totals
         document.querySelectorAll('.item-total').forEach(totalElement => {
-            totalValue += parseFloat(totalElement.textContent) || 0;
+            const totalText = totalElement.textContent.replace(/[^\d.-]/g, ''); // Remove non-numeric characters
+            totalValue += parseFloat(totalText) || 0;
         });
 
         // Update summary display
@@ -946,6 +1067,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('totalItemsDisplay').textContent = totalItems;
         document.getElementById('totalNetWeightDisplay').textContent = `${totalNetWeight.toFixed(2)} kg`;
         document.getElementById('totalValueDisplay').textContent = `${totalValue.toFixed(2)} USD`;
+        
+        console.log('Updated totals:', { totalItems, totalNetWeight, totalValue }); // Debug log
     }
 
     // Function to calculate item total value
@@ -959,25 +1082,38 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to set up item handlers
     function setupItemHandlers(itemElement) {
-        // Set up quantity and value change handlers
+        // Set up quantity, value, and weight change handlers
         const quantityInput = itemElement.querySelector('.item-quantity');
         const valueInput = itemElement.querySelector('.item-value');
+        const weightInput = itemElement.querySelector('.item-weight');
+        
         if (quantityInput && valueInput) {
             const prefix = quantityInput.dataset.prefix;
             const totalElement = document.getElementById(prefix + '_total');
             
-            function updateTotal() {
+            function updateItemTotal() {
                 const quantity = parseFloat(quantityInput.value) || 0;
                 const value = parseFloat(valueInput.value) || 0;
                 const total = quantity * value;
                 if (totalElement) {
                     totalElement.textContent = total.toFixed(2) + ' USD';
                 }
-                updatePackageTotal();
+                updateTotals(); // Call the main updateTotals function
             }
             
-            quantityInput.addEventListener('input', updateTotal);
-            valueInput.addEventListener('input', updateTotal);
+            function updateOnChange() {
+                updateItemTotal();
+                updateTotals(); // Ensure totals are recalculated
+            }
+            
+            // Add event listeners for quantity and value
+            quantityInput.addEventListener('input', updateOnChange);
+            valueInput.addEventListener('input', updateOnChange);
+            
+            // Add event listener for weight if it exists
+            if (weightInput) {
+                weightInput.addEventListener('input', updateTotals);
+            }
         }
 
         // Set up sample type handlers
@@ -1130,6 +1266,44 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Function to update port placeholder based on transport mode
+    function updatePortPlaceholder() {
+        const modeSelect = document.getElementById('modeOfTransport');
+        const portLoadingInput = document.getElementById('portOfLoading');
+        const portLoadingLabel = document.getElementById('portLoadingLabel');
+        const portDischargeInput = document.getElementById('portOfDischarge');
+        const portDischargeLabel = document.getElementById('portLabel');
+        
+        if (modeSelect) {
+            const selectedMode = modeSelect.value;
+            
+            // Update Port of Loading
+            if (portLoadingInput && portLoadingLabel) {
+                if (selectedMode === 'Air') {
+                    portLoadingLabel.textContent = 'Airport of Loading';
+                    portLoadingInput.placeholder = 'Airport';
+                } else {
+                    portLoadingLabel.textContent = 'Port of Loading';
+                    portLoadingInput.placeholder = 'Port';
+                }
+            }
+            
+            // Update Port of Discharge
+            if (portDischargeInput && portDischargeLabel) {
+                if (selectedMode === 'Air') {
+                    portDischargeLabel.textContent = 'Airport of Discharge';
+                    portDischargeInput.placeholder = 'Airport';
+                } else {
+                    portDischargeLabel.textContent = 'Port of Discharge';
+                    portDischargeInput.placeholder = 'Port';
+                }
+            }
+        }
+    }
+
+    // Make function globally available
+    window.updatePortPlaceholder = updatePortPlaceholder;
+
     // Add event listeners
     exporterHimadriRadio.addEventListener('change', handleExporterSelection);
     exporterOtherRadio.addEventListener('change', handleExporterSelection);
@@ -1170,6 +1344,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize handlers for any existing items
     document.querySelectorAll('.arctic-card').forEach(setupItemHandlers);
+    
+    // Update totals after a short delay to ensure all elements are loaded
+    setTimeout(updateTotals, 100);
 });
 </script>
 
@@ -1244,6 +1421,9 @@ window.addEventListener('load', function() {
             }
         }
     }, 500);
+    
+    // Initialize totals on page load
+    updateTotals();
 });
 </script>
 {% endif %}

@@ -190,10 +190,28 @@ def _get_status_display_info(status):
             'description': 'Shipment has been submitted and is awaiting admin review'
         },
         'Acknowledged': {
-            'color': 'green',
+            'color': 'yellow',
             'icon': '✅',
             'text': 'Acknowledged',
             'description': 'Shipment has been reviewed and acknowledged by admin'
+        },
+        'Document_Generation': {
+            'color': 'blue',
+            'icon': '📄',
+            'text': 'Generating Documents',
+            'description': 'Documents are being prepared for this shipment'
+        },
+        'Quotation_Requested': {
+            'color': 'indigo',
+            'icon': '💰',
+            'text': 'Quotation Requested',
+            'description': 'Getting shipping quotes for this shipment'
+        },
+        'Awaiting_Quotation_Approval': {
+            'color': 'orange',
+            'icon': '⏳',
+            'text': 'Awaiting Quotation Approval',
+            'description': 'Waiting for quotation approval from authorities'
         },
         'Document_Generated': {
             'color': 'purple',

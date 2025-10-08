@@ -149,7 +149,9 @@
         <div class="arctic-card p-8">
             <h1 class="text-2xl font-bold text-deep-arctic mb-6">Shipment Request Details</h1>
             
-            <form method="POST" action="{{ url_for('main.submit_shipment') }}" class="space-y-8">
+            <form method="POST" 
+                  action="{% if edit_mode %}{{ url_for('main.update_shipment', shipment_id=shipment.id) }}{% else %}{{ url_for('main.submit_shipment') }}{% endif %}" 
+                  class="space-y-8">
                 <input type="hidden" name="shipment_type" value="cold">
                 <div class="space-y-4">
                     <h3 class="section-title">Requester's Details</h3>
@@ -227,9 +229,8 @@
                         <!-- Himadri Address (Read-only) -->
                         <div id="himadriAddress" class="hidden">
                             <div class="readonly-field">
-                                Station Leader,<br>
-                                HIMADRI-Indian Arctic Research Station,<br>
-                                Ny-Alesund,c/o Kings Bay AS,<br>
+                                Himadri - Indian Arctic Research Station,<br>
+                                Ny-Alesund, c/o Kings Bay AS,<br>
                                 N-9173, Ny-Alesund, Norway<br>
                                 Phone: +47 79 02 72 00
                             </div>
@@ -414,6 +415,65 @@
                                     rows="4"
                                     placeholder="Enter complete importer address"
                                     required></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shipping and Transport Details Section -->
+                <div class="space-y-4">
+                    <h3 class="section-title">🚢 Shipping & Transport Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="input-label">Country of Final Destination</label>
+                            <input type="text" 
+                                   name="country_of_final_destination" 
+                                   class="input-field"
+                                   placeholder="e.g., Norway"
+                                   value="{% if edit_mode %}{{ form_data.get('country_of_final_destination', '') }}{% endif %}">
+                        </div>
+                        <div>
+                            <label class="input-label">Mode of Transport</label>
+                            <select name="mode_of_transport" 
+                                    id="modeOfTransport"
+                                    class="input-field"
+                                    onchange="updatePortPlaceholder()">
+                                <option value="Air" {% if not edit_mode or form_data.get('mode_of_transport') == 'Air' or not form_data.get('mode_of_transport') %}selected{% endif %}>Air</option>
+                                <option value="Sea" {% if edit_mode and form_data.get('mode_of_transport') == 'Sea' %}selected{% endif %}>Sea</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="input-label" id="portLoadingLabel">Port of Loading</label>
+                            <input type="text" 
+                                   name="port_of_loading" 
+                                   id="portOfLoading"
+                                   class="input-field"
+                                   placeholder="Port"
+                                   value="{% if edit_mode %}{{ form_data.get('port_of_loading', '') }}{% endif %}">
+                        </div>
+                        <div>
+                            <label class="input-label" id="portLabel">Port of Discharge</label>
+                            <input type="text" 
+                                   name="port_of_discharge" 
+                                   id="portOfDischarge"
+                                   class="input-field"
+                                   placeholder="Port"
+                                   value="{% if edit_mode %}{{ form_data.get('port_of_discharge', '') }}{% endif %}">
+                        </div>
+                        <div>
+                            <label class="input-label">Final Destination</label>
+                            <input type="text" 
+                                   name="final_destination" 
+                                   class="input-field"
+                                   placeholder="e.g., Ny-Ålesund"
+                                   value="{% if edit_mode %}{{ form_data.get('final_destination', '') }}{% endif %}">
+                        </div>
+                        <div>
+                            <label class="input-label">Country of Origin</label>
+                            <input type="text" 
+                                   name="country_of_origin" 
+                                   class="input-field"
+                                   placeholder="India"
+                                   value="{% if edit_mode %}{{ form_data.get('country_of_origin', 'India') }}{% else %}India{% endif %}">
                         </div>
                     </div>
                 </div>
@@ -760,6 +820,45 @@ document.addEventListener('DOMContentLoaded', function() {
             customAddress.querySelectorAll('input, textarea').forEach(input => input.required = true);
         });
     }
+
+    // Function to update port placeholder based on transport mode
+    function updatePortPlaceholder() {
+        const modeSelect = document.getElementById('modeOfTransport');
+        const portLoadingInput = document.getElementById('portOfLoading');
+        const portLoadingLabel = document.getElementById('portLoadingLabel');
+        const portDischargeInput = document.getElementById('portOfDischarge');
+        const portDischargeLabel = document.getElementById('portLabel');
+        
+        if (modeSelect) {
+            const selectedMode = modeSelect.value;
+            
+            // Update Port of Loading
+            if (portLoadingInput && portLoadingLabel) {
+                if (selectedMode === 'Air') {
+                    portLoadingLabel.textContent = 'Airport of Loading';
+                    portLoadingInput.placeholder = 'Airport';
+                } else {
+                    portLoadingLabel.textContent = 'Port of Loading';
+                    portLoadingInput.placeholder = 'Port';
+                }
+            }
+            
+            // Update Port of Discharge
+            if (portDischargeInput && portDischargeLabel) {
+                if (selectedMode === 'Air') {
+                    portDischargeLabel.textContent = 'Airport of Discharge';
+                    portDischargeInput.placeholder = 'Airport';
+                } else {
+                    portDischargeLabel.textContent = 'Port of Discharge';
+                    portDischargeInput.placeholder = 'Port';
+                }
+            }
+        }
+    }
+
+    // Make function globally accessible
+    window.updatePortPlaceholder = updatePortPlaceholder;
+
     setDefaultDate();
 
     // Handle total boxes input

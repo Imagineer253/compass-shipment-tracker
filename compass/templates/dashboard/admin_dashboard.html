@@ -2,6 +2,22 @@
 
 {% block title %}Admin Dashboard - COMPASS{% endblock %}
 
+{# Override flash messages block to hide success messages on admin dashboard #}
+{% block flash_messages %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                {# Only show error messages, hide success messages #}
+                {% if category == 'error' %}
+                    <div class="arctic-card p-4 mb-4 bg-red-100">
+                        {{ message }}
+                    </div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}
+
 {% block content %}
 <div class="container mx-auto px-4">
     <div class="arctic-card p-8 mb-8">
@@ -22,6 +38,10 @@
                 <a href="{{ url_for('main.webapp_qr_code') }}" 
                    class="arctic-button bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-all duration-300">
                    🌐 Web App QR
+                </a>
+                <a href="{{ url_for('main.admin_signing_authorities') }}" 
+                   class="arctic-button bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-all duration-300">
+                   ✍️ Signing Authorities
                 </a>
                 <button id="combineShipmentsBtn" 
                         class="arctic-button bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-all duration-300 hidden">
@@ -59,8 +79,52 @@
             </div>
         </div>
 
-        <!-- Recent Shipments -->
-        <h2 class="text-2xl font-bold text-deep-arctic mb-4">Recent Shipments</h2>
+        <!-- Shipment Management Section -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6">
+            <h2 class="text-2xl font-bold text-deep-arctic mb-4 lg:mb-0">Shipment Management</h2>
+            
+            <!-- Quick Search and Filters -->
+            <div class="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                <div class="relative">
+                    <input type="text" id="searchShipments" placeholder="Search invoice, requester, file ref..." 
+                           class="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="text-gray-400">🔍</span>
+                    </div>
+                </div>
+                
+                <select id="statusFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Statuses</option>
+                    <option value="Acknowledged">✅ Acknowledged</option>
+                    <option value="Document_Generation">📄 Generating Documents</option>
+                    <option value="Quotation_Requested">💰 Quotation Requested</option>
+                    <option value="Awaiting_Quotation_Approval">⏳ Awaiting Quotation Approval</option>
+                </select>
+                
+                <select id="typeFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <option value="">All Types</option>
+                    <option value="export">Export</option>
+                    <option value="import">Import</option>
+                    <option value="reimport">Reimport</option>
+                    <option value="cold">Cold</option>
+                </select>
+                
+                <button id="clearFilters" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+                    Clear Filters
+                </button>
+            </div>
+        </div>
+        
+        <!-- Results Summary -->
+        <div class="mb-4 flex justify-between items-center">
+            <div id="resultsInfo" class="text-sm text-gray-600">
+                Showing all shipments
+            </div>
+            <div class="flex gap-2">
+                <button id="showAll" class="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200">Show All</button>
+                <button id="showRecent" class="px-3 py-1 text-sm bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200">Recent Only</button>
+            </div>
+        </div>
         
         {% if shipments %}
         <div class="overflow-x-auto">
@@ -71,18 +135,15 @@
                             <input type="checkbox" id="selectAll" class="mr-2">
                             Select
                         </th>
-                        <th class="border p-3 text-left">Invoice Number</th>
-                        <th class="border p-3 text-left">Type</th>
-                        <th class="border p-3 text-left">Created By</th>
-                        <th class="border p-3 text-left">Organization</th>
-                        <th class="border p-3 text-left">Status</th>
-                        <th class="border p-3 text-left">Date</th>
-                        <th class="border p-3 text-left">Details</th>
-                        <th class="border p-3 text-left">Actions</th>
+                        <th class="border p-3 text-left w-48">Invoice & Basic Info</th>
+                        <th class="border p-3 text-left w-32">Status & Progress</th>
+                        <th class="border p-3 text-left w-40">Created By</th>
+                        <th class="border p-3 text-left w-32">Date & Details</th>
+                        <th class="border p-3 text-left w-64">Quick Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for shipment in shipments[:10] %}
+                    {% for shipment in shipments %}
                     <tr class="hover:bg-gray-50" data-shipment-id="{{ shipment.id }}">
                         <td class="border p-3">
                             {% if shipment.status not in ['Combined', 'Failed'] and not shipment.is_combined %}
@@ -92,71 +153,75 @@
                                 <span class="text-gray-400">—</span>
                             {% endif %}
                         </td>
-                        <td class="border p-3 font-mono text-sm">
-                            {{ shipment.invoice_number }}
-                            {% if shipment.is_combined %}
-                                <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs ml-2">Combined</span>
-                            {% endif %}
-                        </td>
+                        <!-- Invoice & Basic Info Column -->
                         <td class="border p-3">
-                            <span class="px-2 py-1 rounded text-xs font-medium
-                                {% if shipment.shipment_type == 'export' %}bg-blue-100 text-blue-800
-                                {% elif shipment.shipment_type == 'import' %}bg-green-100 text-green-800
-                                {% elif shipment.shipment_type == 'reimport' %}bg-yellow-100 text-yellow-800
-                                {% else %}bg-purple-100 text-purple-800{% endif %}">
-                                {{ shipment.shipment_type.title() }}
-                            </span>
-                        </td>
-                        <td class="border p-3">
-                            <div class="font-medium">{{ shipment.created_by_user.first_name }} {{ shipment.created_by_user.last_name }}</div>
-                            <div class="text-sm text-gray-500">
-                                {% for role in shipment.created_by_user.roles %}
-                                    <span class="inline-block bg-gray-200 rounded px-2 py-1 text-xs mr-1">{{ role.name }}</span>
-                                {% endfor %}
+                            <div class="font-mono text-sm font-medium">{{ shipment.invoice_number }}</div>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="px-2 py-1 rounded text-xs font-medium
+                                    {% if shipment.shipment_type == 'export' %}bg-blue-100 text-blue-800
+                                    {% elif shipment.shipment_type == 'import' %}bg-green-100 text-green-800
+                                    {% elif shipment.shipment_type == 'reimport' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-purple-100 text-purple-800{% endif %}">
+                                    {{ shipment.shipment_type.title() }}
+                                </span>
+                                {% if shipment.is_combined %}
+                                    <span class="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">Combined</span>
+                                {% endif %}
                             </div>
-                        </td>
-                        <td class="border p-3 text-sm">{{ shipment.created_by_user.organization or 'Not specified' }}</td>
-                        <td class="border p-3">
-                            <span class="px-2 py-1 rounded text-xs font-medium
-                                {% if shipment.status == 'Document_Generated' %}bg-blue-100 text-blue-800
-                                {% elif shipment.status == 'Delivered' %}bg-green-100 text-green-800
-                                {% elif shipment.status == 'Acknowledged' %}bg-yellow-100 text-yellow-800
-                                {% elif shipment.status == 'Submitted' %}bg-orange-100 text-orange-800
-                                {% elif shipment.status == 'Needs_Changes' %}bg-red-100 text-red-800
-                                {% elif shipment.status == 'Combined' %}bg-purple-100 text-purple-800
-                                {% elif shipment.status == 'Failed' %}bg-red-100 text-red-800
-                                {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                {{ shipment.status.replace('_', ' ').title() }}
-                            </span>
-                            {% if shipment.acknowledged_by_user %}
-                                <div class="text-xs text-gray-500 mt-1">
-                                    Ack by: {{ shipment.acknowledged_by_user.first_name }} {{ shipment.acknowledged_by_user.last_name }}
-                                    <br>{{ shipment.acknowledged_at.strftime('%d-%m %H:%M') if shipment.acknowledged_at else '' }}
-                                </div>
-                            {% endif %}
-                            {% if shipment.admin_comment %}
-                                <div class="text-xs text-blue-600 mt-1">
-                                    💬 Comment added
-                                </div>
-                            {% endif %}
-                        </td>
-                        <td class="border p-3 text-sm">{{ shipment.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
-                        <td class="border p-3 text-sm">
-                            <div><strong>Requester:</strong> {{ shipment.requester_name or 'N/A' }}</div>
-                            <div><strong>Year:</strong> {{ shipment.expedition_year or 'N/A' }}</div>
-                            <div><strong>Packages:</strong> {{ shipment.total_packages or 'N/A' }}</div>
+                            <div class="text-xs text-gray-600 mt-1">
+                                <strong>Req:</strong> {{ shipment.requester_name or 'N/A' }}<br>
+                                <strong>Pkgs:</strong> {{ shipment.total_packages or 'N/A' }} | <strong>Year:</strong> {{ shipment.expedition_year or 'N/A' }}
+                            </div>
                             {% if shipment.file_reference_number %}
                                 <div class="text-xs text-green-600 mt-1">
                                     <strong>File Ref:</strong> {{ shipment.file_reference_number }}
                                 </div>
                             {% endif %}
+                        </td>
+                        
+                        <!-- Status & Progress Column -->
+                        <td class="border p-3">
+                            <span class="px-2 py-1 rounded text-xs font-medium block mb-2
+                                {% if shipment.status == 'Acknowledged' %}bg-yellow-100 text-yellow-800
+                                {% elif shipment.status == 'Document_Generation' %}bg-blue-100 text-blue-800
+                                {% elif shipment.status == 'Quotation_Requested' %}bg-indigo-100 text-indigo-800
+                                {% elif shipment.status == 'Awaiting_Quotation_Approval' %}bg-orange-100 text-orange-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ shipment.status.replace('_', ' ').title() }}
+                            </span>
+                            {% if shipment.acknowledged_by_user %}
+                                <div class="text-xs text-gray-500">
+                                    Ack: {{ shipment.acknowledged_by_user.first_name[0] }}.{{ shipment.acknowledged_by_user.last_name }}<br>
+                                    {{ shipment.acknowledged_at.strftime('%d/%m %H:%M') if shipment.acknowledged_at else '' }}
+                                </div>
+                            {% endif %}
+                            {% if shipment.admin_comment %}
+                                <div class="text-xs text-blue-600">💬 Comment</div>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Created By Column -->
+                        <td class="border p-3">
+                            <div class="font-medium text-sm">{{ shipment.created_by_user.first_name }} {{ shipment.created_by_user.last_name }}</div>
+                            <div class="text-xs text-gray-500 mt-1">{{ shipment.created_by_user.organization or 'Not specified' }}</div>
+                            <div class="text-xs mt-1">
+                                {% for role in shipment.created_by_user.roles %}
+                                    <span class="inline-block bg-gray-200 rounded px-1 py-0.5 text-xs mr-1">{{ role.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        
+                        <!-- Date & Details Column -->
+                        <td class="border p-3 text-sm">
+                            <div class="font-medium">{{ shipment.created_at.strftime('%d/%m/%Y') }}</div>
+                            <div class="text-xs text-gray-500">{{ shipment.created_at.strftime('%H:%M') }}</div>
                             {% if shipment.is_combined and shipment.parent_shipment_ids %}
                                 <div class="text-xs text-orange-600 mt-1">
                                     <strong>Combined from:</strong> 
                                     {% set parent_ids = shipment.parent_shipment_ids %}
                                     {% if parent_ids %}
                                         {% if parent_ids.startswith('[') %}
-                                            Multiple shipments
+                                            Multiple
                                         {% else %}
                                             {{ parent_ids }}
                                         {% endif %}
@@ -166,83 +231,77 @@
                                 </div>
                             {% endif %}
                         </td>
-                        <td class="border p-3 text-sm">
-                            <div class="actions-container">
-                                <!-- Primary Action Buttons - Horizontal Layout -->
-                                <div class="action-row primary-actions">
+                        <!-- Quick Actions Column -->
+                        <td class="border p-3">
+                            <div class="compact-actions">
+                                <!-- Document Generation - Primary Row -->
+                                <div class="flex gap-1 mb-2">
                                     <a href="{{ url_for('main.admin_generate_document', shipment_id=shipment.id, document_type='invoice_packing') }}" 
-                                       class="action-btn btn-primary" title="Generate Invoice & Packing List">
-                                        📄 Invoice & Packing
+                                       class="compact-btn bg-green-500 hover:bg-green-600 text-white" title="Generate Invoice & Packing">
+                                        📄
                                     </a>
                                     <a href="{{ url_for('main.admin_generate_document', shipment_id=shipment.id, document_type='custom_docs') }}" 
-                                       class="action-btn btn-secondary" title="Generate Custom Documents">
-                                        📋 Custom Docs
+                                       class="compact-btn bg-blue-500 hover:bg-blue-600 text-white" title="Generate Custom Docs">
+                                        📋
                                     </a>
-                                </div>
-                                
-                                <!-- Secondary Action Buttons -->
-                                <div class="action-row secondary-actions">
                                     <a href="{{ url_for('main.track_shipment', shipment_id=shipment.id) }}" 
-                                       class="action-btn btn-info">
-                                        🔍 Track Shipment
+                                       class="compact-btn bg-purple-500 hover:bg-purple-600 text-white" title="Track Shipment">
+                                        🔍
                                     </a>
                                     <a href="{{ url_for('main.edit_shipment', shipment_id=shipment.id) }}" 
-                                       class="action-btn btn-warning">
-                                        ✏️ Edit
+                                       class="compact-btn bg-orange-500 hover:bg-orange-600 text-white" title="Edit Shipment">
+                                        ✏️
                                     </a>
                                 </div>
                                 
                                 <!-- Management Actions -->
-                                <div class="action-row management-actions">
-                                    <button class="comment-btn action-btn btn-neutral"
+                                <div class="flex gap-1 mb-2">
+                                    <button class="comment-btn compact-btn bg-gray-500 hover:bg-gray-600 text-white" 
                                             data-shipment-id="{{ shipment.id }}" 
-                                            data-comment="{{ shipment.admin_comment or '' }}">
-                                        💬 Comment
+                                            data-comment="{{ shipment.admin_comment or '' }}" title="Add Comment">
+                                        💬
                                     </button>
                                     <a href="{{ url_for('main.admin_delete_shipment', shipment_id=shipment.id) }}" 
-                                       class="action-btn btn-danger"
-                                       onclick="return confirm('⚠️ PERMANENT DELETE WARNING!\n\nThis will completely remove shipment {{ shipment.invoice_number }} from the database.\n\nRequester: {{ shipment.requester_name }}\nType: {{ shipment.shipment_type.title() }}\nStatus: {{ shipment.status }}\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to DELETE this shipment?')">
-                                        🗑️ Delete
+                                       class="compact-btn bg-red-500 hover:bg-red-600 text-white" title="Delete Shipment"
+                                       onclick="return confirm('⚠️ DELETE: {{ shipment.invoice_number }}?')">
+                                        🗑️
                                     </a>
+                                    <!-- Quick Status Shortcuts -->
+                                    <button class="compact-btn bg-yellow-500 hover:bg-yellow-600 text-white" 
+                                            onclick="quickStatusUpdate('{{ shipment.id }}', 'Acknowledged')" title="Mark Acknowledged">
+                                        ✅
+                                    </button>
+                                    <button class="compact-btn bg-blue-500 hover:bg-blue-600 text-white" 
+                                            onclick="quickStatusUpdate('{{ shipment.id }}', 'Delivered')" title="Mark Delivered">
+                                        🚚
+                                    </button>
                                 </div>
                                 
-                                <!-- Dropdown Controls - Compact Layout -->
-                                <div class="dropdown-controls">
-                                    <select class="status-selector control-dropdown" 
-                                            data-shipment-id="{{ shipment.id }}">
-                                        <option value="">Change Status...</option>
-                                        <option value="Submitted" {% if shipment.status == 'Submitted' %}selected{% endif %}>📝 Submitted</option>
-                                        <option value="Document_Generation" {% if shipment.status == 'Document_Generation' %}selected{% endif %}>📄 Document Generation</option>
-                                        <option value="Quotation_Requested" {% if shipment.status == 'Quotation_Requested' %}selected{% endif %}>💰 Quotation Requested</option>
-                                        <option value="Documents_Prepared" {% if shipment.status == 'Documents_Prepared' %}selected{% endif %}>📋 Documents Prepared</option>
-                                        <option value="Director_Approval" {% if shipment.status == 'Director_Approval' %}selected{% endif %}>👨‍💼 Director Approval</option>
-                                        <option value="Pickup_Scheduled" {% if shipment.status == 'Pickup_Scheduled' %}selected{% endif %}>📦 Pickup Scheduled</option>
-                                        <option value="At_Courier_Warehouse" {% if shipment.status == 'At_Courier_Warehouse' %}selected{% endif %}>🏢 At Warehouse</option>
-                                        <option value="Custom_Clearance" {% if shipment.status == 'Custom_Clearance' %}selected{% endif %}>🛃 Custom Clearance</option>
-                                        <option value="In_Transit" {% if shipment.status == 'In_Transit' %}selected{% endif %}>🚚 In Transit</option>
-                                        <option value="Destination_City" {% if shipment.status == 'Destination_City' %}selected{% endif %}>🏙️ Destination City</option>
-                                        <option value="Delivered" {% if shipment.status == 'Delivered' %}selected{% endif %}>✅ Delivered</option>
-                                        <option value="Failed" {% if shipment.status == 'Failed' %}selected{% endif %}>❌ Failed</option>
-                                    </select>
-                                    
-                                    <select class="signing-authority-selector control-dropdown" 
-                                            data-shipment-id="{{ shipment.id }}">
-                                        <option value="">
-                                            {% if shipment.signing_authority %}
-                                                {{ shipment.signing_authority.name[:20] }}...
-                                            {% else %}
-                                                Assign Authority...
-                                            {% endif %}
-                                        </option>
-                                        {% for authority in signing_authorities %}
-                                        <option value="{{ authority.id }}" 
-                                                {% if shipment.signing_authority_id == authority.id %}selected{% endif %}>
-                                            {{ authority.name }} - {{ authority.designation }}
-                                            {% if authority.is_default %} (Default){% endif %}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
+                                <!-- Dropdown Controls -->
+                                <select class="status-selector compact-dropdown w-full mb-1" data-shipment-id="{{ shipment.id }}">
+                                    <option value="">Status: {{ shipment.status.replace('_', ' ') }}</option>
+                                    <option value="Acknowledged">✅ Acknowledged</option>
+                                    <option value="Document_Generation">📄 Generating Documents</option>
+                                    <option value="Quotation_Requested">💰 Quotation Requested</option>
+                                    <option value="Awaiting_Quotation_Approval">⏳ Awaiting Quotation Approval</option>
+                                </select>
+                                
+                                <select class="signing-authority-selector compact-dropdown w-full" data-shipment-id="{{ shipment.id }}">
+                                    <option value="">
+                                        {% if shipment.signing_authority %}
+                                            Auth: {{ shipment.signing_authority.name[:15] }}...
+                                        {% else %}
+                                            Assign Authority...
+                                        {% endif %}
+                                    </option>
+                                    {% for authority in signing_authorities %}
+                                    <option value="{{ authority.id }}" 
+                                            {% if shipment.signing_authority_id == authority.id %}selected{% endif %}>
+                                        {{ authority.name[:20] }}
+                                        {% if authority.is_default %} (Default){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                             </div>
                         </td>
                     </tr>
@@ -389,6 +448,101 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial call to set up combine button state
     updateCombineButton();
     
+    // Search and Filter Functionality
+    const searchInput = document.getElementById('searchShipments');
+    const statusFilter = document.getElementById('statusFilter');
+    const typeFilter = document.getElementById('typeFilter');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const showAllBtn = document.getElementById('showAll');
+    const showRecentBtn = document.getElementById('showRecent');
+    const resultsInfo = document.getElementById('resultsInfo');
+    
+    let allRows = Array.from(document.querySelectorAll('tbody tr[data-shipment-id]'));
+    let isShowingAll = false;
+    
+    function applyFilters() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusValue = statusFilter.value;
+        const typeValue = typeFilter.value;
+        
+        let visibleCount = 0;
+        
+        allRows.forEach(row => {
+            const invoiceText = row.cells[1].textContent.toLowerCase();
+            const requesterText = row.cells[3].textContent.toLowerCase();
+            const statusText = row.cells[2].textContent;
+            const typeText = row.cells[1].textContent;
+            
+            const matchesSearch = !searchTerm || 
+                invoiceText.includes(searchTerm) || 
+                requesterText.includes(searchTerm);
+            
+            const matchesStatus = !statusValue || statusText.includes(statusValue.replace('_', ' '));
+            const matchesType = !typeValue || typeText.toLowerCase().includes(typeValue);
+            
+            const shouldShow = matchesSearch && matchesStatus && matchesType;
+            
+            if (shouldShow) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        updateResultsInfo(visibleCount);
+    }
+    
+    function updateResultsInfo(visibleCount) {
+        const totalCount = allRows.length;
+        const filterText = visibleCount === totalCount ? 
+            `Showing all ${totalCount} shipments` : 
+            `Showing ${visibleCount} of ${totalCount} shipments`;
+        resultsInfo.textContent = filterText;
+    }
+    
+    function clearAllFilters() {
+        searchInput.value = '';
+        statusFilter.value = '';
+        typeFilter.value = '';
+        applyFilters();
+    }
+    
+    function showRecentOnly() {
+        allRows.forEach((row, index) => {
+            row.style.display = index < 10 ? '' : 'none';
+        });
+        isShowingAll = false;
+        updateResultsInfo(Math.min(10, allRows.length));
+        showRecentBtn.classList.add('bg-blue-100', 'text-blue-800');
+        showRecentBtn.classList.remove('bg-gray-100', 'text-gray-800');
+        showAllBtn.classList.add('bg-gray-100', 'text-gray-800');
+        showAllBtn.classList.remove('bg-blue-100', 'text-blue-800');
+    }
+    
+    function showAllShipments() {
+        allRows.forEach(row => {
+            row.style.display = '';
+        });
+        isShowingAll = true;
+        updateResultsInfo(allRows.length);
+        showAllBtn.classList.add('bg-blue-100', 'text-blue-800');
+        showAllBtn.classList.remove('bg-gray-100', 'text-gray-800');
+        showRecentBtn.classList.add('bg-gray-100', 'text-gray-800');
+        showRecentBtn.classList.remove('bg-blue-100', 'text-blue-800');
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('input', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+    typeFilter.addEventListener('change', applyFilters);
+    clearFiltersBtn.addEventListener('click', clearAllFilters);
+    showAllBtn.addEventListener('click', showAllShipments);
+    showRecentBtn.addEventListener('click', showRecentOnly);
+    
+    // Initialize with recent only
+    showRecentOnly();
+    
     // Status selector event delegation
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('status-selector')) {
@@ -460,7 +614,47 @@ function goToCombineForm(selectedShipments) {
 
 function updateStatus(shipmentId, newStatus) {
     if (newStatus && confirm(`Are you sure you want to update the shipment status to "${newStatus.replace('_', ' ')}"?`)) {
-        window.location.href = `{{ url_for('main.admin_update_status', shipment_id=0, new_status='STATUS') }}`.replace('0', shipmentId).replace('STATUS', newStatus);
+        // Use AJAX to avoid page reload and scrolling
+        fetch(`{{ url_for('main.admin_update_status', shipment_id=0, new_status='STATUS') }}`.replace('0', shipmentId).replace('STATUS', newStatus), {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the status display in the table without reloading
+                const statusElement = document.querySelector(`tr[data-shipment-id="${shipmentId}"] td:nth-child(3) span`);
+                if (statusElement) {
+                    // Update status badge text and color
+                    statusElement.textContent = data.new_status_display;
+                    // Update CSS classes based on new status
+                    statusElement.className = 'px-2 py-1 rounded text-xs font-medium block mb-2';
+                    if (data.new_status === 'Acknowledged') {
+                        statusElement.className += ' bg-yellow-100 text-yellow-800';
+                    } else if (data.new_status === 'Document_Generation') {
+                        statusElement.className += ' bg-blue-100 text-blue-800';
+                    } else if (data.new_status === 'Quotation_Requested') {
+                        statusElement.className += ' bg-indigo-100 text-indigo-800';
+                    } else if (data.new_status === 'Awaiting_Quotation_Approval') {
+                        statusElement.className += ' bg-orange-100 text-orange-800';
+                    } else {
+                        statusElement.className += ' bg-gray-100 text-gray-800';
+                    }
+                }
+                // Update the dropdown to show current status
+                const selector = document.querySelector(`[data-shipment-id="${shipmentId}"].status-selector`);
+                if (selector) {
+                    selector.options[0].text = `Status: ${data.new_status_display}`;
+                }
+            } else {
+                alert('Error updating status: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            alert('Error updating status: ' + error.message);
+        });
     }
 }
 
@@ -479,9 +673,9 @@ function assignSigningAuthority(shipmentId, authorityId) {
             // Update the dropdown display text
             const selector = document.querySelector(`[data-shipment-id="${shipmentId}"].signing-authority-selector`);
             if (selector) {
-                selector.options[0].text = `Current: ${data.authority_name}`;
+                selector.options[0].text = `Auth: ${data.authority_name.substr(0, 15)}...`;
             }
-            alert(`Signing Authority "${data.authority_name}" assigned successfully!`);
+            // Success message removed per user request
         } else {
             alert('Error assigning signing authority: ' + data.message);
         }
@@ -491,10 +685,84 @@ function assignSigningAuthority(shipmentId, authorityId) {
         console.error('Error:', error);
     });
 }
+
+function quickStatusUpdate(shipmentId, newStatus) {
+    if (confirm(`Quick update shipment to "${newStatus}"?`)) {
+        // Use the same AJAX function as updateStatus
+        updateStatus(shipmentId, newStatus);
+    }
+}
 </script>
 
 <style>
-/* Professional Actions Column Styling */
+/* Compact Actions Layout */
+.compact-actions {
+    min-width: 240px;
+    max-width: 240px;
+}
+
+.compact-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.compact-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.compact-dropdown {
+    padding: 4px 6px;
+    font-size: 11px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background-color: #f9fafb;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.compact-dropdown:hover {
+    border-color: #9ca3af;
+    background-color: #f3f4f6;
+}
+
+.compact-dropdown:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+
+/* Improved table layout */
+.w-48 { width: 12rem; }
+.w-32 { width: 8rem; }
+.w-40 { width: 10rem; }
+.w-64 { width: 16rem; }
+
+/* Search and filter enhancements */
+#searchShipments:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    outline: none;
+}
+
+/* Results info styling */
+#resultsInfo {
+    font-style: italic;
+    color: #6b7280;
+}
+
+/* Professional Actions Column Styling - Legacy Support */
 .actions-container {
     min-width: 200px;
     max-width: 250px;

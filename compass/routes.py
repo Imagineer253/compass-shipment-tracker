@@ -15,6 +15,47 @@ import io
 from flask_login import login_required, current_user
 from .utils.helpers import get_package_type_display_name
 
+def get_aggregated_sample_types(form_data):
+    """
+    Extract and aggregate sample types from form data.
+    Returns a formatted string of unique sample types.
+    """
+    sample_types = set()
+    
+    # Extract sample types from all items
+    for key, value in form_data.items():
+        if key.endswith('_sample_type') and value:
+            if value == 'other':
+                # Look for the corresponding other_sample_type field
+                prefix = key.replace('_sample_type', '')
+                other_key = f"{prefix}_other_sample_type"
+                other_value = form_data.get(other_key, '').strip()
+                if other_value:
+                    sample_types.add(other_value.lower())
+            else:
+                # Map values to display names
+                type_mapping = {
+                    'water': 'water',
+                    'sediment': 'sediment', 
+                    'glass_fiber': 'glass fiber'
+                }
+                display_name = type_mapping.get(value, value)
+                sample_types.add(display_name)
+    
+    # Convert to sorted list for consistent output
+    sorted_types = sorted(list(sample_types))
+    
+    if not sorted_types:
+        return "samples"
+    elif len(sorted_types) == 1:
+        return f"{sorted_types[0]} samples"
+    else:
+        # Join with "and" for the last item
+        if len(sorted_types) == 2:
+            return f"{sorted_types[0]} and {sorted_types[1]} samples"
+        else:
+            return f"{', '.join(sorted_types[:-1])}, and {sorted_types[-1]} samples"
+
 # Initialize the Blueprint for our main routes
 main_bp = Blueprint('main', __name__)
 
@@ -748,6 +789,9 @@ def submit_shipment():
                 return parts[1].upper()  # Take second word as first name
             return parts[0].upper()  # If only one word, use that
 
+        # Get aggregated sample types for this shipment
+        sample_type_aggregated = get_aggregated_sample_types(form_data)
+
         # Prepare context for template rendering
         context = {
             # Invoice Number Generation
@@ -755,6 +799,13 @@ def submit_shipment():
             
             # Current Date
             'invoice_date': datetime.now().strftime('%d-%m-%Y'),
+            
+            # Aggregated Sample Type
+            'Sample_Type': sample_type_aggregated,
+            
+            # NCPOR GST and LUT
+            'ncpor_gst': "30AACFN4991P1ZN",
+            'ncpor_lut': "AD300618000016R",
             
             # Exporter Details
             'exporter_name': "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]",
@@ -826,9 +877,15 @@ def submit_shipment():
         # Remove the temporary file
         os.remove(temp_path)
 
-        # Generate a unique filename
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"export_invoice_{timestamp}.docx"
+        # Generate filename using new format
+        # Create a temporary shipment object for filename generation
+        from compass.models import Shipment
+        temp_shipment = Shipment(
+            shipment_type='export',
+            serial_number=datetime.now().strftime('%H%M%S')  # Use timestamp as series number for routes.py
+        )
+        from compass.utils.helpers import generate_document_filename
+        filename = generate_document_filename(temp_shipment, form_data)
 
         # Return the generated document
         return send_file(
@@ -859,36 +916,68 @@ def submit_import_shipment():
             flash('Error: Maximum 10 packages allowed per shipment.', 'error')
             return redirect(url_for('main.index'))
 
-        # Get the absolute path to our template file
+        # Get the absolute path to our template file for normal sample import
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        template_path = os.path.join(current_dir, '..', 'templates', 'export.docx')  # Reusing export template for now
+        template_path = os.path.join(current_dir, '..', 'templates', 'Room Temperature Sample Import', 'Room_Temperature_Import_Custom_Docs .docx')
 
         # Load the template with docxtpl for initial replacements
         tpl = DocxTemplate(template_path)
 
+        # Get aggregated sample types for this shipment
+        sample_type_aggregated = get_aggregated_sample_types(form_data)
+        
+        # Generate serial number for import shipment
+        from compass.models import ShipmentSerialCounter
+        serial_number = ShipmentSerialCounter.get_next_serial()
+        
+        # Get year and month from form data
+        year = form_data.get('expedition_year', datetime.now().year)
+        month = form_data.get('expedition_month', datetime.now().strftime('%b').upper())
+        admin_id = current_user.unique_id if current_user.unique_id else 'ADMIN'
+        requester_unique_id = form_data.get('requester_unique_id', 'REQ001')
+        
         # Prepare context for template rendering
         context = {
-            # Invoice Number Generation
-            'invoice_no': f"NCPOR/IMP/{form_data.get('expedition_year', '')}/{form_data.get('import_purpose', 'RESEARCH')}/{form_data.get('batch_number', '')}/{form_data.get('requester_name', '').split()[1].upper() if len(form_data.get('requester_name', '').split()) > 1 else form_data.get('requester_name', '').split()[0].upper() if form_data.get('requester_name', '') else 'FIRSTNAME'}",
+            # Invoice Number Generation with Serial Number using form values
+            'invoice_no': f"NCPOR/ARC/{year}/{month}/SAM/RT/{admin_id}/{requester_unique_id}/{serial_number}",
             
-            # Current Date
-            'invoice_date': datetime.now().strftime('%d-%m-%Y'),
+            # Invoice Date
+            'invoice_date': form_data.get('invoice_date', datetime.now().strftime('%d-%m-%Y')),
+            
+            # Aggregated Sample Type
+            'Sample_Type': sample_type_aggregated,
+            
+            # NCPOR GST and LUT
+            'ncpor_gst': "30AACFN4991P1ZN",
+            'ncpor_lut': "AD300618000016R",
             
             # Exporter Details (Himadri Station for imports)
-            'exporter_name': "Station Leader",
-            'exporter_org': "HIMADRI-Indian Arctic Research Station",
+            'exporter_name': "Himadri - Indian Arctic Research Station",
             'exporter_address': "Ny-Alesund, c/o Kings Bay AS",
             'exporter_location': "N-9173, Ny-Alesund, Norway",
             'exporter_phone': "+47 79 02 72 00",
             
-            # Consignee Details (NCPOR for imports) - Check if "other" consignee was selected
-            'consignee_name': form_data.get('other_consignee_org', 'National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]') if form_data.get('consignee') == 'other' else "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]",
-            'consignee_ministry': form_data.get('other_consignee_ministry', 'Ministry of Earth Sciences (Govt. of India)') if form_data.get('consignee') == 'other' else "Ministry of Earth Sciences (Govt. of India)",
-            'consignee_address': form_data.get('other_consignee_address', 'Headland Sada, Vasco da Gama, Goa - 403804') if form_data.get('consignee') == 'other' else "Headland Sada, Vasco da Gama, Goa - 403804",
-            'consignee_location': form_data.get('other_consignee_country', 'India') if form_data.get('consignee') == 'other' else "India",
-            'consignee_phone': form_data.get('other_consignee_phone', '+91 832 2525501') if form_data.get('consignee') == 'other' else "+91 832 2525501",
-            'consignee_gst': form_data.get('other_consignee_gst', '30AACFN4991P1ZN') if form_data.get('consignee') == 'other' else "30AACFN4991P1ZN",
-            'consignee_lut': form_data.get('other_consignee_lut', 'AD300618000016R') if form_data.get('consignee') == 'other' else "AD300618000016R",
+            # Consignee Details (ALWAYS NCPOR for imports - never changes)
+            'consignee_name': "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]",
+            'consignee_ministry': "Ministry of Earth Sciences (Govt. of India)",
+            'consignee_address': "Headland Sada, Vasco da Gama, Goa - 403804",
+            'consignee_location': "India",
+            'consignee_phone': "9274584406",
+            'consignee_gst': "30AACFN4991P1ZN",
+            'consignee_lut': "AD300618000016R",
+            'consignee_contact': "Dr. Rohit Srivastava",
+            
+            # Other Organization Details (NEW placeholders for when "other" consignee is selected)
+            'other_org_name': form_data.get('other_consignee_org', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_ministry': form_data.get('other_consignee_ministry', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_address': form_data.get('other_consignee_address', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_location': form_data.get('other_consignee_country', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_phone': form_data.get('other_consignee_phone', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_gst': form_data.get('other_consignee_gst', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_lut': form_data.get('other_consignee_lut', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_contact': form_data.get('other_consignee_contact', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_designation': form_data.get('other_consignee_designation', '') if form_data.get('consignee') == 'other' else "",
+            'other_org_email': form_data.get('other_consignee_email', '') if form_data.get('consignee') == 'other' else "",
             
             # Consigner Details (Himadri Station for imports)
             'consigner_name': "Himadri - Indian Arctic Research Station C/O Kingsbay AS",
@@ -900,6 +989,7 @@ def submit_import_shipment():
             'destination_country': 'INDIA',
             'country_of_origin_goods': form_data.get('country_of_origin', 'Norway'),
             'country_of_final_destination': form_data.get('country_of_final_destination', 'India'),
+            'final_destination': form_data.get('final_destination', ''),
             'airport_of_loading': form_data.get('import_mode', 'AIR').upper(),
             'mode_of_transport': form_data.get('mode_of_transport', 'Air'),
             'transport_facility_type': 'Air Port' if form_data.get('mode_of_transport', 'Air') == 'Air' else 'Port',
@@ -919,7 +1009,7 @@ def submit_import_shipment():
         tpl.render(context)
 
         # Save the docxtpl output to a temporary file
-        temp_path = os.path.join(current_dir, '..', 'templates', 'temp_import.docx')
+        temp_path = os.path.join(current_dir, '..', 'templates', 'temp_room_temperature_import.docx')
         tpl.save(temp_path)
 
         # Load the temporary file with python-docx for table manipulation
@@ -947,9 +1037,14 @@ def submit_import_shipment():
         # Remove the temporary file
         os.remove(temp_path)
 
-        # Generate a unique filename
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"import_invoice_{timestamp}.docx"
+        # Generate filename using new format
+        # Create a temporary shipment object for filename generation
+        temp_shipment = Shipment(
+            shipment_type='import',
+            serial_number=serial_number
+        )
+        from compass.utils.helpers import generate_document_filename
+        filename = generate_document_filename(temp_shipment, form_data)
 
         # Return the generated document
         return send_file(

@@ -52,4 +52,20 @@ def create_app(config_name=None):
         from .models import User
         return User.query.get(int(user_id))
 
+    # Add CLI commands
+    @app.cli.command('optimize-counters')
+    def optimize_counters():
+        """Optimize database counters based on actual data"""
+        from .models import ShipmentSerialCounter, CombinedShipmentCounter, FileReferenceCounter
+        
+        # Reset all counters
+        serial_count = ShipmentSerialCounter.reset_counter()
+        combined_count = CombinedShipmentCounter.reset_counter()
+        file_ref_count = FileReferenceCounter.reset_counter()
+        
+        print(f"Counters optimized:")
+        print(f"  - Shipment Serial: {serial_count}")
+        print(f"  - Combined Shipment: {combined_count}")
+        print(f"  - File Reference: {file_ref_count}")
+
     return app

@@ -3,324 +3,287 @@
 {% block title %}NCPOR Arctic Research Dashboard{% endblock %}
 
 {% block content %}
-<!-- Dynamic Weather Hero Section -->
-<div id="weatherHero" class="weather-background text-white py-8 -mx-4 -mt-20 mb-8 relative overflow-hidden transition-all duration-1000">
+<!-- Compact Hero Section -->
+<div id="weatherHero" class="weather-background text-white py-6 -mx-4 -mt-20 mb-6 relative overflow-hidden transition-all duration-1000">
     <!-- Dynamic Weather Overlay -->
     <div id="weatherOverlay" class="absolute inset-0 transition-all duration-1000"></div>
     
     <!-- Weather Particles Container -->
     <div id="weatherParticles" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
     
-    <div class="max-w-7xl mx-auto px-4 pt-20 relative z-10">
-        <div class="text-center">
-            <!-- Logo and Title -->
-            <div class="mb-6">
-                <div class="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-full mb-4 backdrop-blur-sm">
-                    <i class="fas fa-globe-americas text-3xl text-white"></i>
+    <div class="max-w-7xl mx-auto px-4 pt-16 relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+            <!-- Logo and Title - Compact -->
+            <div class="lg:col-span-1 text-center lg:text-left">
+                <div class="flex items-center justify-center lg:justify-start mb-4">
+                    <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mr-4 backdrop-blur-sm">
+                        <i class="fas fa-globe-americas text-2xl text-white"></i>
             </div>
-                <h1 class="text-4xl md:text-6xl font-bold mb-3 text-white drop-shadow-lg">
-                    COMPASS
-                </h1>
-                <h2 class="text-xl md:text-2xl font-semibold text-white/90 mb-2 drop-shadow-md">
-                    Arctic Research Dashboard
-                </h2>
-                <p class="text-base md:text-lg text-white/80 mb-4 drop-shadow-md">
-                    15th Indian Arctic Expedition - Real-time Monitoring & Logistics
-                </p>
+                    <div>
+                        <h1 class="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">COMPASS</h1>
+                        <h2 class="text-lg font-semibold text-white/90 drop-shadow-md">Arctic Research Dashboard</h2>
         </div>
-            
-            <!-- Live Weather Info Card -->
-            <div class="weather-info-card bg-white/10 rounded-xl p-4 mb-4 max-w-2xl mx-auto">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center">
-                        <i class="fas fa-map-marker-alt mr-2 text-white/80"></i>
-                        <span class="text-white font-semibold">Ny-Ålesund, Svalbard</span>
                     </div>
-                    <div id="lastUpdated" class="text-white/70 text-xs">
-                        Loading weather...
+                <p class="text-sm text-white/80 drop-shadow-md">15th Indian Arctic Expedition</p>
                     </div>
+            <!-- Compact Weather Info -->
+            <div class="lg:col-span-1 weather-info-card bg-white/10 rounded-xl p-4">
+                <div class="flex items-center mb-3">
+                    <i class="fas fa-map-marker-alt mr-2 text-white/80"></i>
+                    <span class="text-white font-semibold text-sm">Ny-Ålesund, Svalbard</span>
                 </div>
                 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div class="bg-white/10 rounded-lg p-3">
-                        <div id="temperature" class="text-xl font-bold text-white">--°C</div>
-                        <div class="text-white/70 text-xs">Temperature</div>
+                <div class="grid grid-cols-2 gap-2 text-center mb-3">
+                    <div class="bg-white/10 rounded-lg p-2">
+                        <div id="temperature" class="text-lg font-bold text-white">--°C</div>
+                        <div class="text-white/70 text-xs">Temp</div>
                     </div>
-                    <div class="bg-white/10 rounded-lg p-3">
-                        <div id="windSpeed" class="text-xl font-bold text-white">-- km/h</div>
-                        <div class="text-white/70 text-xs">Wind Speed</div>
+                    <div class="bg-white/10 rounded-lg p-2">
+                        <div id="windSpeed" class="text-lg font-bold text-white">-- km/h</div>
+                        <div class="text-white/70 text-xs">Wind</div>
                     </div>
-                    <div class="bg-white/10 rounded-lg p-3">
-                        <div id="humidity" class="text-xl font-bold text-white">--%</div>
+                    <div class="bg-white/10 rounded-lg p-2">
+                        <div id="humidity" class="text-lg font-bold text-white">--%</div>
                         <div class="text-white/70 text-xs">Humidity</div>
                     </div>
-                    <div class="bg-white/10 rounded-lg p-3">
-                        <div id="pressure" class="text-xl font-bold text-white">-- hPa</div>
+                    <div class="bg-white/10 rounded-lg p-2">
+                        <div id="pressure" class="text-lg font-bold text-white">-- hPa</div>
                         <div class="text-white/70 text-xs">Pressure</div>
                     </div>
                 </div>
                 
-                <div class="mt-3 text-center">
-                    <div id="weatherDescription" class="text-white font-medium">Loading weather conditions...</div>
-                    <div class="flex items-center justify-center mt-2">
+                <div class="text-center">
+                    <div class="flex items-center justify-center mb-2">
                         <i id="weatherIcon" class="fas fa-cloud text-2xl text-white mr-2"></i>
-                        <span id="windDirection" class="text-white/80 text-sm">Wind: --</span>
+                        <div id="weatherDescription" class="text-white text-sm font-medium">Loading...</div>
                     </div>
+                    <div id="windDirection" class="text-white/70 text-xs mt-1">Wind: --</div>
+                    <div id="precipitation" class="text-white/70 text-xs mt-1" style="display: none;">Precipitation: --</div>
+                    <div id="lastUpdated" class="text-white/70 text-xs mt-1">Loading weather...</div>
+                    <div id="dataSource" class="text-white/50 text-xs mt-1">Data source: --</div>
                 </div>
             </div>
             
-            <!-- Status Display -->
-            <div class="flex justify-center items-center">
-                <div class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-full font-semibold text-sm flex items-center">
-                    <i class="fas fa-cloud-sun mr-2"></i>
-                    Live Weather - Demo Hypothetical Data (Work in Progress)
-                </div>
-                
+            <!-- Quick Actions & Status -->
+            <div class="lg:col-span-1 space-y-3">
                 {% if current_user.is_authenticated %}
-                <div class="ml-4 text-white/90">
+                <div class="bg-white/10 rounded-xl p-4">
+                    <div class="text-white/90 text-sm mb-3">
                     <i class="fas fa-user-check mr-2"></i>
-                    Welcome back, <strong>{{ current_user.first_name }}</strong>
+                        Welcome, <strong>{{ current_user.first_name }}</strong>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <a href="{{ url_for('main.shipment_type_selection') }}" 
+                           class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center transition-all duration-300">
+                            <i class="fas fa-box mr-1"></i>
+                            Shipment
+                        </a>
+                        <a href="{{ url_for('main.dashboard') }}" 
+                           class="bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center transition-all duration-300">
+                            <i class="fas fa-tachometer-alt mr-1"></i>
+                            Dashboard
+                        </a>
+                    </div>
                 </div>
                 {% endif %}
+                
+                <div class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-3 py-2 rounded-lg font-semibold text-xs flex items-center justify-center">
+                    <i class="fas fa-cloud-sun mr-2"></i>
+                    Live Weather Demo
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Main Content Layout - Side by Side -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6" style="min-height: 700px;">
+<!-- Optimized Main Content Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
     
-    <!-- Left Panel - Statistics and Controls -->
-    <div class="lg:col-span-1 space-y-6 flex flex-col justify-between">
-        
-        <!-- Enhanced Statistics Cards -->
-        <div class="arctic-card p-5 bg-gradient-to-br from-blue-50 to-cyan-50 border-l-4 border-blue-500">
-            <div class="flex items-center mb-4">
-                <div class="bg-blue-500 rounded-lg p-2 mr-3">
-                    <i class="fas fa-chart-line text-white text-lg"></i>
-                </div>
-                <h2 class="text-xl font-bold text-deep-arctic">Mission Overview</h2>
-                </div>
-            
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div class="bg-white p-4 rounded-xl text-center shadow-sm hover:shadow-md transition-all duration-300 hover:transform hover:scale-105">
-                    <div class="text-3xl mb-2 text-blue-500">
-                        <i class="fas fa-microscope"></i>
-                </div>
-                    <div class="text-2xl font-bold text-deep-arctic">12</div>
-                    <div class="text-sm text-gray-600 font-medium">Active Projects</div>
-                </div>
-                <div class="bg-white p-4 rounded-xl text-center shadow-sm hover:shadow-md transition-all duration-300 hover:transform hover:scale-105">
-                    <div class="text-3xl mb-2 text-green-500">
-                        <i class="fas fa-university"></i>
-                    </div>
-                    <div class="text-2xl font-bold text-deep-arctic">15</div>
-                    <div class="text-sm text-gray-600 font-medium">Institutes</div>
-                </div>
-                <div class="bg-white p-4 rounded-xl text-center shadow-sm hover:shadow-md transition-all duration-300 hover:transform hover:scale-105">
-                    <div class="text-3xl mb-2 text-purple-500">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="text-2xl font-bold text-deep-arctic">25</div>
-                    <div class="text-sm text-gray-600 font-medium">Researchers</div>
-                </div>
-                <div class="bg-white p-4 rounded-xl text-center shadow-sm hover:shadow-md transition-all duration-300 hover:transform hover:scale-105">
-                    <div class="text-3xl mb-2 text-orange-500">
-                        <i class="fas fa-database"></i>
-                    </div>
-                    <div class="text-2xl font-bold text-deep-arctic">247</div>
-                    <div class="text-sm text-gray-600 font-medium">Samples</div>
-            </div>
-        </div>
-
-            <!-- Live Status Indicators -->
-            <div class="border-t pt-3 mt-3">
-                <h3 class="text-sm font-semibold text-gray-700 mb-2">System Status</h3>
-                <div class="flex justify-between text-xs">
-                    <span class="flex items-center">
-                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                        Logistics System
-                    </span>
-                    <span class="flex items-center">
-                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                        Data Collection
-                    </span>
-                    <span class="flex items-center">
-                        <div class="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
-                        Weather Monitor
-                    </span>
-                </div>
-                </div>
-                </div>
-
-        <!-- Enhanced Map Legend -->
-        <div class="arctic-card p-4 bg-gradient-to-br from-gray-50 to-blue-50">
+    <!-- Compact Statistics Panel -->
+    <div class="lg:col-span-1">
+        <div class="arctic-card p-4 bg-gradient-to-br from-blue-50 to-cyan-50 border-l-4 border-blue-500">
             <div class="flex items-center mb-3">
-                <div class="bg-gray-600 rounded-lg p-2 mr-3">
-                    <i class="fas fa-map-marked-alt text-white"></i>
+                <div class="bg-blue-500 rounded-lg p-2 mr-2">
+                    <i class="fas fa-chart-line text-white"></i>
                 </div>
-                <h3 class="text-lg font-bold text-deep-arctic">Research Stations</h3>
+                <h3 class="text-lg font-bold text-deep-arctic">Mission Stats</h3>
                 </div>
             
-            <div class="space-y-3 text-sm">
-                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-water text-blue-600"></i>
-                        </div>
-                        <span class="font-medium text-gray-800">CTD Stations</span>
-                    </div>
-                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-semibold">3</span>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div class="bg-white p-3 rounded-lg text-center shadow-sm">
+                    <div class="text-xl mb-1 text-blue-500"><i class="fas fa-microscope"></i></div>
+                    <div class="text-lg font-bold text-deep-arctic">12</div>
+                    <div class="text-xs text-gray-600">Projects</div>
                 </div>
-                
-                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-snowflake text-cyan-600"></i>
-                        </div>
-                        <span class="font-medium text-gray-800">Ice Cores</span>
-                    </div>
-                    <span class="bg-cyan-100 text-cyan-800 px-2 py-1 rounded-full text-xs font-semibold">3</span>
+                <div class="bg-white p-3 rounded-lg text-center shadow-sm">
+                    <div class="text-xl mb-1 text-green-500"><i class="fas fa-university"></i></div>
+                    <div class="text-lg font-bold text-deep-arctic">15</div>
+                    <div class="text-xs text-gray-600">Institutes</div>
                 </div>
-                
-                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-mountain text-yellow-600"></i>
-                        </div>
-                        <span class="font-medium text-gray-800">Sediment</span>
+                <div class="bg-white p-3 rounded-lg text-center shadow-sm">
+                    <div class="text-xl mb-1 text-purple-500"><i class="fas fa-users"></i></div>
+                    <div class="text-lg font-bold text-deep-arctic">25</div>
+                    <div class="text-xs text-gray-600">People</div>
                     </div>
-                    <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-semibold">2</span>
+                <div class="bg-white p-3 rounded-lg text-center shadow-sm">
+                    <div class="text-xl mb-1 text-orange-500"><i class="fas fa-database"></i></div>
+                    <div class="text-lg font-bold text-deep-arctic">247</div>
+                    <div class="text-xs text-gray-600">Samples</div>
                 </div>
-                
-                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-tint text-green-600"></i>
-                        </div>
-                        <span class="font-medium text-gray-800">Water Sampling</span>
                     </div>
-                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold">3</span>
+
+            <!-- Compact Status Indicators -->
+            <div class="border-t pt-2">
+                <h4 class="text-xs font-semibold text-gray-700 mb-2">System Status</h4>
+                <div class="space-y-1 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span>Logistics</span>
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 </div>
-                
-                <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-all hover:transform hover:scale-105">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-wind text-purple-600"></i>
-                        </div>
-                        <span class="font-medium text-gray-800">Aerosol</span>
+                    <div class="flex items-center justify-between">
+                        <span>Data Collection</span>
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     </div>
-                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-semibold">2</span>
+                    <div class="flex items-center justify-between">
+                        <span>Weather Monitor</span>
+                        <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+            </div>
                 </div>
+                </div>
+                </div>
+
+        <!-- Compact Research Stations & Controls -->
+        <div class="space-y-3">
+            <div class="arctic-card p-3 bg-gradient-to-br from-gray-50 to-blue-50">
+                <div class="flex items-center mb-2">
+                    <div class="bg-gray-600 rounded-lg p-1 mr-2">
+                        <i class="fas fa-map-marked-alt text-white text-sm"></i>
+                </div>
+                    <h4 class="text-sm font-bold text-deep-arctic">Research Stations</h4>
+                </div>
+            
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="flex items-center justify-between p-2 bg-white rounded shadow-sm">
+                    <div class="flex items-center">
+                            <i class="fas fa-water text-blue-600 mr-1"></i>
+                            <span>CTD</span>
+                        </div>
+                        <span class="bg-blue-100 text-blue-800 px-1 py-0.5 rounded text-xs">3</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 bg-white rounded shadow-sm">
+                    <div class="flex items-center">
+                            <i class="fas fa-snowflake text-cyan-600 mr-1"></i>
+                            <span>Ice</span>
+                        </div>
+                        <span class="bg-cyan-100 text-cyan-800 px-1 py-0.5 rounded text-xs">3</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 bg-white rounded shadow-sm">
+                    <div class="flex items-center">
+                            <i class="fas fa-mountain text-yellow-600 mr-1"></i>
+                            <span>Sediment</span>
+                        </div>
+                        <span class="bg-yellow-100 text-yellow-800 px-1 py-0.5 rounded text-xs">2</span>
+                    </div>
+                    <div class="flex items-center justify-between p-2 bg-white rounded shadow-sm">
+                    <div class="flex items-center">
+                            <i class="fas fa-tint text-green-600 mr-1"></i>
+                            <span>Water</span>
+                        </div>
+                        <span class="bg-green-100 text-green-800 px-1 py-0.5 rounded text-xs">3</span>
+                    </div>
             </div>
         </div>
 
-        <!-- Map Controls -->
-        <div class="arctic-card p-4">
-            <h3 class="text-lg font-bold text-deep-arctic mb-3">🎛️ Map Controls</h3>
-            <div class="space-y-2">
-                <button id="toggleLayers" class="w-full arctic-button text-sm py-2 hover:transform hover:scale-105 transition-all">
-                    Hide Research Stations
+            <!-- Compact Map Controls -->
+            <div class="arctic-card p-3">
+                <h4 class="text-sm font-bold text-deep-arctic mb-2">🎛️ Map Controls</h4>
+                <div class="grid grid-cols-1 gap-1">
+                    <button id="toggleLayers" class="arctic-button text-xs py-1.5 hover:transform hover:scale-105 transition-all">
+                        Toggle Stations
                 </button>
-                <button id="satelliteView" class="w-full arctic-button text-sm py-2 hover:transform hover:scale-105 transition-all">
+                    <button id="satelliteView" class="arctic-button text-xs py-1.5 hover:transform hover:scale-105 transition-all">
                     Satellite View
                 </button>
-                <button id="resetView" class="w-full arctic-button text-sm py-2 hover:transform hover:scale-105 transition-all">
-                    Reset Map View
+                    <button id="resetView" class="arctic-button text-xs py-1.5 hover:transform hover:scale-105 transition-all">
+                        Reset View
                 </button>
+                </div>
             </div>
         </div>
 
-        <!-- Enhanced Quick Access -->
+        <!-- Compact User Panel -->
         {% if current_user.is_authenticated %}
-        <div class="arctic-card p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-green-500">
-            <div class="flex items-center mb-3">
-                <div class="bg-green-500 rounded-lg p-2 mr-3">
-                    <i class="fas fa-rocket text-white"></i>
+        <div class="arctic-card p-3 bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-green-500">
+            <div class="flex items-center mb-2">
+                <div class="bg-green-500 rounded-lg p-1 mr-2">
+                    <i class="fas fa-rocket text-white text-sm"></i>
                 </div>
-                <h3 class="text-lg font-bold text-deep-arctic">Quick Actions</h3>
+                <h4 class="text-sm font-bold text-deep-arctic">Quick Actions</h4>
             </div>
             
-            <div class="space-y-3">
+            <div class="grid grid-cols-1 gap-2">
                 <a href="{{ url_for('main.shipment_type_selection') }}" 
-                   class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 hover:transform hover:scale-105 shadow-sm hover:shadow-md">
-                    <i class="fas fa-box mr-2"></i>
+                   class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-3 rounded-lg flex items-center justify-center transition-all duration-300 text-xs">
+                    <i class="fas fa-box mr-1"></i>
                     Create Shipment
                 </a>
                 <a href="{{ url_for('main.dashboard') }}" 
-                   class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 hover:transform hover:scale-105 shadow-sm hover:shadow-md">
-                    <i class="fas fa-tachometer-alt mr-2"></i>
+                   class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-3 rounded-lg flex items-center justify-center transition-all duration-300 text-xs">
+                    <i class="fas fa-tachometer-alt mr-1"></i>
                     Dashboard
                 </a>
-                
                 {% if current_user.is_admin() %}
                 <a href="{{ url_for('main.admin_users') }}" 
-                   class="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 hover:transform hover:scale-105 shadow-sm hover:shadow-md">
-                    <i class="fas fa-users-cog mr-2"></i>
+                   class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-3 rounded-lg flex items-center justify-center transition-all duration-300 text-xs">
+                    <i class="fas fa-users-cog mr-1"></i>
                     Admin Panel
                 </a>
                 {% endif %}
             </div>
             
-            <!-- User Info -->
-            <div class="mt-4 pt-3 border-t border-green-200">
-                <div class="flex items-center text-sm text-gray-600">
-                    <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold mr-3 text-xs">
+            <!-- Compact User Info -->
+            <div class="mt-2 pt-2 border-t border-green-200">
+                <div class="flex items-center text-xs text-gray-600">
+                    <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white font-bold mr-2 text-xs">
                         {{ current_user.first_name[:1] }}{{ current_user.last_name[:1] }}
                     </div>
                     <div>
-                        <div class="font-medium text-gray-800">{{ current_user.first_name }} {{ current_user.last_name }}</div>
-                        <div class="text-xs text-gray-500">{{ current_user.organization or 'COMPASS User' }}</div>
+                        <div class="font-medium text-gray-800 text-xs">{{ current_user.first_name }}</div>
+                        <div class="text-xs text-gray-500">{{ current_user.organization or 'COMPASS' }}</div>
                     </div>
                 </div>
             </div>
         </div>
         {% else %}
-        <!-- Guest Information -->
-        <div class="arctic-card p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-l-4 border-blue-500">
-            <div class="flex items-center mb-3">
-                <div class="bg-blue-500 rounded-lg p-2 mr-3">
-                    <i class="fas fa-info-circle text-white"></i>
+        <!-- Compact Guest Info -->
+        <div class="arctic-card p-3 bg-gradient-to-br from-blue-50 to-indigo-50 border-l-4 border-blue-500">
+            <div class="flex items-center mb-2">
+                <div class="bg-blue-500 rounded-lg p-1 mr-2">
+                    <i class="fas fa-info-circle text-white text-sm"></i>
                 </div>
-                <h3 class="text-lg font-bold text-deep-arctic">System Access</h3>
+                <h4 class="text-sm font-bold text-deep-arctic">System Access</h4>
             </div>
             
-            <div class="space-y-3">
-                <div class="text-sm text-gray-700">
-                    <i class="fas fa-lock mr-2 text-blue-500"></i>
-                    Login required to access shipment management and research tools
-                </div>
-                
-                <div class="text-sm text-gray-700">
-                    <i class="fas fa-chart-line mr-2 text-green-500"></i>
-                    View live research data and expedition progress
-                </div>
-                
-                <div class="text-sm text-gray-700">
-                    <i class="fas fa-globe mr-2 text-purple-500"></i>
-                    Interactive map showing current research activities
-                </div>
-            </div>
-            
-            <div class="mt-4 pt-3 border-t border-blue-200 text-xs text-gray-600">
-                <i class="fas fa-arrow-up mr-1"></i>
-                Use the navigation menu above to login or register
+            <div class="space-y-1 text-xs text-gray-700">
+                <div><i class="fas fa-lock mr-1 text-blue-500"></i> Login required</div>
+                <div><i class="fas fa-chart-line mr-1 text-green-500"></i> Live research data</div>
+                <div><i class="fas fa-globe mr-1 text-purple-500"></i> Interactive map</div>
             </div>
         </div>
         {% endif %}
     </div>
 
-    <!-- Right Panel - Interactive Map -->
-    <div class="lg:col-span-2">
-        <div class="arctic-card p-4 h-full flex flex-col">
-            <div class="flex justify-between items-center mb-4">
+    <!-- Optimized Map Section -->
+    <div class="lg:col-span-3">
+        <div class="arctic-card p-3 h-full flex flex-col">
+            <div class="flex justify-between items-center mb-3">
                 <div class="flex items-center">
-                    <div class="bg-blue-500 rounded-lg p-2 mr-3">
-                        <i class="fas fa-globe-americas text-white text-lg"></i>
+                    <div class="bg-blue-500 rounded-lg p-2 mr-2">
+                        <i class="fas fa-globe-americas text-white"></i>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-deep-arctic">Arctic Research Map</h2>
-                        <p class="text-sm text-gray-600">Svalbard, Norway - Live Locations</p>
+                        <h3 class="text-lg font-bold text-deep-arctic">Arctic Research Map</h3>
+                        <p class="text-xs text-gray-600">Svalbard, Norway - Live Locations</p>
                     </div>
                 </div>
                 <div class="text-right">
@@ -331,169 +294,159 @@
                 </div>
             </div>
             
-            <!-- Map Container - Optimized Height -->
-            <div id="arcticMap" class="w-full rounded-lg border-2 border-gray-200 shadow-lg flex-1" style="min-height: 600px;"></div>
+            <!-- Optimized Map Container -->
+            <div id="arcticMap" class="w-full rounded-lg border-2 border-gray-200 shadow-lg flex-1"></div>
             
-            <!-- Status Bar -->
-            <div class="mt-3 flex justify-between items-center text-xs text-gray-500">
-                <span>Click markers for detailed information</span>
-                <span id="mapStatus">Map loaded successfully</span>
+            <!-- Compact Status Bar -->
+            <div class="mt-2 flex justify-between items-center text-xs text-gray-500">
+                <span>Click markers for details</span>
+                <span id="mapStatus">Map loaded</span>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Current People in Arctic Section -->
-<div class="arctic-card p-6 mb-6">
-    <div class="flex items-center justify-between mb-6">
-        <h2 class="text-2xl font-bold text-deep-arctic">👥 Current Personnel in Arctic</h2>
+<!-- Compact Personnel Section -->
+<div class="arctic-card p-4 mb-4">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-deep-arctic">👥 Current Personnel in Arctic</h3>
         <div class="text-sm text-gray-500">
             <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">15 Active Researchers</span>
         </div>
     </div>
     
-    <!-- Personnel Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <!-- Compact Personnel Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         
         <!-- Team Leader -->
-        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-l-4 border-blue-500 hover:transform hover:scale-105 transition-all duration-300">
-            <div class="flex items-center mb-3">
-                <div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border-l-4 border-blue-500 transition-all duration-300">
+            <div class="flex items-center mb-2">
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold mr-2 text-xs">
                     SK
                 </div>
                 <div>
-                    <h3 class="font-bold text-deep-arctic">Dr. Sunil Kumar</h3>
-                    <p class="text-sm text-blue-700 font-medium">Expedition Leader</p>
+                    <h4 class="font-bold text-deep-arctic text-sm">Dr. S. Kumar</h4>
+                    <p class="text-xs text-blue-700 font-medium">Expedition Leader</p>
                 </div>
             </div>
-            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>NCPOR, Goa</strong></p>
-            <p class="text-xs text-gray-500">Location: Himadri Station, Ny-Ålesund</p>
-            <div class="mt-2 flex space-x-2">
-                <span class="bg-blue-200 text-blue-800 px-2 py-1 rounded text-xs">Glaciology</span>
-                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            <p class="text-xs text-gray-600 mb-1">🏛️ NCPOR, Goa</p>
+            <p class="text-xs text-gray-500">Himadri Station</p>
+            <div class="mt-1 flex space-x-1">
+                <span class="bg-blue-200 text-blue-800 px-1 py-0.5 rounded text-xs">Glaciology</span>
             </div>
         </div>
 
         <!-- Ice Researcher -->
-        <div class="bg-gradient-to-br from-cyan-50 to-cyan-100 p-4 rounded-lg border-l-4 border-cyan-500 hover:transform hover:scale-105 transition-all duration-300">
-            <div class="flex items-center mb-3">
-                <div class="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+        <div class="bg-gradient-to-br from-cyan-50 to-cyan-100 p-3 rounded-lg border-l-4 border-cyan-500 transition-all duration-300">
+            <div class="flex items-center mb-2">
+                <div class="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-white font-bold mr-2 text-xs">
                     AM
                 </div>
                 <div>
-                    <h3 class="font-bold text-deep-arctic">Dr. Ankit Mahajan</h3>
-                    <p class="text-sm text-cyan-700 font-medium">Ice Core Specialist</p>
+                    <h4 class="font-bold text-deep-arctic text-sm">Dr. A. Mahajan</h4>
+                    <p class="text-xs text-cyan-700 font-medium">Ice Core Specialist</p>
                 </div>
             </div>
-            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>IITB, Mumbai</strong></p>
-            <p class="text-xs text-gray-500">Location: Sea Ice Station Alpha</p>
-            <div class="mt-2 flex space-x-2">
-                <span class="bg-cyan-200 text-cyan-800 px-2 py-1 rounded text-xs">Ice Physics</span>
-                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            <p class="text-xs text-gray-600 mb-1">🏛️ IITB, Mumbai</p>
+            <p class="text-xs text-gray-500">Sea Ice Station Alpha</p>
+            <div class="mt-1 flex space-x-1">
+                <span class="bg-cyan-200 text-cyan-800 px-1 py-0.5 rounded text-xs">Ice Physics</span>
             </div>
         </div>
 
         <!-- Oceanographer -->
-        <div class="bg-gradient-to-br from-teal-50 to-teal-100 p-4 rounded-lg border-l-4 border-teal-500 hover:transform hover:scale-105 transition-all duration-300">
-            <div class="flex items-center mb-3">
-                <div class="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+        <div class="bg-gradient-to-br from-teal-50 to-teal-100 p-3 rounded-lg border-l-4 border-teal-500 transition-all duration-300">
+            <div class="flex items-center mb-2">
+                <div class="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center text-white font-bold mr-2 text-xs">
                     RS
                 </div>
                 <div>
-                    <h3 class="font-bold text-deep-arctic">Dr. Rahul Sharma</h3>
-                    <p class="text-sm text-teal-700 font-medium">Physical Oceanographer</p>
+                    <h4 class="font-bold text-deep-arctic text-sm">Dr. R. Sharma</h4>
+                    <p class="text-xs text-teal-700 font-medium">Oceanographer</p>
                 </div>
             </div>
-            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>NIOT, Chennai</strong></p>
-            <p class="text-xs text-gray-500">Location: Kongsfjorden CTD</p>
-            <div class="mt-2 flex space-x-2">
-                <span class="bg-teal-200 text-teal-800 px-2 py-1 rounded text-xs">Oceanography</span>
-                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            <p class="text-xs text-gray-600 mb-1">🏛️ NIOT, Chennai</p>
+            <p class="text-xs text-gray-500">Kongsfjorden CTD</p>
+            <div class="mt-1 flex space-x-1">
+                <span class="bg-teal-200 text-teal-800 px-1 py-0.5 rounded text-xs">Ocean</span>
             </div>
         </div>
 
         <!-- Atmospheric Scientist -->
-        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-l-4 border-purple-500 hover:transform hover:scale-105 transition-all duration-300">
-            <div class="flex items-center mb-3">
-                <div class="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+        <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-3 rounded-lg border-l-4 border-purple-500 transition-all duration-300">
+            <div class="flex items-center mb-2">
+                <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold mr-2 text-xs">
                     PK
                 </div>
                 <div>
-                    <h3 class="font-bold text-deep-arctic">Dr. Priya Kapoor</h3>
-                    <p class="text-sm text-purple-700 font-medium">Atmospheric Scientist</p>
+                    <h4 class="font-bold text-deep-arctic text-sm">Dr. P. Kapoor</h4>
+                    <p class="text-xs text-purple-700 font-medium">Atmospheric</p>
                 </div>
             </div>
-            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>IITD, New Delhi</strong></p>
-            <p class="text-xs text-gray-500">Location: Himadri Station</p>
-            <div class="mt-2 flex space-x-2">
-                <span class="bg-purple-200 text-purple-800 px-2 py-1 rounded text-xs">Aerosols</span>
-                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            <p class="text-xs text-gray-600 mb-1">🏛️ IITD, Delhi</p>
+            <p class="text-xs text-gray-500">Himadri Station</p>
+            <div class="mt-1 flex space-x-1">
+                <span class="bg-purple-200 text-purple-800 px-1 py-0.5 rounded text-xs">Aerosols</span>
             </div>
         </div>
 
         <!-- Marine Biologist -->
-        <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border-l-4 border-green-500 hover:transform hover:scale-105 transition-all duration-300">
-            <div class="flex items-center mb-3">
-                <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
+        <div class="bg-gradient-to-br from-green-50 to-green-100 p-3 rounded-lg border-l-4 border-green-500 transition-all duration-300">
+            <div class="flex items-center mb-2">
+                <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold mr-2 text-xs">
                     VT
                 </div>
                 <div>
-                    <h3 class="font-bold text-deep-arctic">Dr. Vikram Tiwari</h3>
-                    <p class="text-sm text-green-700 font-medium">Marine Biologist</p>
+                    <h4 class="font-bold text-deep-arctic text-sm">Dr. V. Tiwari</h4>
+                    <p class="text-xs text-green-700 font-medium">Marine Biologist</p>
                 </div>
             </div>
-            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>CAS, Goa</strong></p>
-            <p class="text-xs text-gray-500">Location: Surface Water Station</p>
-            <div class="mt-2 flex space-x-2">
-                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Marine Biology</span>
-                <span class="bg-green-200 text-green-800 px-2 py-1 rounded text-xs">Active</span>
+            <p class="text-xs text-gray-600 mb-1">🏛️ CAS, Goa</p>
+            <p class="text-xs text-gray-500">Surface Water Station</p>
+            <div class="mt-1 flex space-x-1">
+                <span class="bg-green-200 text-green-800 px-1 py-0.5 rounded text-xs">Biology</span>
             </div>
         </div>
 
-        <!-- Geologist -->
-        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border-l-4 border-yellow-500 hover:transform hover:scale-105 transition-all duration-300">
-            <div class="flex items-center mb-3">
-                <div class="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold mr-3">
-                    AS
+        <!-- Show More Button (Optional - for extensibility) -->
+        <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-3 rounded-lg border-2 border-dashed border-gray-300 transition-all duration-300 flex items-center justify-center">
+            <div class="text-center">
+                <div class="text-gray-400 mb-1">
+                    <i class="fas fa-plus-circle text-lg"></i>
                 </div>
-                <div>
-                    <h3 class="font-bold text-deep-arctic">Dr. Anjali Singh</h3>
-                    <p class="text-sm text-yellow-700 font-medium">Marine Geologist</p>
-                </div>
-            </div>
-            <p class="text-sm text-gray-600 mb-2">🏛️ <strong>WIHG, Dehradun</strong></p>
-            <p class="text-xs text-gray-500">Location: Seafloor Station 1</p>
-            <div class="mt-2 flex space-x-2">
-                <span class="bg-yellow-200 text-yellow-800 px-2 py-1 rounded text-xs">Sedimentology</span>
-                <span class="bg-orange-200 text-orange-800 px-2 py-1 rounded text-xs">Field Work</span>
+                <p class="text-xs text-gray-500">+10 More</p>
+                <p class="text-xs text-gray-400">Researchers</p>
             </div>
         </div>
 
     </div>
     
-    <!-- Additional Personnel Summary -->
-    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-        <h3 class="font-bold text-deep-arctic mb-3">📊 Personnel Statistics</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div class="bg-white p-3 rounded-lg">
-                <div class="text-2xl font-bold text-blue-600">15</div>
-                <div class="text-sm text-gray-600">Total Personnel</div>
+    <!-- Compact Personnel Summary -->
+    <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+        <div class="flex items-center justify-between mb-2">
+            <h4 class="font-bold text-deep-arctic text-sm">📊 Team Statistics</h4>
+            <span class="text-xs text-gray-500">Live Data</span>
             </div>
-            <div class="bg-white p-3 rounded-lg">
-                <div class="text-2xl font-bold text-green-600">8</div>
-                <div class="text-sm text-gray-600">Institutions</div>
+        <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="bg-white p-2 rounded">
+                <div class="text-lg font-bold text-blue-600">15</div>
+                <div class="text-xs text-gray-600">Personnel</div>
             </div>
-            <div class="bg-white p-3 rounded-lg">
-                <div class="text-2xl font-bold text-purple-600">6</div>
-                <div class="text-sm text-gray-600">Research Areas</div>
+            <div class="bg-white p-2 rounded">
+                <div class="text-lg font-bold text-green-600">8</div>
+                <div class="text-xs text-gray-600">Institutes</div>
             </div>
-            <div class="bg-white p-3 rounded-lg">
-                <div class="text-2xl font-bold text-orange-600">45</div>
-                <div class="text-sm text-gray-600">Days in Field</div>
+            <div class="bg-white p-2 rounded">
+                <div class="text-lg font-bold text-purple-600">6</div>
+                <div class="text-xs text-gray-600">Fields</div>
             </div>
+            <div class="bg-white p-2 rounded">
+                <div class="text-lg font-bold text-orange-600">45</div>
+                <div class="text-xs text-gray-600">Days</div>
         </div>
-        <div class="mt-4 text-sm text-gray-600">
-            <p><strong>Additional Team Members:</strong> 9 researchers from NIO, ESSO-INCOIS, IISC Bangalore, JNU New Delhi, University of Kashmir, BHU Varanasi, Cochin University, and University of Delhi are currently engaged in various research activities across different Arctic stations.</p>
+        </div>
+        <div class="mt-2 text-xs text-gray-600">
+            <p><strong>Teams:</strong> NIO, INCOIS, IISC, JNU, Kashmir Uni, BHU, Cochin, Delhi & more across Arctic stations</p>
         </div>
     </div>
 </div>
@@ -507,14 +460,15 @@
 
 <script>
 // Weather API Configuration
-const WEATHER_API_KEY = '7aa96b4042934e878b3133936241612'; // WeatherAPI.com key
+const WEATHER_API_KEY = '7aa96b4042934e878b3133936241612'; // WeatherAPI.com key (fallback)
 const NY_ALESUND_COORDS = { lat: 78.9249, lon: 11.9303 };
-const MET_NO_API_URL = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
+const YR_NO_API_URL = 'https://api.met.no/weatherapi/locationforecast/2.0/compact';
+const YR_NO_NOWCAST_URL = 'https://api.met.no/weatherapi/nowcast/2.0/complete';
 
 // Weather background configurations
 const weatherBackgrounds = {
     clear: {
-        gradient: 'linear-gradient(135deg, #87CEEB 0%, #98D8E8 50%, #B6E5FF 100%)',
+        gradient: 'linear-gradient(135deg, #4682B4 0%, #5F9EA0 50%, #87CEEB 100%)',
         backgroundType: 'clear',
         hasParticles: true,
         particles: '☀️',
@@ -548,7 +502,7 @@ const weatherBackgrounds = {
         animationType: 'fall'
     },
     snow: {
-        gradient: 'linear-gradient(135deg, #F0F8FF 0%, #E6F3FF 50%, #D1E7FF 100%)',
+        gradient: 'linear-gradient(135deg, #2C3E50 0%, #34495E 30%, #5D6D7E 70%, #85929E 100%)',
         backgroundType: 'snow',
         hasParticles: true,
         particles: '❄️',
@@ -575,92 +529,290 @@ const weatherBackgrounds = {
     }
 };
 
-// Fetch weather data with MET.no as primary and WeatherAPI as fallback
+// Fetch weather data with Yr.no as primary (official Norwegian weather service)
 async function fetchWeatherData() {
     try {
-        // Try Norwegian Meteorological Institute API first (more accurate for Arctic)
-        const metResponse = await fetch(
-            `${MET_NO_API_URL}?lat=${NY_ALESUND_COORDS.lat}&lon=${NY_ALESUND_COORDS.lon}`,
+        // Try Yr.no via our server proxy (to avoid CORS issues)
+        console.log('Fetching weather from Yr.no via server proxy...');
+        
+        const proxyResponse = await fetch(
+            `/api/weather-proxy?lat=${NY_ALESUND_COORDS.lat}&lon=${NY_ALESUND_COORDS.lon}`,
             {
-                headers: {
-                    'User-Agent': 'COMPASS-Arctic-Research-Dashboard/1.0 (contact@compass-arctic.org)'
-                }
+                method: 'GET',
+                cache: 'default'
             }
         );
         
-        if (metResponse.ok) {
-            const metData = await metResponse.json();
-            const processedData = processMETData(metData);
-            updateWeatherDisplay(processedData);
+        console.log('Proxy response status:', proxyResponse.status, proxyResponse.statusText);
+        
+        if (proxyResponse.ok) {
+            const proxyData = await proxyResponse.json();
+            console.log('Proxy response received:', proxyData.success ? 'Success' : 'Failed');
+            
+            if (proxyData.success && proxyData.data) {
+                console.log('Yr.no data structure:', {
+                    hasProperties: !!proxyData.data.properties,
+                    hasTimeseries: !!(proxyData.data.properties && proxyData.data.properties.timeseries),
+                    timeseriesLength: proxyData.data.properties && proxyData.data.properties.timeseries ? proxyData.data.properties.timeseries.length : 0
+                });
+                
+                const processedData = processYrNoData(proxyData.data, false);
+                updateWeatherDisplay(processedData, proxyData.source || 'Yr.no (Norwegian Met Institute)');
             updateWeatherBackground(processedData);
+                console.log('Weather updated successfully from Yr.no via proxy');
             return;
+            } else {
+                console.error('Proxy returned error:', proxyData.error);
+            }
+        } else {
+            console.error('Proxy request failed with status:', proxyResponse.status);
+            const errorText = await proxyResponse.text();
+            console.error('Proxy error response:', errorText);
         }
         
-        // Fallback to WeatherAPI.com
-        console.log('MET.no API failed, trying WeatherAPI.com...');
+        // Fallback to WeatherAPI.com if Yr.no fails
+        console.log('Yr.no failed, trying WeatherAPI.com...');
         const weatherResponse = await fetch(`https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${NY_ALESUND_COORDS.lat},${NY_ALESUND_COORDS.lon}&aqi=no`);
         
         if (weatherResponse.ok) {
             const weatherData = await weatherResponse.json();
-            updateWeatherDisplay(weatherData);
-            updateWeatherBackground(weatherData);
+            console.log('WeatherAPI data received:', weatherData);
+            
+            // Use WeatherAPI data directly (it's already in the right format)
+            const processedData = {
+                current: {
+                    temp_c: Math.round(weatherData.current.temp_c),
+                    wind_kph: Math.round(weatherData.current.wind_kph),
+                    humidity: weatherData.current.humidity,
+                    pressure_mb: Math.round(weatherData.current.pressure_mb),
+                    condition: {
+                        text: weatherData.current.condition.text,
+                        icon: weatherData.current.condition.icon
+                    },
+                    wind_dir: weatherData.current.wind_dir,
+                    cloud_cover: weatherData.current.cloud,
+                    visibility: weatherData.current.vis_km * 1000 // Convert km to meters
+                },
+                location: { 
+                    localtime: weatherData.location.localtime,
+                    name: weatherData.location.name,
+                    country: weatherData.location.country
+                }
+            };
+            
+            updateWeatherDisplay(processedData, 'WeatherAPI.com (Fallback)');
+            updateWeatherBackground(processedData);
+            console.log('Weather updated successfully from WeatherAPI');
             return;
         }
         
-        throw new Error('Both weather APIs failed');
+        throw new Error('All weather APIs failed');
         
     } catch (error) {
         console.error('Failed to fetch weather data:', error);
-        // Fallback to realistic Arctic weather conditions
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
+        
+        // Use current realistic Arctic winter conditions
+        const now = new Date();
         const fallbackData = {
             current: {
-                temp_c: -12,
-                wind_kph: 18,
-                humidity: 82,
-                pressure_mb: 1018,
-                condition: { text: 'Partly cloudy', icon: '//cdn.weatherapi.com/weather/64x64/day/116.png' },
-                wind_dir: 'NE'
+                temp_c: -15, // Typical winter temperature
+                wind_kph: 25, // Moderate Arctic wind
+                humidity: 85, // High humidity common in Arctic
+                pressure_mb: 1015, // Typical sea level pressure
+                condition: { 
+                    text: 'Overcast', 
+                    icon: '//cdn.weatherapi.com/weather/64x64/day/119.png' 
+                },
+                wind_dir: 'NW', // Prevailing wind direction
+                cloud_cover: 80,
+                visibility: 8000
             },
-            location: { localtime: new Date().toISOString() }
+            location: { 
+                localtime: now.toISOString(),
+                name: 'Ny-Ålesund',
+                country: 'Norway'
+            }
         };
         
         updateWeatherBackground(fallbackData);
-        updateWeatherDisplay(fallbackData);
+        updateWeatherDisplay(fallbackData, 'Fallback Data (APIs Failed)');
+        console.log('Using fallback weather data due to API failures');
     }
 }
 
-// Process MET.no API data to match our expected format
-function processMETData(metData) {
-    const current = metData.properties.timeseries[0].data.instant.details;
-    const next1h = metData.properties.timeseries[0].data.next_1_hours;
-    
-    // Map weather symbols to conditions
-    const weatherSymbol = next1h ? next1h.summary.symbol_code : 'cloudy';
+// Test function to debug Yr.no API access via proxy
+async function testYrNoAPI() {
+    try {
+        console.log('Testing Yr.no API access via proxy...');
+        const testUrl = `/api/weather-proxy?lat=${NY_ALESUND_COORDS.lat}&lon=${NY_ALESUND_COORDS.lon}`;
+        console.log('Test URL:', testUrl);
+        
+        const response = await fetch(testUrl, {
+            method: 'GET'
+        });
+        
+        console.log('Test response status:', response.status);
+        console.log('Test response headers:', Object.fromEntries(response.headers));
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('Test response:', data);
+            
+            if (data.success && data.data) {
+                console.log('Test successful - received data structure:', {
+                    hasProperties: !!data.data.properties,
+                    hasTimeseries: !!(data.data.properties && data.data.properties.timeseries),
+                    timeseriesLength: data.data.properties && data.data.properties.timeseries ? data.data.properties.timeseries.length : 0
+                });
+                return true;
+            } else {
+                console.error('Test failed - proxy returned error:', data.error);
+                return false;
+            }
+        } else {
+            const errorText = await response.text();
+            console.error('Test failed with error:', errorText);
+            return false;
+        }
+    } catch (error) {
+        console.error('Test failed with exception:', error);
+        return false;
+    }
+}
+
+// Add test button for debugging (can be called from browser console)
+window.testWeather = testYrNoAPI;
+
+// Process Yr.no API data to match our expected format
+function processYrNoData(yrData, isNowcast = false) {
+    try {
+        if (!yrData.properties || !yrData.properties.timeseries || yrData.properties.timeseries.length === 0) {
+            throw new Error('Invalid Yr.no data structure');
+        }
+        
+        const current = yrData.properties.timeseries[0].data.instant.details;
+        const next1h = yrData.properties.timeseries[0].data.next_1_hours;
+        const next6h = yrData.properties.timeseries[0].data.next_6_hours;
+        
+        // Get weather symbol from appropriate timeframe
+        let weatherSymbol = 'cloudy';
+        if (isNowcast && next1h && next1h.summary) {
+            weatherSymbol = next1h.summary.symbol_code;
+        } else if (next6h && next6h.summary) {
+            weatherSymbol = next6h.summary.symbol_code;
+        } else if (next1h && next1h.summary) {
+            weatherSymbol = next1h.summary.symbol_code;
+        }
+        
+        // Comprehensive Norwegian weather symbol mapping
     let condition = 'Cloudy';
     
-    if (weatherSymbol.includes('clear')) condition = 'Clear';
-    else if (weatherSymbol.includes('fair')) condition = 'Fair';
-    else if (weatherSymbol.includes('partly')) condition = 'Partly cloudy';
-    else if (weatherSymbol.includes('cloud')) condition = 'Cloudy';
-    else if (weatherSymbol.includes('rain')) condition = 'Rain';
-    else if (weatherSymbol.includes('snow')) condition = 'Snow';
-    else if (weatherSymbol.includes('sleet')) condition = 'Sleet';
-    else if (weatherSymbol.includes('fog')) condition = 'Fog';
+        if (weatherSymbol.includes('clearsky')) {
+            condition = 'Clear';
+        } else if (weatherSymbol.includes('fair')) {
+            condition = 'Fair';
+        } else if (weatherSymbol.includes('partlycloudy')) {
+            condition = 'Partly cloudy';
+        } else if (weatherSymbol.includes('cloudy')) {
+            condition = 'Cloudy';
+        } else if (weatherSymbol.includes('fog')) {
+            condition = 'Fog';
+        } else if (weatherSymbol.includes('lightrainshowersandthunder') || weatherSymbol.includes('lightrain') && weatherSymbol.includes('thunder')) {
+            condition = 'Light rain with thunder';
+        } else if (weatherSymbol.includes('lightrainshowers') || weatherSymbol.includes('lightrain')) {
+            condition = 'Light rain';
+        } else if (weatherSymbol.includes('rainshowersandthunder') || weatherSymbol.includes('rain') && weatherSymbol.includes('thunder')) {
+            condition = 'Rain with thunder';
+        } else if (weatherSymbol.includes('rainshowers') || weatherSymbol.includes('rain')) {
+            condition = 'Rain';
+        } else if (weatherSymbol.includes('heavyrainshowersandthunder') || weatherSymbol.includes('heavyrain') && weatherSymbol.includes('thunder')) {
+            condition = 'Heavy rain with thunder';
+        } else if (weatherSymbol.includes('heavyrainshowers') || weatherSymbol.includes('heavyrain')) {
+            condition = 'Heavy rain';
+        } else if (weatherSymbol.includes('lightsleetshowers') || weatherSymbol.includes('lightsleet')) {
+            condition = 'Light sleet';
+        } else if (weatherSymbol.includes('sleetshowers') || weatherSymbol.includes('sleet')) {
+            condition = 'Sleet';
+        } else if (weatherSymbol.includes('heavysleetshowers') || weatherSymbol.includes('heavysleet')) {
+            condition = 'Heavy sleet';
+        } else if (weatherSymbol.includes('lightsnowshowersandthunder') || weatherSymbol.includes('lightsnow') && weatherSymbol.includes('thunder')) {
+            condition = 'Light snow with thunder';
+        } else if (weatherSymbol.includes('lightsnowshowers') || weatherSymbol.includes('lightsnow')) {
+            condition = 'Light snow';
+        } else if (weatherSymbol.includes('snowshowersandthunder') || weatherSymbol.includes('snow') && weatherSymbol.includes('thunder')) {
+            condition = 'Snow with thunder';
+        } else if (weatherSymbol.includes('snowshowers') || weatherSymbol.includes('snow')) {
+            condition = 'Snow';
+        } else if (weatherSymbol.includes('heavysnowshowersandthunder') || weatherSymbol.includes('heavysnow') && weatherSymbol.includes('thunder')) {
+            condition = 'Heavy snow with thunder';
+        } else if (weatherSymbol.includes('heavysnowshowers') || weatherSymbol.includes('heavysnow')) {
+            condition = 'Heavy snow';
+        }
+        
+        // Get precipitation amount if available (for nowcast)
+        let precipitationAmount = 0;
+        if (isNowcast && next1h && next1h.details && next1h.details.precipitation_amount) {
+            precipitationAmount = next1h.details.precipitation_amount;
+        }
+        
+        // Get cloud cover and visibility data with validation
+        const cloudCover = Math.min(100, Math.max(0, current.cloud_area_fraction || 0)); // 0-100%
+        const visibility = Math.max(0, current.visibility || 10000); // meters
+        
+        // Validate temperature (Arctic conditions: -50°C to +20°C reasonable range)
+        let temperature = current.air_temperature;
+        if (temperature === undefined || temperature < -50 || temperature > 20) {
+            temperature = -12; // Reasonable winter default
+        }
+        
+        // Validate wind speed (convert m/s to km/h, max reasonable ~200 km/h)
+        let windSpeed = current.wind_speed || 5;
+        windSpeed = Math.min(55, Math.max(0, windSpeed)) * 3.6; // m/s to km/h, capped at ~200 km/h
+        
+        // Validate humidity (0-100%)
+        let humidity = current.relative_humidity || 80;
+        humidity = Math.min(100, Math.max(0, humidity));
+        
+        // Validate pressure (Arctic typical: 980-1050 hPa)
+        let pressure = current.air_pressure_at_sea_level || 1013;
+        pressure = Math.min(1100, Math.max(900, pressure));
+        
+        // Get wind gust if available
+        let windGust = current.wind_speed_of_gust || windSpeed / 3.6; // Fallback to wind speed
+        windGust = Math.min(80, Math.max(0, windGust)) * 3.6; // Convert to km/h, cap at ~300 km/h
     
     return {
         current: {
-            temp_c: Math.round(current.air_temperature || -10),
-            wind_kph: Math.round((current.wind_speed || 5) * 3.6), // m/s to km/h
-            humidity: Math.round(current.relative_humidity || 80),
-            pressure_mb: Math.round(current.air_pressure_at_sea_level || 1013),
+                temp_c: Math.round(temperature),
+                wind_kph: Math.round(windSpeed),
+                wind_gust_kph: Math.round(windGust),
+                humidity: Math.round(humidity),
+                pressure_mb: Math.round(pressure),
             condition: { 
                 text: condition,
                 icon: '//cdn.weatherapi.com/weather/64x64/day/116.png'
             },
-            wind_dir: getWindDirection(current.wind_from_direction || 0)
-        },
-        location: { localtime: new Date().toISOString() }
-    };
+                wind_dir: getWindDirection(current.wind_from_direction || 0),
+                cloud_cover: cloudCover,
+                visibility: visibility,
+                precipitation_mm: precipitationAmount,
+                weather_symbol: weatherSymbol
+            },
+            location: { 
+                localtime: new Date().toISOString(),
+                name: 'Ny-Ålesund',
+                country: 'Norway'
+            }
+        };
+    } catch (error) {
+        console.error('Error processing Yr.no data:', error);
+        throw error;
+    }
 }
 
 // Convert wind direction degrees to compass direction
@@ -669,19 +821,48 @@ function getWindDirection(degrees) {
     return directions[Math.round(degrees / 22.5) % 16];
 }
 
+
 // Update weather display elements
-function updateWeatherDisplay(data) {
+function updateWeatherDisplay(data, dataSource = 'Unknown') {
     const current = data.current;
     
-    document.getElementById('temperature').textContent = `${Math.round(current.temp_c)}°C`;
-    document.getElementById('windSpeed').textContent = `${Math.round(current.wind_kph)} km/h`;
-    document.getElementById('humidity').textContent = `${current.humidity}%`;
-    document.getElementById('pressure').textContent = `${Math.round(current.pressure_mb)} hPa`;
-    document.getElementById('weatherDescription').textContent = current.condition.text;
-    document.getElementById('windDirection').textContent = `Wind: ${current.wind_dir}`;
+    // Safely update elements (check if they exist first)
+    const tempElement = document.getElementById('temperature');
+    if (tempElement) tempElement.textContent = `${Math.round(current.temp_c)}°C`;
+    
+    const windElement = document.getElementById('windSpeed');
+    if (windElement) windElement.textContent = `${Math.round(current.wind_kph)} km/h`;
+    
+    const humidityElement = document.getElementById('humidity');
+    if (humidityElement) humidityElement.textContent = `${current.humidity}%`;
+    
+    const pressureElement = document.getElementById('pressure');
+    if (pressureElement) pressureElement.textContent = `${Math.round(current.pressure_mb)} hPa`;
+    
+    const descElement = document.getElementById('weatherDescription');
+    if (descElement) descElement.textContent = current.condition.text;
+    
+    const windDirElement = document.getElementById('windDirection');
+    if (windDirElement) {
+        let windText = `Wind: ${current.wind_dir}`;
+        if (current.wind_gust_kph && current.wind_gust_kph > current.wind_kph) {
+            windText += ` (gusts ${current.wind_gust_kph} km/h)`;
+        }
+        windDirElement.textContent = windText;
+    }
+    
+    // Update precipitation if available
+    const precipElement = document.getElementById('precipitation');
+    if (precipElement && current.precipitation_mm !== undefined && current.precipitation_mm > 0) {
+        precipElement.textContent = `Precipitation: ${current.precipitation_mm} mm/h`;
+        precipElement.style.display = 'block';
+    } else if (precipElement) {
+        precipElement.style.display = 'none';
+    }
     
     // Update weather icon
     const iconElement = document.getElementById('weatherIcon');
+    if (iconElement) {
     const condition = current.condition.text.toLowerCase();
     
     if (condition.includes('snow')) {
@@ -698,6 +879,7 @@ function updateWeatherDisplay(data) {
         iconElement.className = 'fas fa-smog text-2xl text-white mr-2';
     } else {
         iconElement.className = 'fas fa-cloud text-2xl text-white mr-2';
+        }
     }
     
     // Update last updated time
@@ -706,12 +888,18 @@ function updateWeatherDisplay(data) {
         minute: '2-digit',
         timeZone: 'UTC'
     });
-    document.getElementById('lastUpdated').textContent = `Updated: ${updateTime} UTC`;
+    const lastUpdatedElement = document.getElementById('lastUpdated');
+    if (lastUpdatedElement) lastUpdatedElement.textContent = `Updated: ${updateTime} UTC`;
+    
+    // Update data source
+    const dataSourceElement = document.getElementById('dataSource');
+    if (dataSourceElement) dataSourceElement.textContent = `Data source: ${dataSource}`;
 }
 
 // Update background based on weather conditions
 function updateWeatherBackground(data) {
     const condition = data.current.condition.text.toLowerCase();
+    
     let weatherType = 'cloudy'; // default
     
     // Determine weather type from condition
@@ -732,12 +920,13 @@ function updateWeatherBackground(data) {
     }
     
     // Apply background
-    const config = weatherBackgrounds[weatherType];
+    const config = weatherBackgrounds[weatherType] || weatherBackgrounds.cloudy;
+    const gradient = config.gradient;
     const heroElement = document.getElementById('weatherHero');
     const overlayElement = document.getElementById('weatherOverlay');
     
     // Update gradient background
-    heroElement.style.background = config.gradient;
+    heroElement.style.background = gradient;
     
     // Create background effects based on weather type
     createWeatherBackground(config.backgroundType);
@@ -810,9 +999,10 @@ function createWeatherParticles(particle, count, animationType) {
     for (let i = 0; i < count; i++) {
         const particleElement = document.createElement('div');
         particleElement.textContent = particle;
-        particleElement.className = 'weather-particle absolute text-2xl';
+        particleElement.className = 'weather-particle absolute';
         particleElement.style.left = Math.random() * 100 + '%';
         particleElement.style.animationDelay = Math.random() * 10 + 's';
+        particleElement.style.fontSize = '1.2rem'; // Set font size directly instead of using Tailwind class
         
         // Set specific animation based on animation type
         switch (animationType) {
@@ -821,6 +1011,17 @@ function createWeatherParticles(particle, count, animationType) {
                 if (particle === '❄️') {
                     particleElement.style.animationName = Math.random() > 0.5 ? 'snowFall' : 'snowDrift';
                     particleElement.style.animationDuration = (Math.random() * 3 + 6) + 's';
+                    // Force white snowflakes with multiple overrides
+                    particleElement.style.color = '#ffffff';
+                    particleElement.style.fontSize = '1.2rem';
+                    particleElement.style.background = 'transparent';
+                    particleElement.style.textShadow = 'none';
+                    particleElement.style.filter = 'none';
+                    particleElement.style.webkitTextFillColor = '#ffffff';
+                    particleElement.style.webkitBackgroundClip = 'initial';
+                    particleElement.style.backgroundClip = 'initial';
+                    // Ensure the snowflake character itself is white
+                    particleElement.setAttribute('style', particleElement.getAttribute('style') + '; color: #ffffff !important;');
                 } else if (particle === '💧') {
                     particleElement.style.animationName = 'rainFall';
                     particleElement.style.animationDuration = (Math.random() * 1 + 2) + 's';
@@ -1106,12 +1307,40 @@ document.addEventListener('DOMContentLoaded', function() {
     transition: background 1s ease-in-out;
 }
 
+/* Ensure text visibility on all weather backgrounds */
+#weatherHero .text-white {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7), 1px 1px 2px rgba(0, 0, 0, 0.5);
+    color: #ffffff !important;
+}
+
+#weatherHero .text-white\/90 {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6), 1px 1px 2px rgba(0, 0, 0, 0.4);
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+#weatherHero .text-white\/80 {
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6), 1px 1px 2px rgba(0, 0, 0, 0.4);
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+#weatherHero .text-white\/70 {
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6), 1px 1px 2px rgba(0, 0, 0, 0.4);
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
 /* Weather Particle Animations */
 .weather-particle {
     animation: weatherFloat 8s ease-in-out infinite;
-    opacity: 0.7;
+    opacity: 0.9;
     pointer-events: none;
     top: -50px;
+    color: #ffffff !important;
+    background: transparent !important;
+    text-shadow: none !important;
+    filter: none !important;
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
 }
 
 @keyframes weatherFloat {
@@ -1138,6 +1367,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .weather-particle:nth-child(even) {
     animation: snowDrift 8s linear infinite;
+}
+
+/* Specific snowflake styling - Force white color */
+.weather-particle:contains("❄️"),
+.weather-particle[style*="❄️"],
+#weatherParticles .weather-particle {
+    color: #ffffff !important;
+    font-size: 1.2rem !important;
+    background: transparent !important;
+    text-shadow: none !important;
+    filter: none !important;
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+}
+
+/* Snowflake emoji specific override */
+.weather-particle {
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif !important;
+}
+
+/* Global snowflake color override - target all possible selectors */
+[class*="weather-particle"], 
+.weather-particle, 
+#weatherParticles div, 
+#weatherParticles > *, 
+*[style*="❄"]:not(.ignore-white) {
+    color: white !important;
+    -webkit-text-fill-color: white !important;
+}
+
+/* Force emoji snowflakes to display as white */
+.weather-particle::before,
+.weather-particle::after {
+    color: white !important;
+}
+
+/* Override any Tailwind text color classes */
+.text-2xl.weather-particle {
+    color: white !important;
 }
 
 @keyframes snowFall {
@@ -1508,6 +1777,7 @@ document.addEventListener('DOMContentLoaded', function() {
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
+    background: rgba(0, 0, 0, 0.15) !important;
 }
 
 .weather-info-card:hover {

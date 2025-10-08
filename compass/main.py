@@ -1154,7 +1154,10 @@ def submit_shipment():
         if data['shipment_type'] == 'export':
             invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{data['return_type']}/{user_unique_id}/{serial_number}"
         elif data['shipment_type'] == 'import':
-            invoice_number = f"NCPOR/IMP/{year}/{month}/{data['return_type']}/{user_unique_id}/{serial_number}"
+            # Use new NCPOR/ARC pattern for import shipments with admin ID and requester ID
+            admin_id = current_user.unique_id if current_user.unique_id else 'ADMIN'
+            requester_unique_id = request.form.get('requester_unique_id', user_unique_id)
+            invoice_number = f"NCPOR/ARC/{year}/{month}/SAM/RT/{admin_id}/{requester_unique_id}/{serial_number}"
         elif data['shipment_type'] == 'reimport':
             invoice_number = f"NCPOR/REIMP/{year}/{month}/{data['return_type']}/{user_unique_id}/{serial_number}"
         elif data['shipment_type'] == 'cold':
@@ -1267,6 +1270,47 @@ def submit_shipment():
             return redirect(url_for('main.cold_shipment'))
         return redirect(url_for('main.shipment_type_selection'))
 
+def get_aggregated_sample_types(form_data):
+    """
+    Extract and aggregate sample types from form data.
+    Returns a formatted string of unique sample types.
+    """
+    sample_types = set()
+    
+    # Extract sample types from all items
+    for key, value in form_data.items():
+        if key.endswith('_sample_type') and value:
+            if value == 'other':
+                # Look for the corresponding other_sample_type field
+                prefix = key.replace('_sample_type', '')
+                other_key = f"{prefix}_other_sample_type"
+                other_value = form_data.get(other_key, '').strip()
+                if other_value:
+                    sample_types.add(other_value.lower())
+            else:
+                # Map values to display names
+                type_mapping = {
+                    'water': 'water',
+                    'sediment': 'sediment', 
+                    'glass_fiber': 'glass fiber'
+                }
+                display_name = type_mapping.get(value, value)
+                sample_types.add(display_name)
+    
+    # Convert to sorted list for consistent output
+    sorted_types = sorted(list(sample_types))
+    
+    if not sorted_types:
+        return "samples"
+    elif len(sorted_types) == 1:
+        return f"{sorted_types[0]} samples"
+    else:
+        # Join with "and" for the last item
+        if len(sorted_types) == 2:
+            return f"{sorted_types[0]} and {sorted_types[1]} samples"
+        else:
+            return f"{', '.join(sorted_types[:-1])}, and {sorted_types[-1]} samples"
+
 def generate_shipment_document(shipment, form_data, document_type='invoice_packing'):
     """Generate document for a shipment
     
@@ -1281,10 +1325,20 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
         current_dir = os.path.dirname(os.path.abspath(__file__))
         root_dir = os.path.dirname(current_dir)
         
-        if document_type == 'custom_docs':
+        # Determine template based on shipment type and document type
+        if shipment.shipment_type == 'import':
+            if document_type == 'invoice_packing':
+                # For import shipments invoice & packing list, use Room Temperature invoice template
+                template_path = os.path.join(root_dir, 'templates', 'Room Temperature Sample Import', 'invoice_packinglist_room_temperature.docx')
+                doc_type_name = "room_temperature_import_invoice"
+            else:  # custom_docs
+                # For import shipments custom docs, use Room Temperature custom docs template
+                template_path = os.path.join(root_dir, 'templates', 'Room Temperature Sample Import', 'Room_Temperature_Import_Custom_Docs .docx')
+                doc_type_name = "room_temperature_import_custom"
+        elif document_type == 'custom_docs':
             template_path = os.path.join(root_dir, 'templates', 'export_custom_docs.docx')
             doc_type_name = "custom_docs"
-        else:  # default to invoice_packing
+        else:  # default to invoice_packing for export/other shipment types
             template_path = os.path.join(root_dir, 'templates', 'invoice_packinglist.docx')
             doc_type_name = "invoice_packing"
         
@@ -1293,6 +1347,9 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
         
         # Load the template with docxtpl for initial replacements
         tpl = DocxTemplate(template_path)
+        
+        # Get aggregated sample types for this shipment
+        sample_type_aggregated = get_aggregated_sample_types(form_data)
         
         # Get signing authority details
         def get_signing_authority_context():
@@ -1355,17 +1412,43 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
                 consignee_contact = "Kingsbay AS, Longyearbyen"
                 consignee_phone = "+47 79 027200"
             
+            # Set exporter details based on shipment type
+            if shipment.shipment_type == 'import':
+                # For import shipments, Himadri is the exporter (sending samples from Norway to India)
+                exporter_name = "Himadri - Indian Arctic Research Station"
+                exporter_ministry = ""  # Not applicable for Himadri
+                exporter_address = "Ny-Alesund, c/o Kings Bay AS"
+                exporter_country = "Norway"
+                exporter_location = "N-9173, Ny-Alesund, Norway"
+                exporter_phone = "+47 79 02 72 00"
+                exporter_gst = ""  # Not applicable for Norwegian station
+                exporter_lut = ""  # Not applicable for Norwegian station
+            else:
+                # For export/other shipments, NCPOR is the exporter (sending samples from India to Norway)
+                exporter_name = "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]"
+                exporter_ministry = "Ministry of Earth Sciences (Govt. of India)"
+                exporter_address = "Headland Sada, Vasco da Gama, Goa - 403804"
+                exporter_country = "India"
+                exporter_location = "India"
+                exporter_phone = "+91 832 2525501"
+                exporter_gst = "30AACFN4991P1ZN"
+                exporter_lut = "AD300618000016R"
+            
             context = {
                 'invoice_no': shipment.invoice_number,
                 'invoice_date': datetime.now().strftime('%d-%m-%Y'),
                 'file_reference_number': shipment.file_reference_number or '',
-                'exporter_name': "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]",
-                'exporter_ministry': "Ministry of Earth Sciences (Govt. of India)",
-                'exporter_address': "Headland Sada, Vasco da Gama, Goa - 403804",
-                'exporter_country': "India",
-                'exporter_phone': "+91 832 2525501",
-                'exporter_gst': "30AACFN4991P1ZN",
-                'exporter_lut': "AD300618000016R",
+                'Sample_Type': sample_type_aggregated,
+                'ncpor_gst': "30AACFN4991P1ZN",
+                'ncpor_lut': "AD300618000016R",
+                'exporter_name': exporter_name,
+                'exporter_ministry': exporter_ministry,
+                'exporter_address': exporter_address,
+                'exporter_country': exporter_country,
+                'exporter_location': exporter_location,
+                'exporter_phone': exporter_phone,
+                'exporter_gst': exporter_gst,
+                'exporter_lut': exporter_lut,
                 'consignee_name': consignee_name,
                 'consignee_address': consignee_address,
                 'consignee_contact': consignee_contact,
@@ -1388,32 +1471,25 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
             }
         elif shipment.shipment_type in ['import', 'reimport']:
             # Check if "other" consignee was selected
-            consignee_selection = form_data.get('consignee', 'ncpor')  # Default to ncpor for import/reimport (NCPOR is the default consignee for imports)
+            consignee_selection = form_data.get('consignee', 'ncpor')  # Default to ncpor for import/reimport
             
-            if consignee_selection == 'other':
-                # Use other consignee details
-                consignee_name = form_data.get('other_consignee_org', 'Other Organization')
-                consignee_address = form_data.get('other_consignee_address', 'Other Address')
-                consignee_phone = form_data.get('other_consignee_phone', 'Other Phone')
-                consignee_gst = form_data.get('other_consignee_gst', '')
-                consignee_lut = form_data.get('other_consignee_lut', '')
-                consignee_ministry = form_data.get('other_consignee_ministry', '')
-                consignee_location = form_data.get('other_consignee_country', 'India')
-            else:
-                # Use default NCPOR details
-                consignee_name = "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]"
-                consignee_address = "Headland Sada, Vasco da Gama, Goa - 403804"
-                consignee_phone = "+91 832 2525501"
-                consignee_gst = "30AACFN4991P1ZN"
-                consignee_lut = "AD300618000016R"
-                consignee_ministry = "Ministry of Earth Sciences (Govt. of India)"
-                consignee_location = "India"
+            # Standard consignee placeholders ALWAYS contain NCPOR details for imports
+            consignee_name = "National Center for Polar and Ocean Research (NCPOR) [erstwhite NCAOR]"
+            consignee_address = "Headland Sada, Vasco da Gama, Goa - 403804"
+            consignee_phone = "9274584406"
+            consignee_gst = "30AACFN4991P1ZN"
+            consignee_lut = "AD300618000016R"
+            consignee_ministry = "Ministry of Earth Sciences (Govt. of India)"
+            consignee_location = "India"
             
             context = {
                 'invoice_no': shipment.invoice_number,
                 'invoice_date': datetime.now().strftime('%d-%m-%Y'),
                 'file_reference_number': shipment.file_reference_number or '',
-                'exporter_name': "Station Leader",
+                'Sample_Type': sample_type_aggregated,
+                'ncpor_gst': "30AACFN4991P1ZN",
+                'ncpor_lut': "AD300618000016R",
+                'exporter_name': "Himadri - Indian Arctic Research Station",
                 'exporter_org': "HIMADRI-Indian Arctic Research Station",
                 'exporter_address': "Ny-Alesund, c/o Kings Bay AS",
                 'exporter_location': "N-9173, Ny-Alesund, Norway",
@@ -1425,6 +1501,7 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
                 'consignee_phone': consignee_phone,
                 'consignee_gst': consignee_gst,
                 'consignee_lut': consignee_lut,
+                'consignee_contact': "Dr. Rohit Srivastava",
                 'consigner_name': "Himadri - Indian Arctic Research Station C/O Kingsbay AS",
                 'consigner_address': "N-9173 Ny-Alesund, Norway",
                 'consigner_contact': "Kingsbay AS, Longyearbyen",
@@ -1432,6 +1509,7 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
                 'destination_country': 'INDIA',
                 'country_of_origin_goods': form_data.get('country_of_origin', 'Norway'),
                 'country_of_final_destination': form_data.get('country_of_final_destination', 'India'),
+                'final_destination': form_data.get('final_destination', ''),
                 'airport_of_loading': form_data.get('import_mode', 'AIR').upper(),
                 'mode_of_transport': form_data.get('mode_of_transport', 'Air'),
                 'transport_facility_type': 'Air Port' if form_data.get('mode_of_transport', 'Air') == 'Air' else 'Port',
@@ -1443,6 +1521,19 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
                 'import_purpose': form_data.get('import_purpose', 'RESEARCH'),
                 'purpose': "RESEARCH AND DEVELOPMENT",
                 'declaration': "We declare that the invoice shows the actual price of goods described and that all particulars are true and correct.",
+                
+                # Other Organization Details (populated when "other" consignee is selected)
+                'other_org_name': form_data.get('other_consignee_org', '') if consignee_selection == 'other' else "",
+                'other_org_ministry': form_data.get('other_consignee_ministry', '') if consignee_selection == 'other' else "",
+                'other_org_address': form_data.get('other_consignee_address', '') if consignee_selection == 'other' else "",
+                'other_org_location': form_data.get('other_consignee_country', '') if consignee_selection == 'other' else "",
+                'other_org_phone': form_data.get('other_consignee_phone', '') if consignee_selection == 'other' else "",
+                'other_org_gst': form_data.get('other_consignee_gst', '') if consignee_selection == 'other' else "",
+                'other_org_lut': form_data.get('other_consignee_lut', '') if consignee_selection == 'other' else "",
+                'other_org_contact': form_data.get('other_consignee_contact', '') if consignee_selection == 'other' else "",
+                'other_org_designation': form_data.get('other_consignee_designation', '') if consignee_selection == 'other' else "",
+                'other_org_email': form_data.get('other_consignee_email', '') if consignee_selection == 'other' else "",
+                
                 **signing_authority_context  # Add signing authority details
             }
         else:  # cold
@@ -1450,6 +1541,7 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
                 'invoice_no': shipment.invoice_number,
                 'invoice_date': datetime.now().strftime('%d-%m-%Y'),
                 'file_reference_number': shipment.file_reference_number or '',
+                'Sample_Type': sample_type_aggregated,
                 'requester_name': form_data.get('requester_name', ''),
                 'expedition_year': form_data.get('expedition_year', ''),
                 'batch_number': form_data.get('batch_number', ''),
@@ -1463,7 +1555,10 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
         tpl.render(context)
         
         # Save the docxtpl output to a temporary file
-        temp_path = os.path.join(root_dir, 'templates', f'temp_{shipment.shipment_type}_{doc_type_name}.docx')
+        if shipment.shipment_type == 'import':
+            temp_path = os.path.join(root_dir, 'templates', 'temp_room_temperature_import.docx')
+        else:
+            temp_path = os.path.join(root_dir, 'templates', f'temp_{shipment.shipment_type}_{doc_type_name}.docx')
         tpl.save(temp_path)
         
         # Load the temporary file with python-docx for table manipulation
@@ -1499,12 +1594,9 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
         # Remove the temporary file
         os.remove(temp_path)
         
-        # Generate filename based on document type
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        if document_type == 'custom_docs':
-            filename = f"{shipment.shipment_type}_custom_docs_{timestamp}.docx"
-        else:
-            filename = f"{shipment.shipment_type}_invoice_packing_{timestamp}.docx"
+        # Generate filename using new format
+        from .utils.helpers import generate_document_filename
+        filename = generate_document_filename(shipment, form_data, document_type)
         
         # Return the generated document
         return send_file(
@@ -1784,7 +1876,7 @@ def qr_codes_management():
     all_shipments = Shipment.query.order_by(Shipment.created_at.desc()).limit(100).all()
     
     # Get status options
-    status_options = ['Submitted', 'Acknowledged', 'Document_Generated', 'Delivered', 'Failed', 'Needs_Changes', 'Combined']
+    status_options = ['Acknowledged', 'Document_Generation', 'Quotation_Requested', 'Awaiting_Quotation_Approval']
     
     return render_template('admin/qr_codes.html', 
                          packages=packages, 
@@ -1936,35 +2028,6 @@ def download_webapp_qr():
         current_app.logger.error(f"Error downloading webapp QR code: {str(e)}")
         flash('Error downloading QR code.', 'error')
         return redirect(url_for('main.webapp_qr_code'))
-
-@main.route('/admin/update-all-qr-urls', methods=['POST'])
-@login_required
-@admin_required
-def update_all_qr_urls():
-    """Update all QR codes with current hosting URL"""
-    try:
-        qr_service = QRCodeService()
-        current_base_url = request.url_root.rstrip('/')
-        
-        current_app.logger.info(f"Admin {current_user.username} requested QR URL update to: {current_base_url}")
-        
-        # Update all package QR codes
-        updated_count = qr_service.update_all_qr_codes_with_new_url(current_base_url)
-        
-        # Also regenerate webapp QR code
-        webapp_qr_path = qr_service.generate_webapp_qr_code(current_base_url)
-        
-        if updated_count > 0:
-            flash(f'Successfully updated {updated_count} QR codes with new URL: {current_base_url}', 'success')
-        else:
-            flash('No QR codes needed updating - all URLs are already current.', 'info')
-            
-        return redirect(url_for('main.admin_qr_codes'))
-        
-    except Exception as e:
-        current_app.logger.error(f"Error updating all QR URLs: {str(e)}")
-        flash(f'Error updating QR codes: {str(e)}', 'error')
-        return redirect(url_for('main.admin_qr_codes'))
 
 @main.route('/admin/signing-authorities')
 @login_required
@@ -2467,8 +2530,8 @@ def admin_combine_form():
         combined_invoice = f"NCPOR/ARC/{year}/{month}/EXP/{return_type}/CMB/{unique_ids_str}/{serial_number}"
         
     elif first_shipment.shipment_type == 'import':
-        # Use CMB format for import combined shipments too
-        combined_invoice = f"NCPOR/IMP/{year}/{month}/RESEARCH/CMB/{unique_ids_str}/{serial_number}"
+        # Use new NCPOR/ARC pattern for import combined shipments
+        combined_invoice = f"NCPOR/ARC/{year}/{month}/SAM/RT/CMB/{unique_ids_str}/{serial_number}"
         
     elif first_shipment.shipment_type == 'reimport':
         # Use CMB format for reimport combined shipments too
@@ -2972,6 +3035,7 @@ def update_shipment(shipment_id):
         if current_user.is_admin():
             shipment.country_of_final_destination = form_data.get('country_of_final_destination', '')
             shipment.mode_of_transport = form_data.get('mode_of_transport', '')
+            shipment.port_of_loading = form_data.get('port_of_loading', '')
             shipment.port_of_discharge = form_data.get('port_of_discharge', '')
             shipment.final_destination = form_data.get('final_destination', '')
             shipment.country_of_origin = form_data.get('country_of_origin', 'India')
@@ -3068,9 +3132,7 @@ def admin_update_status(shipment_id, new_status):
     
     # Define valid status values
     valid_statuses = [
-        'Submitted', 'Document_Generation', 'Quotation_Requested', 'Documents_Prepared',
-        'Director_Approval', 'Pickup_Scheduled', 'At_Courier_Warehouse', 'Custom_Clearance',
-        'In_Transit', 'Destination_City', 'Delivered', 'Combined', 'Failed'
+        'Acknowledged', 'Document_Generation', 'Quotation_Requested', 'Awaiting_Quotation_Approval'
     ]
     
     if new_status not in valid_statuses:
@@ -3093,23 +3155,129 @@ def admin_update_status(shipment_id, new_status):
     
     # Create user-friendly status names
     status_names = {
-        'Submitted': 'Submitted',
-        'Document_Generation': 'Document Generation',
+        'Acknowledged': 'Acknowledged',
+        'Document_Generation': 'Generating Documents',
         'Quotation_Requested': 'Quotation Requested',
-        'Documents_Prepared': 'Documents Prepared',
-        'Director_Approval': 'Director Approval',
-        'Pickup_Scheduled': 'Pickup Scheduled',
-        'At_Courier_Warehouse': 'At Courier Warehouse',
-        'Custom_Clearance': 'Custom Clearance',
-        'In_Transit': 'In Transit',
-        'Destination_City': 'Destination City',
-        'Delivered': 'Delivered',
-        'Combined': 'Combined',
-        'Failed': 'Failed'
+        'Awaiting_Quotation_Approval': 'Awaiting Quotation Approval'
     }
     
-    flash(f'Shipment {shipment.invoice_number} status updated from "{status_names.get(old_status, old_status)}" to "{status_names.get(new_status, new_status)}"!', 'success')
-    return redirect(url_for('main.dashboard'))
+    # Check if this is an AJAX request
+    if request.headers.get('Content-Type') == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'message': f'Shipment {shipment.invoice_number} status updated from "{status_names.get(old_status, old_status)}" to "{status_names.get(new_status, new_status)}"',
+            'new_status': new_status,
+            'new_status_display': status_names.get(new_status, new_status)
+        })
+    else:
+        flash(f'Shipment {shipment.invoice_number} status updated from "{status_names.get(old_status, old_status)}" to "{status_names.get(new_status, new_status)}"!', 'success')
+        return redirect(url_for('main.dashboard'))
+
+@main.route('/api/weather-proxy', methods=['GET'])
+def weather_proxy():
+    """Proxy endpoint for Yr.no weather API to handle CORS restrictions"""
+    try:
+        import requests
+        from datetime import datetime, timedelta
+        
+        # Get coordinates from request args
+        lat = request.args.get('lat', '78.9249')
+        lon = request.args.get('lon', '11.9303')
+        
+        # Yr.no API URL
+        yr_url = f'https://api.met.no/weatherapi/locationforecast/2.0/compact?lat={lat}&lon={lon}'
+        
+        # Set proper headers as required by Yr.no
+        headers = {
+            'User-Agent': 'COMPASS-Arctic-Research-Dashboard/1.0 (contact@compass-arctic.org)',
+            'Accept': 'application/json'
+        }
+        
+        print(f"Fetching weather from Yr.no: {yr_url}")
+        
+        # Make request to Yr.no
+        response = requests.get(yr_url, headers=headers, timeout=10)
+        
+        print(f"Yr.no response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            weather_data = response.json()
+            
+            # Add CORS headers for browser access
+            resp = jsonify({
+                'success': True,
+                'data': weather_data,
+                'source': 'Yr.no (Norwegian Met Institute)',
+                'timestamp': datetime.now().isoformat()
+            })
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Access-Control-Allow-Methods'] = 'GET'
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            
+            return resp
+            
+        else:
+            print(f"Yr.no API error: {response.status_code} - {response.text}")
+            return jsonify({
+                'success': False,
+                'error': f'Yr.no API returned status {response.status_code}',
+                'status_code': response.status_code
+            }), response.status_code
+            
+    except requests.exceptions.Timeout:
+        print("Yr.no API timeout")
+        return jsonify({
+            'success': False,
+            'error': 'Yr.no API timeout'
+        }), 504
+        
+    except Exception as e:
+        print(f"Weather proxy error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@main.route('/api/get-next-serial', methods=['GET'])
+@login_required
+def get_next_serial_preview():
+    """
+    Get the next serial number for preview without consuming it.
+    Auto-optimizes counters if they're out of sync.
+    """
+    try:
+        from compass.models import ShipmentSerialCounter, Shipment
+        
+        # Auto-optimize counter if needed
+        shipment_count = Shipment.query.count()
+        counter_record = ShipmentSerialCounter.query.first()
+        
+        if not counter_record:
+            # Initialize counter based on actual shipments
+            counter_record = ShipmentSerialCounter(counter=shipment_count)
+            db.session.add(counter_record)
+            db.session.commit()
+            next_serial = f"{shipment_count + 1:04d}"
+        elif counter_record.counter != shipment_count:
+            # Counter is out of sync - optimize it
+            counter_record.counter = shipment_count
+            db.session.commit()
+            next_serial = f"{shipment_count + 1:04d}"
+        else:
+            # Counter is in sync
+            next_serial = f"{counter_record.counter + 1:04d}"
+        
+        return jsonify({
+            'success': True,
+            'next_serial': next_serial
+        })
+        
+    except Exception as e:
+        print(f"Error getting next serial: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @main.route('/api/generate-invoice-preview', methods=['POST'])
 @login_required
@@ -3191,7 +3359,9 @@ def generate_invoice_preview():
         if shipment_type == 'export':
             invoice_number = f"NCPOR/ARC/{year}/{month}/EXP/{return_type}/{user_unique_id}/{next_serial}"
         elif shipment_type == 'import':
-            invoice_number = f"NCPOR/IMP/{year}/{month}/{return_type}/{user_unique_id}/{next_serial}"
+            # Use new NCPOR/ARC pattern for import shipments with admin ID and requester ID
+            admin_id = current_user.unique_id if current_user.unique_id else 'ADMIN'
+            invoice_number = f"NCPOR/ARC/{year}/{month}/SAM/RT/{admin_id}/{user_unique_id}/{next_serial}"
         elif shipment_type == 'reimport':
             invoice_number = f"NCPOR/REIMP/{year}/{month}/{return_type}/{user_unique_id}/{next_serial}"
         elif shipment_type == 'cold':
