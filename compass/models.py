@@ -191,7 +191,9 @@ class User(UserMixin, db.Model):
     def get_profile_picture_url(self):
         """Get the URL for the user's profile picture"""
         if self.profile_picture:
-            return f'/static/uploads/profile_pictures/{self.profile_picture}'
+            from flask import request, url_for
+            # Use url_for to generate proper URLs that work across network
+            return url_for('static', filename=f'uploads/profile_pictures/{self.profile_picture}', _external=True)
         return None
     
     def get_initials(self):

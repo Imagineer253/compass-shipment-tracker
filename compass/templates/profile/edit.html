@@ -292,7 +292,7 @@
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
                             <p class="text-xs text-gray-500 mt-1">PDF, PNG, JPG, or JPEG. Max size: 5MB</p>
                             {% if current_user.passport_front_page %}
-                                <a href="/static/uploads/passports/{{ current_user.passport_front_page }}" target="_blank" 
+                                <a href="{{ url_for('static', filename='uploads/passports/' + current_user.passport_front_page) }}" target="_blank" 
                                    class="text-blue-600 hover:underline text-sm">View current file</a>
                             {% endif %}
                         </div>
@@ -311,7 +311,7 @@
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
                             <p class="text-xs text-gray-500 mt-1">PDF, PNG, JPG, or JPEG. Max size: 5MB</p>
                             {% if current_user.passport_last_page %}
-                                <a href="/static/uploads/passports/{{ current_user.passport_last_page }}" target="_blank" 
+                                <a href="{{ url_for('static', filename='uploads/passports/' + current_user.passport_last_page) }}" target="_blank" 
                                    class="text-blue-600 hover:underline text-sm">View current file</a>
                             {% endif %}
                         </div>

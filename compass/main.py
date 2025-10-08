@@ -1993,7 +1993,7 @@ def webapp_qr_code():
         qr_image_path = qr_service.generate_webapp_qr_code(base_url)
         
         # Get QR code URL for display
-        qr_code_url = f"{base_url}/static/qrcodes/webapp_qr.png"
+        qr_code_url = url_for('static', filename='qrcodes/webapp_qr.png', _external=True)
         
         return render_template('admin/webapp_qr.html', 
                              qr_code_url=qr_code_url,
