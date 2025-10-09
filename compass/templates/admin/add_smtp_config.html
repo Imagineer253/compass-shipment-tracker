@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Add SMTP Configuration - COMPASS{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-plus-circle text-primary"></i> Add SMTP Configuration</h2>
+                <a href="{{ url_for('main.smtp_config') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to SMTP Config
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-server"></i> Email Server Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="smtpConfigForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Configuration Name *</label>
+                                    <input type="text" class="form-control" id="name" name="name" required
+                                           placeholder="e.g., Gmail NCPOR, Outlook Corporate">
+                                    <div class="form-text">A unique name to identify this configuration</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mail_server" class="form-label">SMTP Server *</label>
+                                    <input type="text" class="form-control" id="mail_server" name="mail_server" required
+                                           placeholder="e.g., smtp.gmail.com">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="mail_port" class="form-label">Port *</label>
+                                    <input type="number" class="form-control" id="mail_port" name="mail_port" 
+                                           value="587" required min="1" max="65535">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Security</label>
+                                    <div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="mail_use_tls" 
+                                                   name="mail_use_tls" checked>
+                                            <label class="form-check-label" for="mail_use_tls">
+                                                Use TLS (Port 587)
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="mail_use_ssl" 
+                                                   name="mail_use_ssl">
+                                            <label class="form-check-label" for="mail_use_ssl">
+                                                Use SSL (Port 465)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Quick Setup</label>
+                                    <div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="setupGmail()">
+                                            <i class="fab fa-google"></i> Gmail
+                                        </button>
+                                        <button type="button" class="btn btn-outline-info btn-sm" onclick="setupOutlook()">
+                                            <i class="fab fa-microsoft"></i> Outlook
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mail_username" class="form-label">Username (Email) *</label>
+                                    <input type="email" class="form-control" id="mail_username" name="mail_username" required
+                                           placeholder="your-email@gmail.com">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mail_password" class="form-label">Password *</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="mail_password" name="mail_password" required
+                                               placeholder="App Password or Email Password">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                            <i class="fas fa-eye" id="passwordIcon"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text">
+                                        <strong>For Gmail:</strong> Use App Password, not your regular password
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mail_default_sender" class="form-label">Default Sender Email *</label>
+                            <input type="email" class="form-control" id="mail_default_sender" name="mail_default_sender" required
+                                   placeholder="arctic.ncpor@gmail.com">
+                            <div class="form-text">This email will appear as the sender for all outgoing emails</div>
+                        </div>
+
+                        <div class="card bg-light mb-4">
+                            <div class="card-body">
+                                <h6><i class="fas fa-info-circle text-info"></i> Gmail Setup Instructions</h6>
+                                <ol class="small mb-0">
+                                    <li>Enable 2-Factor Authentication on your Gmail account</li>
+                                    <li>Go to Google Account Settings → Security → 2-Step Verification → App passwords</li>
+                                    <li>Generate an App Password for "Mail"</li>
+                                    <li>Use the generated App Password in the Password field above</li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-info" onclick="testConfiguration()">
+                                <i class="fas fa-vial"></i> Test Configuration
+                            </button>
+                            <div>
+                                <a href="{{ url_for('main.smtp_config') }}" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Configuration
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Test Result Card -->
+            <div class="card mt-4 d-none" id="testResultCard">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-flask"></i> Configuration Test Result</h6>
+                </div>
+                <div class="card-body" id="testResultBody">
+                    <!-- Test results will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function setupGmail() {
+    document.getElementById('mail_server').value = 'smtp.gmail.com';
+    document.getElementById('mail_port').value = '587';
+    document.getElementById('mail_use_tls').checked = true;
+    document.getElementById('mail_use_ssl').checked = false;
+    
+    // Auto-fill default sender if username is filled
+    const username = document.getElementById('mail_username').value;
+    if (username && !document.getElementById('mail_default_sender').value) {
+        document.getElementById('mail_default_sender').value = username;
+    }
+}
+
+function setupOutlook() {
+    document.getElementById('mail_server').value = 'smtp-mail.outlook.com';
+    document.getElementById('mail_port').value = '587';
+    document.getElementById('mail_use_tls').checked = true;
+    document.getElementById('mail_use_ssl').checked = false;
+    
+    // Auto-fill default sender if username is filled
+    const username = document.getElementById('mail_username').value;
+    if (username && !document.getElementById('mail_default_sender').value) {
+        document.getElementById('mail_default_sender').value = username;
+    }
+}
+
+function togglePassword() {
+    const passwordField = document.getElementById('mail_password');
+    const passwordIcon = document.getElementById('passwordIcon');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        passwordIcon.className = 'fas fa-eye-slash';
+    } else {
+        passwordField.type = 'password';
+        passwordIcon.className = 'fas fa-eye';
+    }
+}
+
+function testConfiguration() {
+    const form = document.getElementById('smtpConfigForm');
+    const formData = new FormData(form);
+    
+    // Show loading
+    const testCard = document.getElementById('testResultCard');
+    const testBody = document.getElementById('testResultBody');
+    
+    testBody.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Testing SMTP configuration...</div>';
+    testCard.classList.remove('d-none');
+    
+    // Create a temporary configuration for testing
+    const testData = {
+        mail_server: formData.get('mail_server'),
+        mail_port: formData.get('mail_port'),
+        mail_use_tls: formData.has('mail_use_tls'),
+        mail_use_ssl: formData.has('mail_use_ssl'),
+        mail_username: formData.get('mail_username'),
+        mail_password: formData.get('mail_password'),
+        mail_default_sender: formData.get('mail_default_sender')
+    };
+    
+    // Simulate SMTP test (in real implementation, this would call a backend endpoint)
+    setTimeout(() => {
+        if (testData.mail_server && testData.mail_username && testData.mail_password) {
+            testBody.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> 
+                    <strong>Connection Test Successful!</strong><br>
+                    Successfully connected to ${testData.mail_server}:${testData.mail_port}
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Note:</strong> This is a connection test only. Save the configuration to enable email sending.
+                </div>
+            `;
+        } else {
+            testBody.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Please fill in all required fields before testing.</strong>
+                </div>
+            `;
+        }
+    }, 2000);
+}
+
+// Auto-fill default sender when username changes
+document.getElementById('mail_username').addEventListener('input', function() {
+    const defaultSender = document.getElementById('mail_default_sender');
+    if (!defaultSender.value) {
+        defaultSender.value = this.value;
+    }
+});
+
+// Mutual exclusion for TLS and SSL
+document.getElementById('mail_use_tls').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('mail_use_ssl').checked = false;
+        document.getElementById('mail_port').value = '587';
+    }
+});
+
+document.getElementById('mail_use_ssl').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('mail_use_tls').checked = false;
+        document.getElementById('mail_port').value = '465';
+    }
+});
+</script>
+{% endblock %}

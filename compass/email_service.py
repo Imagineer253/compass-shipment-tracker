@@ -223,9 +223,74 @@ TWO_FA_LOGIN_TEMPLATE = '''
 def send_verification_email(user_email, user_name, otp_code):
     """Send email verification OTP"""
     try:
+        # Try to use database SMTP configuration first
+        from .models import SMTPConfiguration
+        smtp_config = SMTPConfiguration.get_active_config()
+        
+        if smtp_config:
+            # Use database SMTP configuration
+            success, message = smtp_config.send_test_email(user_email)
+            if success:
+                # Send actual verification email using the SMTP config
+                from flask_mail import Message, Mail
+                
+                # Temporarily configure Flask-Mail with database config
+                app = current_app._get_current_object()
+                original_config = {}
+                
+                # Backup original config
+                mail_keys = ['MAIL_SERVER', 'MAIL_PORT', 'MAIL_USE_TLS', 'MAIL_USE_SSL', 
+                           'MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_DEFAULT_SENDER']
+                for key in mail_keys:
+                    original_config[key] = app.config.get(key)
+                
+                # Apply database config
+                app.config['MAIL_SERVER'] = smtp_config.mail_server
+                app.config['MAIL_PORT'] = smtp_config.mail_port
+                app.config['MAIL_USE_TLS'] = smtp_config.mail_use_tls
+                app.config['MAIL_USE_SSL'] = smtp_config.mail_use_ssl
+                app.config['MAIL_USERNAME'] = smtp_config.mail_username
+                app.config['MAIL_PASSWORD'] = smtp_config.decrypt_password()
+                app.config['MAIL_DEFAULT_SENDER'] = smtp_config.mail_default_sender
+                
+                try:
+                    mail = Mail(app)
+                    
+                    from datetime import datetime
+                    
+                    subject = "COMPASS - Email Verification Required"
+                    html_body = render_template_string(
+                        EMAIL_VERIFICATION_TEMPLATE,
+                        user_name=user_name,
+                        otp_code=otp_code,
+                        timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+                    )
+                    
+                    msg = Message(
+                        subject=subject,
+                        recipients=[user_email],
+                        html=html_body,
+                        sender=smtp_config.mail_default_sender
+                    )
+                    
+                    mail.send(msg)
+                    logging.info(f"Verification email sent to {user_email} using database SMTP config")
+                    return True
+                    
+                finally:
+                    # Restore original config
+                    for key, value in original_config.items():
+                        if value is not None:
+                            app.config[key] = value
+                        elif key in app.config:
+                            del app.config[key]
+            else:
+                logging.error(f"Database SMTP config test failed: {message}")
+        
+        # Fallback to environment variables
         mail = current_app.extensions.get('mail')
         if not mail:
-            logging.error("Flask-Mail not initialized")
+            logging.error("Flask-Mail not initialized and no database SMTP config available")
             return False
         
         from datetime import datetime
@@ -242,11 +307,11 @@ def send_verification_email(user_email, user_name, otp_code):
             subject=subject,
             recipients=[user_email],
             html=html_body,
-            sender=current_app.config['MAIL_DEFAULT_SENDER']
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@compass.com')
         )
         
         mail.send(msg)
-        logging.info(f"Verification email sent to {user_email}")
+        logging.info(f"Verification email sent to {user_email} using environment config")
         return True
         
     except Exception as e:

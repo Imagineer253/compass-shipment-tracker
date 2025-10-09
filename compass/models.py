@@ -411,7 +411,8 @@ class EmailOTP(db.Model):
         return True
     
     def __repr__(self):
-        return f'<EmailOTP {self.email} - {self.purpose}>'
+        return f'<PhoneOTP {self.phone_number} - {self.purpose}>'
+
 
 class Shipment(db.Model):
     """Shipment model to track shipments created by users"""
@@ -926,3 +927,129 @@ class PhoneOTP(db.Model):
         otp_record.is_used = True
         db.session.commit()
         return True
+    
+    def __repr__(self):
+        return f'<PhoneOTP {self.phone_number} - {self.purpose}>'
+
+class SMTPConfiguration(db.Model):
+    """Model to store SMTP email configuration"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True)  # Configuration name
+    mail_server = db.Column(db.String(255), nullable=False)
+    mail_port = db.Column(db.Integer, nullable=False, default=587)
+    mail_use_tls = db.Column(db.Boolean, nullable=False, default=True)
+    mail_use_ssl = db.Column(db.Boolean, nullable=False, default=False)
+    mail_username = db.Column(db.String(255), nullable=False)
+    mail_password = db.Column(db.Text, nullable=False)  # Encrypted password
+    mail_default_sender = db.Column(db.String(255), nullable=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=False)  # Only one can be active
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Relationship
+    creator = db.relationship('User', backref='smtp_configurations')
+    
+    def encrypt_password(self, password):
+        """Encrypt the SMTP password"""
+        from cryptography.fernet import Fernet
+        import base64
+        import os
+        
+        # Use SECRET_KEY as encryption key (in production, use a dedicated key)
+        key = base64.urlsafe_b64encode(os.environ.get('SECRET_KEY', 'default-key')[:32].ljust(32, '0').encode())
+        f = Fernet(key)
+        self.mail_password = f.encrypt(password.encode()).decode()
+    
+    def decrypt_password(self):
+        """Decrypt the SMTP password"""
+        try:
+            from cryptography.fernet import Fernet
+            import base64
+            import os
+            
+            key = base64.urlsafe_b64encode(os.environ.get('SECRET_KEY', 'default-key')[:32].ljust(32, '0').encode())
+            f = Fernet(key)
+            return f.decrypt(self.mail_password.encode()).decode()
+        except:
+            return self.mail_password  # Return as-is if decryption fails
+    
+    @classmethod
+    def get_active_config(cls):
+        """Get the currently active SMTP configuration"""
+        return cls.query.filter_by(is_active=True).first()
+    
+    def activate(self):
+        """Set this configuration as active and deactivate others"""
+        # Deactivate all other configurations
+        SMTPConfiguration.query.update({'is_active': False})
+        # Activate this one
+        self.is_active = True
+        db.session.commit()
+    
+    def test_connection(self):
+        """Test SMTP connection and return result"""
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            
+            # Create SMTP connection
+            if self.mail_use_ssl:
+                server = smtplib.SMTP_SSL(self.mail_server, self.mail_port)
+            else:
+                server = smtplib.SMTP(self.mail_server, self.mail_port)
+                if self.mail_use_tls:
+                    server.starttls()
+            
+            # Login
+            server.login(self.mail_username, self.decrypt_password())
+            server.quit()
+            
+            return True, "SMTP connection successful!"
+            
+        except Exception as e:
+            return False, f"SMTP connection failed: {str(e)}"
+    
+    def send_test_email(self, recipient_email):
+        """Send a test email using this configuration"""
+        try:
+            from flask_mail import Message, Mail
+            from flask import current_app
+            
+            # Temporarily configure Flask-Mail with this config
+            app = current_app._get_current_object()
+            app.config['MAIL_SERVER'] = self.mail_server
+            app.config['MAIL_PORT'] = self.mail_port
+            app.config['MAIL_USE_TLS'] = self.mail_use_tls
+            app.config['MAIL_USE_SSL'] = self.mail_use_ssl
+            app.config['MAIL_USERNAME'] = self.mail_username
+            app.config['MAIL_PASSWORD'] = self.decrypt_password()
+            app.config['MAIL_DEFAULT_SENDER'] = self.mail_default_sender
+            
+            mail = Mail(app)
+            
+            # Create test message
+            msg = Message(
+                subject="COMPASS SMTP Test Email",
+                recipients=[recipient_email],
+                html=f"""
+                <h2>🧭 COMPASS SMTP Configuration Test</h2>
+                <p>This is a test email from COMPASS system.</p>
+                <p><strong>Configuration:</strong> {self.name}</p>
+                <p><strong>Server:</strong> {self.mail_server}:{self.mail_port}</p>
+                <p><strong>Sender:</strong> {self.mail_default_sender}</p>
+                <p><strong>Time:</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
+                <hr>
+                <p>If you receive this email, the SMTP configuration is working correctly! ✅</p>
+                """,
+                sender=self.mail_default_sender
+            )
+            
+            mail.send(msg)
+            return True, f"Test email sent successfully to {recipient_email}"
+            
+        except Exception as e:
+            return False, f"Failed to send test email: {str(e)}"
+    
+    def __repr__(self):
+        return f'<SMTPConfiguration {self.name}>'

@@ -13,7 +13,7 @@ from docx.oxml.ns import qn
 import io
 import json
 from num2words import num2words
-from .models import User, Role, Shipment, CombinedShipmentCounter, SigningAuthority, PackageQRCode, db
+from .models import User, Role, Shipment, CombinedShipmentCounter, SigningAuthority, PackageQRCode, SMTPConfiguration, db
 from werkzeug.security import generate_password_hash, check_password_hash
 from .utils.helpers import generate_file_reference_number
 from .services.qr_service import QRCodeService
@@ -3378,4 +3378,148 @@ def generate_invoice_preview():
         })
         
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# SMTP Configuration Management Routes
+@main.route('/admin/smtp-config')
+@login_required
+def smtp_config():
+    """SMTP configuration management page"""
+    if not current_user.is_authenticated or not any(role.name == 'Admin' for role in current_user.roles):
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('main.dashboard'))
+    
+    smtp_configs = SMTPConfiguration.query.order_by(SMTPConfiguration.created_at.desc()).all()
+    return render_template('admin/smtp_config.html', smtp_configs=smtp_configs)
+
+@main.route('/admin/smtp-config/add', methods=['GET', 'POST'])
+@login_required
+def add_smtp_config():
+    """Add new SMTP configuration"""
+    if not current_user.is_authenticated or not any(role.name == 'Admin' for role in current_user.roles):
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('main.dashboard'))
+    
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name')
+            mail_server = request.form.get('mail_server')
+            mail_port = int(request.form.get('mail_port', 587))
+            mail_use_tls = 'mail_use_tls' in request.form
+            mail_use_ssl = 'mail_use_ssl' in request.form
+            mail_username = request.form.get('mail_username')
+            mail_password = request.form.get('mail_password')
+            mail_default_sender = request.form.get('mail_default_sender')
+            
+            # Validation
+            if not all([name, mail_server, mail_username, mail_password, mail_default_sender]):
+                flash('All fields are required.', 'error')
+                return render_template('admin/add_smtp_config.html')
+            
+            # Check if name already exists
+            if SMTPConfiguration.query.filter_by(name=name).first():
+                flash('Configuration name already exists.', 'error')
+                return render_template('admin/add_smtp_config.html')
+            
+            # Create new SMTP configuration
+            smtp_config = SMTPConfiguration(
+                name=name,
+                mail_server=mail_server,
+                mail_port=mail_port,
+                mail_use_tls=mail_use_tls,
+                mail_use_ssl=mail_use_ssl,
+                mail_username=mail_username,
+                mail_default_sender=mail_default_sender,
+                created_by=current_user.id
+            )
+            
+            # Encrypt password
+            smtp_config.encrypt_password(mail_password)
+            
+            db.session.add(smtp_config)
+            db.session.commit()
+            
+            flash(f'SMTP configuration "{name}" added successfully!', 'success')
+            return redirect(url_for('main.smtp_config'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding SMTP configuration: {str(e)}', 'error')
+            return render_template('admin/add_smtp_config.html')
+    
+    return render_template('admin/add_smtp_config.html')
+
+@main.route('/admin/smtp-config/<int:config_id>/activate', methods=['POST'])
+@login_required
+def activate_smtp_config(config_id):
+    """Activate SMTP configuration"""
+    if not current_user.is_authenticated or not any(role.name == 'Admin' for role in current_user.roles):
+        return jsonify({'success': False, 'error': 'Access denied'})
+    
+    try:
+        smtp_config = SMTPConfiguration.query.get_or_404(config_id)
+        smtp_config.activate()
+        
+        return jsonify({
+            'success': True,
+            'message': f'SMTP configuration "{smtp_config.name}" activated successfully!'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@main.route('/admin/smtp-config/<int:config_id>/test', methods=['POST'])
+@login_required
+def test_smtp_config(config_id):
+    """Test SMTP configuration"""
+    if not current_user.is_authenticated or not any(role.name == 'Admin' for role in current_user.roles):
+        return jsonify({'success': False, 'error': 'Access denied'})
+    
+    try:
+        smtp_config = SMTPConfiguration.query.get_or_404(config_id)
+        test_email = request.json.get('test_email') if request.is_json else request.form.get('test_email')
+        
+        if not test_email:
+            return jsonify({'success': False, 'error': 'Test email address is required'})
+        
+        # Test connection first
+        success, message = smtp_config.test_connection()
+        if not success:
+            return jsonify({'success': False, 'error': message})
+        
+        # Send test email
+        success, message = smtp_config.send_test_email(test_email)
+        
+        return jsonify({
+            'success': success,
+            'message': message
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@main.route('/admin/smtp-config/<int:config_id>/delete', methods=['POST'])
+@login_required
+def delete_smtp_config(config_id):
+    """Delete SMTP configuration"""
+    if not current_user.is_authenticated or not any(role.name == 'Admin' for role in current_user.roles):
+        return jsonify({'success': False, 'error': 'Access denied'})
+    
+    try:
+        smtp_config = SMTPConfiguration.query.get_or_404(config_id)
+        
+        if smtp_config.is_active:
+            return jsonify({'success': False, 'error': 'Cannot delete active SMTP configuration'})
+        
+        config_name = smtp_config.name
+        db.session.delete(smtp_config)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'SMTP configuration "{config_name}" deleted successfully!'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
