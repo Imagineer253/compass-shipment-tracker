@@ -240,14 +240,25 @@
                             <div class="compact-actions">
                                 <!-- Document Generation - Primary Row -->
                                 <div class="flex gap-1 mb-2">
+                                    <!-- DOCX Generation -->
                                     <a href="{{ url_for('main.admin_generate_document', shipment_id=shipment.id, document_type='invoice_packing') }}" 
-                                       class="compact-btn bg-green-500 hover:bg-green-600 text-white" title="Generate Invoice & Packing">
+                                       class="compact-btn bg-green-500 hover:bg-green-600 text-white" title="Generate Invoice & Packing (DOCX)">
                                         📄
                                     </a>
                                     <a href="{{ url_for('main.admin_generate_document', shipment_id=shipment.id, document_type='custom_docs') }}" 
-                                       class="compact-btn bg-blue-500 hover:bg-blue-600 text-white" title="Generate Custom Docs">
+                                       class="compact-btn bg-blue-500 hover:bg-blue-600 text-white" title="Generate Custom Docs (DOCX)">
                                         📋
                                     </a>
+                                    <!-- PDF Generation -->
+                                    <a href="{{ url_for('main.admin_generate_pdf', shipment_id=shipment.id, document_type='invoice_packing') }}" 
+                                       class="compact-btn bg-red-500 hover:bg-red-600 text-white" title="Generate Invoice & Packing (PDF + Extras)">
+                                        📑
+                                    </a>
+                                    <a href="{{ url_for('main.admin_generate_pdf', shipment_id=shipment.id, document_type='custom_docs') }}" 
+                                       class="compact-btn bg-indigo-500 hover:bg-indigo-600 text-white" title="Generate Custom Docs (PDF + Extras)">
+                                        📕
+                                    </a>
+                                    <!-- Other Actions -->
                                     <a href="{{ url_for('main.track_shipment', shipment_id=shipment.id) }}" 
                                        class="compact-btn bg-purple-500 hover:bg-purple-600 text-white" title="Track Shipment">
                                         🔍

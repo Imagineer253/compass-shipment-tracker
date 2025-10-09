@@ -16,6 +16,7 @@ from num2words import num2words
 from .models import User, Role, Shipment, CombinedShipmentCounter, SigningAuthority, PackageQRCode, SMTPConfiguration, db
 from werkzeug.security import generate_password_hash, check_password_hash
 from .utils.helpers import generate_file_reference_number
+from .utils.pdf_utils import generate_pdf_with_extras, convert_docx_to_pdf
 from .services.qr_service import QRCodeService
 
 main = Blueprint('main', __name__)
@@ -1609,6 +1610,165 @@ def generate_shipment_document(shipment, form_data, document_type='invoice_packi
     except Exception as e:
         raise e
 
+def generate_shipment_document_pdf(shipment, form_data, document_type='invoice_packing'):
+    """Generate PDF document for a shipment with extra documents appended
+    
+    Args:
+        shipment: Shipment object
+        form_data: Form data dictionary
+        document_type: 'invoice_packing' for invoice & packing list only, 
+                      'custom_docs' for full customs clearance documents
+    """
+    try:
+        import tempfile
+        
+        # First, generate the DOCX document to a temporary file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.dirname(current_dir)
+        
+        # Determine template based on shipment type and document type
+        if shipment.shipment_type == 'import':
+            if document_type == 'invoice_packing':
+                template_path = os.path.join(root_dir, 'templates', 'Room Temperature Sample Import', 'invoice_packinglist_room_temperature.docx')
+                doc_type_name = "room_temperature_import_invoice"
+            else:  # custom_docs
+                template_path = os.path.join(root_dir, 'templates', 'Room Temperature Sample Import', 'Room_Temperature_Import_Custom_Docs .docx')
+                doc_type_name = "room_temperature_import_custom"
+        elif document_type == 'custom_docs':
+            template_path = os.path.join(root_dir, 'templates', 'export_custom_docs.docx')
+            doc_type_name = "custom_docs"
+        else:  # default to invoice_packing for export/other shipment types
+            template_path = os.path.join(root_dir, 'templates', 'invoice_packinglist.docx')
+            doc_type_name = "invoice_packing"
+        
+        if not os.path.exists(template_path):
+            raise FileNotFoundError(f"Template file not found: {template_path}")
+        
+        # Load the template with docxtpl for initial replacements
+        tpl = DocxTemplate(template_path)
+        
+        # Get aggregated sample types for this shipment
+        sample_type_aggregated = get_aggregated_sample_types(form_data)
+        
+        # Get signing authority details (reuse the same logic as DOCX generation)
+        def get_signing_authority_context():
+            signing_authority = None
+            if shipment.signing_authority_id:
+                signing_authority = SigningAuthority.query.get(shipment.signing_authority_id)
+            else:
+                signing_authority = SigningAuthority.query.filter_by(is_default=True, is_active=True).first()
+            
+            if signing_authority:
+                return {
+                    'signing_authority_name': signing_authority.name,
+                    'signing_authority_designation': signing_authority.designation,
+                    'signing_authority_organization': signing_authority.organization,
+                    'signing_authority_contact': signing_authority.contact_info,
+                    'signing_authority_email': signing_authority.email,
+                    'signing_authority_phone': signing_authority.phone
+                }
+            else:
+                return {
+                    'signing_authority_name': 'Not Assigned',
+                    'signing_authority_designation': '',
+                    'signing_authority_organization': '',
+                    'signing_authority_contact': '',
+                    'signing_authority_email': '',
+                    'signing_authority_phone': ''
+                }
+        
+        signing_auth_context = get_signing_authority_context()
+        
+        # Build context (reuse same logic as DOCX generation)
+        context = {
+            'invoice_number': shipment.invoice_number,
+            'serial_number': shipment.serial_number,
+            'shipment_date': shipment.created_at.strftime('%d/%m/%Y'),
+            'shipment_type': shipment.shipment_type.title(),
+            'requester_name': f"{shipment.creator.first_name} {shipment.creator.last_name}",
+            'requester_email': shipment.creator.email,
+            'requester_phone': shipment.creator.phone or 'Not provided',
+            'requester_organization': shipment.creator.organization,
+            'requester_unique_id': shipment.creator.unique_id,
+            'sample_types': sample_type_aggregated,
+            'ncpor_gst': '08AAAGN3682G1ZU',
+            'ncpor_lut': 'AD3309230005592',
+            **signing_auth_context
+        }
+        
+        # Add shipment-specific context
+        if shipment.shipment_type in ['import', 'reimport']:
+            context.update({
+                'exporter_name': 'Himadri - Indian Arctic Research Station',
+                'exporter_address': 'Himadri Station, Ny-Ålesund, Svalbard, Norway',
+                'consignee_name': 'National Center for Polar and Ocean Research (NCPOR)',
+                'consignee_address': 'Headland Sada, Vasco-da-Gama, Goa 403804, India',
+                'consignee_contact': 'Dr. Rohit Srivastava',
+                'consignee_phone': '9274584406',
+                'port_of_loading': form_data.get('port_of_loading', 'Longyearbyen, Svalbard'),
+                'port_of_discharge': 'JNPT, Mumbai',
+                'final_destination': form_data.get('final_destination', 'NCPOR, Goa'),
+                'country_of_final_destination': 'India',
+                'country_of_origin': 'Norway'
+            })
+        
+        # Create temporary DOCX file
+        with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_docx:
+            temp_docx_path = temp_docx.name
+        
+        # Render and save DOCX
+        tpl.render(context)
+        tpl.save(temp_docx_path)
+        
+        # Determine temperature type for extra documents
+        temperature_type = 'normal'  # Default
+        if shipment.shipment_type == 'cold':
+            temperature_type = 'cold'
+        
+        # Generate PDF with extra documents
+        pdf_path = generate_pdf_with_extras(
+            temp_docx_path, 
+            shipment.shipment_type, 
+            temperature_type
+        )
+        
+        if not pdf_path or not os.path.exists(pdf_path):
+            # Fallback to simple DOCX to PDF conversion
+            pdf_path = convert_docx_to_pdf(temp_docx_path)
+        
+        if not pdf_path or not os.path.exists(pdf_path):
+            raise Exception("Failed to generate PDF document")
+        
+        # Generate filename
+        from .utils.helpers import generate_document_filename
+        docx_filename = generate_document_filename(shipment, form_data, document_type)
+        pdf_filename = docx_filename.replace('.docx', '.pdf')
+        
+        # Read PDF into memory
+        with open(pdf_path, 'rb') as pdf_file:
+            pdf_buffer = io.BytesIO(pdf_file.read())
+        
+        # Clean up temporary files
+        try:
+            os.remove(temp_docx_path)
+            os.remove(pdf_path)
+        except:
+            pass
+        
+        pdf_buffer.seek(0)
+        
+        # Return the PDF
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=pdf_filename
+        )
+        
+    except Exception as e:
+        current_app.logger.error(f"PDF generation error: {str(e)}")
+        raise e
+
 @main.route('/dashboard')
 @login_required
 def dashboard():
@@ -2295,6 +2455,45 @@ def admin_generate_document(shipment_id, document_type='invoice_packing'):
         shipment.status = 'Failed'
         db.session.commit()
         flash(f'Error generating document: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+@main.route('/admin/generate-pdf/<int:shipment_id>')
+@main.route('/admin/generate-pdf/<int:shipment_id>/<document_type>')
+@login_required
+@admin_required
+def admin_generate_pdf(shipment_id, document_type='invoice_packing'):
+    """Admin endpoint to generate PDF document for a shipment with extra documents"""
+    shipment = Shipment.query.get_or_404(shipment_id)
+    
+    # Validate document type
+    if document_type not in ['invoice_packing', 'custom_docs']:
+        document_type = 'invoice_packing'  # default fallback
+    
+    try:
+        # Parse the stored form data
+        form_data = json.loads(shipment.form_data)
+        
+        # Update status to document generated (or keep if already delivered)
+        if shipment.status != 'Delivered':
+            shipment.status = 'Document_Generated'
+        
+        # Auto-acknowledge if not already acknowledged
+        if not shipment.acknowledged_by:
+            shipment.acknowledged_by = current_user.id
+            shipment.acknowledged_at = datetime.now()
+            # Generate file reference number if not already generated
+            if not shipment.file_reference_number:
+                shipment.file_reference_number = generate_file_reference_number(shipment, current_user)
+        
+        db.session.commit()
+        
+        # Generate and return the PDF document with specified type
+        return generate_shipment_document_pdf(shipment, form_data, document_type)
+        
+    except Exception as e:
+        shipment.status = 'Failed'
+        db.session.commit()
+        flash(f'Error generating PDF: {str(e)}', 'error')
         return redirect(url_for('main.dashboard'))
 
 @main.route('/admin/add-comment', methods=['POST'])
@@ -3121,6 +3320,53 @@ def user_generate_document(shipment_id, document_type='invoice_packing'):
         
     except Exception as e:
         flash(f'Error generating document: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+@main.route('/user/generate-pdf/<int:shipment_id>')
+@main.route('/user/generate-pdf/<int:shipment_id>/<document_type>')
+@login_required
+def user_generate_pdf(shipment_id, document_type='invoice_packing'):
+    """User endpoint to generate PDF document for their own shipment with extra documents"""
+    shipment = Shipment.query.get_or_404(shipment_id)
+    
+    # Check if user owns this shipment
+    if shipment.created_by != current_user.id:
+        flash('You can only generate documents for your own shipments', 'error')
+        return redirect(url_for('main.dashboard'))
+    
+    # Check if user has permission (non-admin users)
+    if current_user.is_admin():
+        flash('Admins use the admin dashboard to manage shipments', 'info')
+        return redirect(url_for('main.dashboard'))
+    
+    # Validate document type
+    if document_type not in ['invoice_packing', 'custom_docs']:
+        document_type = 'invoice_packing'  # default fallback
+    
+    # Check if shipment can have documents generated
+    if shipment.status not in ['Submitted', 'Acknowledged', 'Document_Generated']:
+        flash('Cannot generate documents for this shipment status', 'error')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        # Parse the stored form data
+        form_data = json.loads(shipment.form_data)
+        
+        # Update status to document generated if it's not already
+        if shipment.status in ['Submitted', 'Acknowledged']:
+            original_status = shipment.status
+            shipment.status = 'Document_Generated'
+            if original_status == 'Submitted' and not shipment.acknowledged_by:
+                # Auto-acknowledge if user is generating documents for submitted shipment
+                shipment.acknowledged_by = current_user.id
+                shipment.acknowledged_at = datetime.now()
+            db.session.commit()
+        
+        # Generate and return the PDF document with specified type
+        return generate_shipment_document_pdf(shipment, form_data, document_type)
+        
+    except Exception as e:
+        flash(f'Error generating PDF: {str(e)}', 'error')
         return redirect(url_for('main.dashboard'))
 
 @main.route('/admin/update-status/<int:shipment_id>/<new_status>')
