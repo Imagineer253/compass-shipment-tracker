@@ -1662,19 +1662,28 @@ def generate_shipment_document_pdf(shipment, form_data, document_type='invoice_p
                 return {
                     'signing_authority_name': signing_authority.name,
                     'signing_authority_designation': signing_authority.designation,
-                    'signing_authority_organization': signing_authority.organization,
-                    'signing_authority_contact': signing_authority.contact_info,
-                    'signing_authority_email': signing_authority.email,
-                    'signing_authority_phone': signing_authority.phone
+                    'singing_authority_department': signing_authority.department,  # Note: matches user's typo in placeholder
+                    'signing_authority_organisation': signing_authority.organisation,
+                    'signing_authority_contact_number': signing_authority.contact_number or '',
+                    'signing_authority_contact_fax': signing_authority.contact_fax or '',
+                    'signing_authority_email': signing_authority.email or '',
+                    # Hindi placeholders
+                    'signing_authority_name_hindi': signing_authority.name_hindi or '',
+                    'signing_authority_designation_hindi': signing_authority.designation_hindi or '',
+                    'signing_authority_department_hindi': signing_authority.department_hindi or ''
                 }
             else:
                 return {
                     'signing_authority_name': 'Not Assigned',
                     'signing_authority_designation': '',
-                    'signing_authority_organization': '',
-                    'signing_authority_contact': '',
+                    'singing_authority_department': '',
+                    'signing_authority_organisation': '',
+                    'signing_authority_contact_number': '',
+                    'signing_authority_contact_fax': '',
                     'signing_authority_email': '',
-                    'signing_authority_phone': ''
+                    'signing_authority_name_hindi': '',
+                    'signing_authority_designation_hindi': '',
+                    'signing_authority_department_hindi': ''
                 }
         
         signing_auth_context = get_signing_authority_context()
