@@ -3,134 +3,213 @@
 {% block title %}SMTP Configuration - COMPASS{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="fas fa-envelope-open-text text-primary"></i> SMTP Configuration</h2>
-                <div>
-                    <a href="{{ url_for('main.add_smtp_config') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add SMTP Configuration
-                    </a>
-                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Back to Dashboard
-                    </a>
-                </div>
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-deep-arctic mb-2">📧 SMTP Configuration</h1>
+                <p class="text-gray-600">Manage email server settings for COMPASS system</p>
             </div>
+            <div class="flex gap-3">
+                <a href="{{ url_for('main.add_smtp_config') }}" 
+                   class="arctic-button bg-northern-lights text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-all duration-300 flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Add SMTP Configuration
+                </a>
+                <a href="{{ url_for('main.dashboard') }}" 
+                   class="arctic-button bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-all duration-300 flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
 
-            {% if smtp_configs %}
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-server"></i> Email Server Configurations</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Configuration Name</th>
-                                    <th>Server</th>
-                                    <th>Username</th>
-                                    <th>Default Sender</th>
-                                    <th>Status</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for config in smtp_configs %}
-                                <tr id="config-row-{{ config.id }}">
-                                    <td>
-                                        <strong>{{ config.name }}</strong>
+        {% if smtp_configs %}
+        <!-- SMTP Configurations Table -->
+        <div class="arctic-card mb-8">
+            <div class="p-6 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-deep-arctic flex items-center gap-2">
+                    <i class="fas fa-server text-blue-600"></i>
+                    Email Server Configurations
+                </h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Configuration</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Server Details</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email Settings</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                            <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for config in smtp_configs %}
+                        <tr id="config-row-{{ config.id }}" class="hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ config.name }}</div>
                                         {% if config.is_active %}
-                                        <span class="badge bg-success ms-2">Active</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {{ config.mail_server }}:{{ config.mail_port }}
-                                        {% if config.mail_use_tls %}
-                                        <small class="text-muted">(TLS)</small>
-                                        {% elif config.mail_use_ssl %}
-                                        <small class="text-muted">(SSL)</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ config.mail_username }}</td>
-                                    <td>{{ config.mail_default_sender }}</td>
-                                    <td>
-                                        {% if config.is_active %}
-                                        <span class="badge bg-success">Active</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <i class="fas fa-check-circle mr-1"></i> Active
+                                        </span>
                                         {% else %}
-                                        <span class="badge bg-secondary">Inactive</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            <i class="fas fa-circle mr-1"></i> Inactive
+                                        </span>
                                         {% endif %}
-                                    </td>
-                                    <td>
-                                        <small class="text-muted">
-                                            {{ config.created_at.strftime('%Y-%m-%d %H:%M') }}<br>
-                                            by {{ config.creator.first_name }} {{ config.creator.last_name }}
-                                        </small>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            {% if not config.is_active %}
-                                            <button class="btn btn-sm btn-success" onclick="activateConfig({{ config.id }})">
-                                                <i class="fas fa-check"></i> Activate
-                                            </button>
-                                            {% endif %}
-                                            <button class="btn btn-sm btn-info" onclick="testConfig({{ config.id }})">
-                                                <i class="fas fa-paper-plane"></i> Test
-                                            </button>
-                                            {% if not config.is_active %}
-                                            <button class="btn btn-sm btn-danger" onclick="deleteConfig({{ config.id }}, '{{ config.name }}')">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </button>
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900">
+                                    <div class="font-medium">{{ config.mail_server }}</div>
+                                    <div class="text-gray-500">Port: {{ config.mail_port }}
+                                        {% if config.mail_use_tls %}
+                                        <span class="text-blue-600">(TLS)</span>
+                                        {% elif config.mail_use_ssl %}
+                                        <span class="text-green-600">(SSL)</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900">
+                                    <div class="font-medium">{{ config.mail_username }}</div>
+                                    <div class="text-gray-500">Sender: {{ config.mail_default_sender }}</div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                {% if config.is_active %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                    <div class="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                                    Active
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                                    <div class="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                                    Inactive
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500">
+                                <div>{{ config.created_at.strftime('%Y-%m-%d') }}</div>
+                                <div class="text-xs">{{ config.created_at.strftime('%H:%M') }}</div>
+                                <div class="text-xs">by {{ config.creator.first_name }} {{ config.creator.last_name }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    {% if not config.is_active %}
+                                    <button onclick="activateConfig({{ config.id }})" 
+                                            class="arctic-button bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors">
+                                        <i class="fas fa-check"></i> Activate
+                                    </button>
+                                    {% endif %}
+                                    <button onclick="testConfig({{ config.id }})" 
+                                            class="arctic-button bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors">
+                                        <i class="fas fa-paper-plane"></i> Test
+                                    </button>
+                                    {% if not config.is_active %}
+                                    <button onclick="deleteConfig({{ config.id }}, '{{ config.name }}')" 
+                                            class="arctic-button bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <!-- No Configurations State -->
+        <div class="arctic-card text-center py-12">
+            <div class="max-w-md mx-auto">
+                <i class="fas fa-envelope-open-text text-6xl text-gray-400 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">No SMTP Configurations Found</h3>
+                <p class="text-gray-600 mb-6">Add an SMTP configuration to enable email functionality for user registration and notifications.</p>
+                <a href="{{ url_for('main.add_smtp_config') }}" 
+                   class="arctic-button bg-northern-lights text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-all duration-300 inline-flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Add First Configuration
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Information Cards -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Gmail Configuration Guide -->
+            <div class="arctic-card">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-deep-arctic flex items-center gap-2">
+                        <i class="fab fa-google text-red-500"></i>
+                        Gmail Configuration
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="font-medium text-gray-700">Server:</span>
+                            <span class="text-gray-900">smtp.gmail.com</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-medium text-gray-700">Port:</span>
+                            <span class="text-gray-900">587 (TLS) or 465 (SSL)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-medium text-gray-700">Username:</span>
+                            <span class="text-gray-900">arctic.ncpor@gmail.com</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-medium text-gray-700">Password:</span>
+                            <span class="text-gray-900">App Password (not regular password)</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                        <p class="text-sm text-blue-800">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Use Gmail App Password for secure authentication
+                        </p>
                     </div>
                 </div>
             </div>
-            {% else %}
-            <div class="card">
-                <div class="card-body text-center py-5">
-                    <i class="fas fa-envelope-open-text fa-3x text-muted mb-3"></i>
-                    <h4 class="text-muted">No SMTP Configurations Found</h4>
-                    <p class="text-muted">Add an SMTP configuration to enable email functionality.</p>
-                    <a href="{{ url_for('main.add_smtp_config') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add First Configuration
-                    </a>
-                </div>
-            </div>
-            {% endif %}
 
-            <!-- Information Card -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="fas fa-info-circle"></i> SMTP Configuration Guide</h6>
+            <!-- Security Information -->
+            <div class="arctic-card">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-deep-arctic flex items-center gap-2">
+                        <i class="fas fa-shield-alt text-green-500"></i>
+                        Security & Guidelines
+                    </h3>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6><i class="fab fa-google"></i> Gmail Configuration</h6>
-                            <ul class="small">
-                                <li><strong>Server:</strong> smtp.gmail.com</li>
-                                <li><strong>Port:</strong> 587 (TLS) or 465 (SSL)</li>
-                                <li><strong>Username:</strong> your-email@gmail.com</li>
-                                <li><strong>Password:</strong> App Password (not regular password)</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6><i class="fas fa-shield-alt"></i> Security Notes</h6>
-                            <ul class="small">
-                                <li>Passwords are encrypted in the database</li>
-                                <li>Only one configuration can be active at a time</li>
-                                <li>Test configurations before activating</li>
-                                <li>Active configurations cannot be deleted</li>
-                            </ul>
-                        </div>
+                <div class="p-6">
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-lock text-green-500 mt-1"></i>
+                            <span class="text-gray-700">Passwords are encrypted in the database</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                            <span class="text-gray-700">Only one configuration can be active at a time</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-vial text-blue-500 mt-1"></i>
+                            <span class="text-gray-700">Test configurations before activating</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <i class="fas fa-ban text-red-500 mt-1"></i>
+                            <span class="text-gray-700">Active configurations cannot be deleted</span>
+                        </li>
+                    </ul>
+                    <div class="mt-4 p-3 bg-yellow-50 rounded-lg">
+                        <p class="text-sm text-yellow-800">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            Always test email delivery before going live
+                        </p>
                     </div>
                 </div>
             </div>
