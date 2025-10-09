@@ -1720,17 +1720,22 @@ def generate_shipment_document_pdf(shipment, form_data, document_type='invoice_p
         tpl.render(context)
         tpl.save(temp_docx_path)
         
-        # Determine temperature type for extra documents
-        temperature_type = 'normal'  # Default
-        if shipment.shipment_type == 'cold':
-            temperature_type = 'cold'
-        
-        # Generate PDF with extra documents
-        pdf_path = generate_pdf_with_extras(
-            temp_docx_path, 
-            shipment.shipment_type, 
-            temperature_type
+        # Only add extra documents for Normal Sample Import Custom Documents
+        should_add_extras = (
+            shipment.shipment_type == 'import' and 
+            document_type == 'custom_docs'
         )
+        
+        if should_add_extras:
+            # Generate PDF with extra documents for Normal Sample Import Custom Docs
+            pdf_path = generate_pdf_with_extras(
+                temp_docx_path, 
+                shipment.shipment_type, 
+                'normal'  # Normal temperature import
+            )
+        else:
+            # Simple DOCX to PDF conversion without extras
+            pdf_path = convert_docx_to_pdf(temp_docx_path)
         
         if not pdf_path or not os.path.exists(pdf_path):
             # Fallback to simple DOCX to PDF conversion
@@ -2457,17 +2462,17 @@ def admin_generate_document(shipment_id, document_type='invoice_packing'):
         flash(f'Error generating document: {str(e)}', 'error')
         return redirect(url_for('main.dashboard'))
 
-@main.route('/admin/generate-pdf/<int:shipment_id>')
 @main.route('/admin/generate-pdf/<int:shipment_id>/<document_type>')
 @login_required
 @admin_required
-def admin_generate_pdf(shipment_id, document_type='invoice_packing'):
-    """Admin endpoint to generate PDF document for a shipment with extra documents"""
+def admin_generate_pdf(shipment_id, document_type):
+    """Admin endpoint to convert DOCX document to PDF for a shipment"""
     shipment = Shipment.query.get_or_404(shipment_id)
     
-    # Validate document type
-    if document_type not in ['invoice_packing', 'custom_docs']:
-        document_type = 'invoice_packing'  # default fallback
+    # Validate document type - only allow custom_docs for PDF conversion
+    if document_type != 'custom_docs':
+        flash('PDF conversion is only available for Custom Documents', 'error')
+        return redirect(url_for('main.dashboard'))
     
     try:
         # Parse the stored form data
@@ -2487,7 +2492,7 @@ def admin_generate_pdf(shipment_id, document_type='invoice_packing'):
         
         db.session.commit()
         
-        # Generate and return the PDF document with specified type
+        # Generate and return the PDF document
         return generate_shipment_document_pdf(shipment, form_data, document_type)
         
     except Exception as e:
@@ -3322,11 +3327,10 @@ def user_generate_document(shipment_id, document_type='invoice_packing'):
         flash(f'Error generating document: {str(e)}', 'error')
         return redirect(url_for('main.dashboard'))
 
-@main.route('/user/generate-pdf/<int:shipment_id>')
 @main.route('/user/generate-pdf/<int:shipment_id>/<document_type>')
 @login_required
-def user_generate_pdf(shipment_id, document_type='invoice_packing'):
-    """User endpoint to generate PDF document for their own shipment with extra documents"""
+def user_generate_pdf(shipment_id, document_type):
+    """User endpoint to convert DOCX document to PDF for their own shipment"""
     shipment = Shipment.query.get_or_404(shipment_id)
     
     # Check if user owns this shipment
@@ -3339,9 +3343,10 @@ def user_generate_pdf(shipment_id, document_type='invoice_packing'):
         flash('Admins use the admin dashboard to manage shipments', 'info')
         return redirect(url_for('main.dashboard'))
     
-    # Validate document type
-    if document_type not in ['invoice_packing', 'custom_docs']:
-        document_type = 'invoice_packing'  # default fallback
+    # Validate document type - only allow custom_docs for PDF conversion
+    if document_type != 'custom_docs':
+        flash('PDF conversion is only available for Custom Documents', 'error')
+        return redirect(url_for('main.dashboard'))
     
     # Check if shipment can have documents generated
     if shipment.status not in ['Submitted', 'Acknowledged', 'Document_Generated']:
@@ -3362,7 +3367,7 @@ def user_generate_pdf(shipment_id, document_type='invoice_packing'):
                 shipment.acknowledged_at = datetime.now()
             db.session.commit()
         
-        # Generate and return the PDF document with specified type
+        # Generate and return the PDF document
         return generate_shipment_document_pdf(shipment, form_data, document_type)
         
     except Exception as e:

@@ -249,13 +249,10 @@
                                        class="compact-btn bg-blue-500 hover:bg-blue-600 text-white" title="Generate Custom Docs (DOCX)">
                                         📋
                                     </a>
-                                    <!-- PDF Generation -->
-                                    <a href="{{ url_for('main.admin_generate_pdf', shipment_id=shipment.id, document_type='invoice_packing') }}" 
-                                       class="compact-btn bg-red-500 hover:bg-red-600 text-white" title="Generate Invoice & Packing (PDF + Extras)">
-                                        📑
-                                    </a>
+                                    <!-- PDF Generation - Only for Custom Docs -->
                                     <a href="{{ url_for('main.admin_generate_pdf', shipment_id=shipment.id, document_type='custom_docs') }}" 
-                                       class="compact-btn bg-indigo-500 hover:bg-indigo-600 text-white" title="Generate Custom Docs (PDF + Extras)">
+                                       class="compact-btn bg-red-500 hover:bg-red-600 text-white" 
+                                       title="Generate Custom Docs (PDF{% if shipment.shipment_type == 'import' %} + Extra Pages{% endif %})">
                                         📕
                                     </a>
                                     <!-- Other Actions -->

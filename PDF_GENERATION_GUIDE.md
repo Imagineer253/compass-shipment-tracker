@@ -6,38 +6,38 @@ The COMPASS system now supports generating documents in both DOCX and PDF format
 
 ## Features
 
-### 1. PDF Document Generation
-- Convert DOCX documents to PDF format
+### 1. PDF Document Conversion
+- Convert existing DOCX documents to PDF format
 - Maintain all formatting and content from the original DOCX
-- Support for both Invoice & Packing List and Custom Documents
+- **Only available for Custom Documents** (not Invoice & Packing List)
 
 ### 2. Extra Documents Appending
-- Automatically append additional PDF documents to the main document
-- Currently configured for Normal Temperature Sample Import shipments
+- Automatically append additional PDF documents to Custom Documents
+- **Only for Normal Sample Import shipments**
 - Documents are appended in alphabetical order
+- 3 additional pages are automatically included
 
 ### 3. User Interface Updates
-- New PDF buttons in both Admin and User dashboards
-- Clear distinction between DOCX and PDF options
-- Tooltips indicating when extra documents will be included
+- New PDF button for Custom Documents only
+- Clear indication when extra documents will be included
+- Tooltips showing PDF conversion availability
 
 ## How to Use
 
 ### Admin Dashboard
 1. Navigate to the Admin Dashboard
 2. Find the shipment you want to generate documents for
-3. In the Actions column, you'll see new buttons:
-   - 📑 (Red) - Generate Invoice & Packing PDF with extras
-   - 📕 (Indigo) - Generate Custom Docs PDF with extras
-   - 📄 (Green) - Generate Invoice & Packing DOCX (original)
-   - 📋 (Blue) - Generate Custom Docs DOCX (original)
+3. In the Actions column, you'll see:
+   - 📄 (Green) - Generate Invoice & Packing DOCX
+   - 📋 (Blue) - Generate Custom Docs DOCX
+   - 📕 (Red) - Generate Custom Docs PDF (with extra pages for Normal Sample Import)
 
 ### User Dashboard
 1. Navigate to your User Dashboard
 2. Find a shipment with "Awaiting Quotation Approval" status
 3. You'll see two sections:
-   - **📄 DOCX Documents** - Original Word format
-   - **📑 PDF Documents (with Extra Pages)** - PDF with additional documents
+   - **📄 DOCX Documents** - Original Word format (Invoice & Packing, Custom Docs)
+   - **📑 PDF Documents** - PDF Custom Docs (with extra pages for Normal Sample Import)
 
 ## Extra Documents Configuration
 
@@ -47,6 +47,20 @@ For **Normal Temperature Sample Import** shipments, the following extra document
 1. **01_safety_guidelines.pdf** - Safety requirements and procedures
 2. **02_handling_instructions.pdf** - Detailed handling and processing guidelines
 3. **03_compliance_checklist.pdf** - Regulatory compliance requirements
+
+## How It Works
+
+### For Normal Sample Import Custom Documents:
+- When you click the PDF button (📕), the system:
+  - Generates the main DOCX Custom Document
+  - Converts it to PDF
+  - Finds extra documents in `compass/static/extra_docs/normal_temp_import/`
+  - Merges all PDFs together (main document + 3 extra pages)
+  - Downloads the combined PDF
+
+### For all other cases:
+- PDF conversion simply converts the DOCX to PDF without extra documents
+- Invoice & Packing List documents are only available in DOCX format
 
 ### Adding New Extra Documents
 
@@ -93,12 +107,10 @@ PDF files follow the same naming convention as DOCX files but with `.pdf` extens
 ## Routes and Endpoints
 
 ### Admin Routes
-- `/admin/generate-pdf/<shipment_id>` - Generate PDF with invoice_packing type
-- `/admin/generate-pdf/<shipment_id>/<document_type>` - Generate PDF with specified type
+- `/admin/generate-pdf/<shipment_id>/custom_docs` - Generate PDF for Custom Documents only
 
 ### User Routes
-- `/user/generate-pdf/<shipment_id>` - Generate PDF with invoice_packing type
-- `/user/generate-pdf/<shipment_id>/<document_type>` - Generate PDF with specified type
+- `/user/generate-pdf/<shipment_id>/custom_docs` - Generate PDF for Custom Documents only
 
 ## Dependencies
 

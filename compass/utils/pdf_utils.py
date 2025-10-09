@@ -157,6 +157,7 @@ def merge_pdfs(pdf_paths: List[str], output_path: str) -> bool:
 def get_extra_documents(shipment_type: str, temperature_type: str = None) -> List[str]:
     """
     Get list of extra documents to append based on shipment type
+    Only for Normal Sample Import shipments
     
     Args:
         shipment_type: Type of shipment (import, export, etc.)
@@ -168,20 +169,19 @@ def get_extra_documents(shipment_type: str, temperature_type: str = None) -> Lis
     extra_docs = []
     
     try:
-        # Determine the folder based on shipment type and temperature
+        # Only add extra documents for Normal Sample Import
         if shipment_type == 'import' and temperature_type == 'normal':
             docs_folder = Path(__file__).parent.parent / 'static' / 'extra_docs' / 'normal_temp_import'
+            
+            if docs_folder.exists():
+                # Get all PDF files in the folder, sorted alphabetically
+                pdf_files = sorted(docs_folder.glob('*.pdf'))
+                extra_docs = [str(pdf_file) for pdf_file in pdf_files]
+                logging.info(f"Found {len(extra_docs)} extra documents for Normal Sample Import")
+            else:
+                logging.info(f"No extra documents folder found: {docs_folder}")
         else:
-            # Add more conditions for other shipment types as needed
-            return extra_docs
-        
-        if docs_folder.exists():
-            # Get all PDF files in the folder, sorted alphabetically
-            pdf_files = sorted(docs_folder.glob('*.pdf'))
-            extra_docs = [str(pdf_file) for pdf_file in pdf_files]
-            logging.info(f"Found {len(extra_docs)} extra documents for {shipment_type}/{temperature_type}")
-        else:
-            logging.info(f"No extra documents folder found: {docs_folder}")
+            logging.info(f"No extra documents configured for {shipment_type}/{temperature_type}")
     
     except Exception as e:
         logging.error(f"Error getting extra documents: {e}")
