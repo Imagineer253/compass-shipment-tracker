@@ -1,4 +1,11 @@
 import os
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed
+
 from compass import create_app
 
 app = create_app()

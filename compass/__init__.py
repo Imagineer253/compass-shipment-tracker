@@ -5,6 +5,13 @@ from flask_mail import Mail
 from flask_migrate import Migrate
 import os
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed
+
 # Initialize Flask extensions
 db = SQLAlchemy()
 login_manager = LoginManager()
